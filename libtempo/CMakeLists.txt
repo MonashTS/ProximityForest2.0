@@ -15,6 +15,7 @@ target_sources(libtempo
     INTERFACE
         ./include/libtempo/distance/dtw.hpp
         ./include/libtempo/distance/cdtw.hpp
+        ./include/libtempo/distance/wdtw.hpp
         ./include/libtempo/distance/distance.hpp
         ./include/libtempo/tseries/tseries.hpp
         # UTILS

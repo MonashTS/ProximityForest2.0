@@ -91,4 +91,21 @@ namespace libtempo::utils {
   }
 
 
+  // --- --- --- --- --- ---
+  // --- Initialisation tool
+  // --- --- --- --- --- ---
+
+  namespace initBlock_detail {
+    struct tag { };
+
+    template<class F>
+    decltype(auto) operator+(tag, F&& f) {
+      return std::forward<F>(f)();
+    }
+  }
+
+#define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
+
+
+
 } // end of namespace libtempo::utils

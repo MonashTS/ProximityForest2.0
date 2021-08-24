@@ -24,6 +24,7 @@ target_sources(test_distuni
         # --- Libtempo distances - Multivariate
         distance/multivariate_dep/m_dtw.cpp
         distance/multivariate_dep/m_cdtw.cpp
+        distance/multivariate_dep/m_wdtw.cpp
         # --- Reference implementation of distances
         distance/univariate/references/dtw/dtw.cpp
         distance/univariate/references/dtw/cdtw.cpp

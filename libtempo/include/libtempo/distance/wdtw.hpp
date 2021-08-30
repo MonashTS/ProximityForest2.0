@@ -59,6 +59,7 @@ namespace libtempo::distance {
      * A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      * Actual implementation assuming that some pre-conditions are fulfilled.
      * @tparam FloatType    The floating number type used to represent the series.
+     * @tparam D            Type of underlying collection - given to dist
      * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
      * @tparam VecLike      Vector like datatype - type of "weights", accessed with [index]
      * @param nblines   Length of the line series. Must be 0 < nbcols <= nblines
@@ -68,9 +69,10 @@ namespace libtempo::distance {
      *                  May lead to early abandoning.
      * @return WDTW between the two series or +INF if early abandoned.
      */
-    template<typename FloatType, typename FDist, typename VecLike>
+    template<typename FloatType, typename D, typename FDist, typename VecLike>
     [[nodiscard]] inline FloatType wdtw(
-      size_t nblines, size_t nbcols, FDist dist,
+      const D& lines, size_t nblines,
+      const D& cols, size_t nbcols, FDist dist,
       const VecLike& weights,
       FloatType cutoff
     ) {
@@ -79,8 +81,6 @@ namespace libtempo::distance {
       assert(nblines!=0);
       assert(nbcols!=0);
       assert(nbcols<=nblines);
-      assert(w<=nblines);
-      assert(nblines-nbcols<=w);
       // Adapt constants to the floating point type
       using namespace utils;
       constexpr auto PINF = utils::PINF<FloatType>;
@@ -92,7 +92,7 @@ namespace libtempo::distance {
       const FloatType ub = initBlock {
         const auto ll = nblines-1;
         const auto lc = nbcols-1;  // Precondition: ll>=lc, so ll-lc>=0, well defined for unsigned size_t.
-        return nextafter(cutoff, PINF)-dist(ll, lc)*weights[ll-lc];
+        return nextafter(cutoff, PINF)-dist(lines, ll, cols, lc)*weights[ll-lc];
       };
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -130,21 +130,21 @@ namespace libtempo::distance {
         }
         // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
         for (; j==next_start && j<prev_pp; ++j) {
-          const auto d = dist(i, j)*weights[absdiff(i, j)];
+          const auto d = dist(lines, i, cols, j)*weights[absdiff(i, j)];
           cost = std::min(buffers[p+j-1], buffers[p+j])+d;
           buffers[c+j] = cost;
           if (cost<=ub) { curr_pp = j+1; } else { ++next_start; }
         }
         // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
         for (; j<prev_pp; ++j) {
-          const auto d = dist(i, j)*weights[absdiff(i, j)];
+          const auto d = dist(lines, i, cols, j)*weights[absdiff(i, j)];
           cost = min(cost, buffers[p+j-1], buffers[p+j])+d;
           buffers[c+j] = cost;
           if (cost<=ub) { curr_pp = j+1; }
         }
         // --- --- --- Stage 3: At the previous pruning point. Check if we are within bounds.
         if (j<nbcols) { // If so, two cases.
-          const auto d = dist(i, j)*weights[absdiff(i, j)];
+          const auto d = dist(lines, i, cols, j)*weights[absdiff(i, j)];
           if (j==next_start) { // Case 1: Advancing next start: only diag.
             cost = buffers[p+j-1]+d;
             buffers[c+j] = cost;
@@ -171,7 +171,7 @@ namespace libtempo::distance {
         // --- --- --- Stage 4: After the previous pruning point: only prev.
         // Go on while we advance the curr_pp; if it did not advance, the rest of the line is guaranteed to be > ub.
         for (; j==curr_pp && j<nbcols; ++j) {
-          const auto d = dist(i, j)*weights[absdiff(i, j)];
+          const auto d = dist(lines, i, cols, j)*weights[absdiff(i, j)];
           cost = cost+d;
           buffers[c+j] = cost;
           if (cost<=ub) { ++curr_pp; }
@@ -191,8 +191,9 @@ namespace libtempo::distance {
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
    * @tparam FloatType  The floating number type used to represent the series.
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
+   * @tparam D          Type of underlying collection - given to dist
    * @tparam VecLike    Vector like datatype - type of "weights", accessed with [index]
+   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
@@ -204,53 +205,54 @@ namespace libtempo::distance {
    *                    Use QNAN to run without any upper bounding.
    * @return DTW between the two series
    */
-  template<typename FloatType, typename FDist, typename VecLike>
+  template<typename FloatType, typename D, typename FDist, typename VecLike>
   [[nodiscard]] FloatType
   wdtw(
-    size_t length1, size_t length2, FDist dist,
+    const D& series1, size_t length1,
+    const D& series2, size_t length2, FDist dist,
     const VecLike& weights,
     FloatType ub = utils::PINF<double>
   ) {
-    const auto check_result = check_order_series<FloatType>(length1, length2);
+    const auto check_result = check_order_series<FloatType>(series1, length1, series2, length2);
     switch (check_result.index()) {
       case 0: { return std::get<0>(check_result); }
       case 1: {
-        const auto[nblines, nbcols] = std::get<1>(check_result);
+        const auto[lines, nblines, cols, nbcols] = std::get<1>(check_result);
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // Compute a cutoff point using the diagonal
         if (ub==utils::PINF<FloatType>) {
           ub = 0;
           // We know that nbcols =< nblines: cover all the columns, then cover the remaining line in the last column
-          for (size_t i{0}; i<nbcols; ++i) { ub += dist(i, i)*weights[0]; }
-          for (size_t i{nbcols}; i<nblines; ++i) { ub += dist(i, nbcols-1)*weights[i-nbcols+1]; }
+          for (size_t i{0}; i<nbcols; ++i) { ub += dist(lines, i, cols, i)*weights[0]; }
+          for (size_t i{nbcols}; i<nblines; ++i) { ub += dist(lines, i, cols, nbcols-1)*weights[i-nbcols+1]; }
         } else if (std::isnan(ub)) {
           ub = utils::PINF<FloatType>;
         }
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-        return internal::wdtw<FloatType>(nblines, nbcols, dist, weights, ub);
+        return internal::wdtw<FloatType>(lines, nblines, cols, nbcols, dist, weights, ub);
       }
       default: utils::should_not_happen();
     }
   }
 
   /// Helper with a distance builder 'mkdist'
-  template<typename FloatType, typename VecLike>
+  template<typename FloatType, typename D, typename VecLike>
   [[nodiscard]] inline FloatType wdtw(
-    const auto& s1, const auto& s2, auto mkdist,
+    const D& s1, const D& s2, auto mkdist,
     const VecLike& weights,
     FloatType ub
   ) {
-    return wdtw(s1.size(), s2.size(), mkdist(s1, s2), weights, ub);
+    return wdtw(s1, s1.size(), s2, s2.size(), mkdist(), weights, ub);
   }
 
   /// Helper with the sqed as the default distance builder, and a default ub at +INF
-  template<typename FloatType, typename VecLike>
+  template<typename FloatType, typename D, typename VecLike>
   [[nodiscard]] inline FloatType wdtw(
-    const auto& s1, const auto& s2,
+    const D& s1, const D& s2,
     const VecLike& weights,
     FloatType ub = utils::PINF<FloatType>
   ) {
-    return wdtw(s1.size(), s2.size(), distance::sqed<FloatType>(s1, s2), weights, ub);
+    return wdtw(s1, s1.size(), s2, s2.size(), distance::sqed<FloatType, D>(), weights, ub);
   }
 
   /// Multidimensional helper, with a distance builder 'mkdist'
@@ -260,17 +262,17 @@ namespace libtempo::distance {
     const VecLike& weights,
     FloatType ub
   ) {
-    return wdtw(s1.size()/ndim, s2.size()/ndim, mkdist(s1, s2, ndim), weights, ub);
+    return wdtw(s1, s1.size()/ndim, s2, s2.size()/ndim, mkdist(ndim), weights, ub);
   }
 
   /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType, typename VecLike>
+  template<typename FloatType, typename D, typename VecLike>
   [[nodiscard]] inline FloatType wdtw(
-    const auto& s1, const auto& s2, size_t ndim,
+    const D& s1, const D& s2, size_t ndim,
     const VecLike& weights,
     FloatType ub = utils::PINF<FloatType>
   ) {
-    return wdtw(s1.size()/ndim, s2.size()/ndim, distance::sqed<FloatType>(s1, s2, ndim), weights, ub);
+    return wdtw(s1, s1.size()/ndim, s2, s2.size()/ndim, distance::sqed<FloatType, D>(ndim), weights, ub);
   }
 
 

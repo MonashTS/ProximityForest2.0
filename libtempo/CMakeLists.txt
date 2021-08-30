@@ -16,6 +16,7 @@ target_sources(libtempo
         ./include/libtempo/distance/dtw.hpp
         ./include/libtempo/distance/cdtw.hpp
         ./include/libtempo/distance/wdtw.hpp
+        ./include/libtempo/distance/norm.hpp
         ./include/libtempo/distance/distance.hpp
         ./include/libtempo/tseries/tseries.hpp
         # UTILS

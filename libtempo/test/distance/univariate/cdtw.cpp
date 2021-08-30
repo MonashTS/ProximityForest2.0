@@ -14,20 +14,20 @@ constexpr size_t nbitems = 500;
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 namespace reference {
 
-  constexpr auto PINF = libtempo::utils::PINF<double>;
+  using namespace libtempo::utils;
 
   /// Naive DTW with a window. Reference code.
   double cdtw_matrix(const vector<double>& series1, const vector<double>& series2, long w) {
-    const long length1 = (long)series1.size();
-    const long length2 = (long)series2.size();
+    const long length1 = to_signed(series1.size());
+    const long length2 = to_signed(series2.size());
     // Check lengths. Be explicit in the conditions
     if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF; }
-    if (length1!=0 && length2==0) { return PINF; }
+    if (length1==0 && length2!=0) { return PINF<double>; }
+    if (length1!=0 && length2==0) { return PINF<double>; }
 
     // Allocate the working space: full matrix + space for borders (first column / first line)
     size_t msize = max(length1, length2)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
 
     // Initialisation (all the matrix is initialised at +INF)
     matrix[0][0] = 0;

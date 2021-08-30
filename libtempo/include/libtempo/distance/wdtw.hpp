@@ -61,8 +61,8 @@ namespace libtempo::distance {
      * @tparam FloatType    The floating number type used to represent the series.
      * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
      * @tparam VecLike      Vector like datatype - type of "weights", accessed with [index]
-     * @param nblines   Length of the line series. Must be 0 < nbcols <= nblines < tempo::MAX_SERIES_LENGTH.
-     * @param nbcols    Length of the column series. Must be 0 < nbcols <= nblines < tempo::MAX_SERIES_LENGTH.
+     * @param nblines   Length of the line series. Must be 0 < nbcols <= nblines
+     * @param nbcols    Length of the column series. Must be 0 < nbcols <= nblines
      * @param weights   Pointer to the weights. Must be at least as long as nblines.
      * @param cutoff.   Attempt to prune computation of alignments with cost > cutoff.
      *                  May lead to early abandoning.

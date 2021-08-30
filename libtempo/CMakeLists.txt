@@ -13,11 +13,12 @@ include(cmake/project_options.cmake)
 add_library(libtempo INTERFACE)
 target_sources(libtempo
     INTERFACE
-        ./include/libtempo/distance/dtw.hpp
         ./include/libtempo/distance/cdtw.hpp
-        ./include/libtempo/distance/wdtw.hpp
-        ./include/libtempo/distance/norm.hpp
         ./include/libtempo/distance/distance.hpp
+        ./include/libtempo/distance/dtw.hpp
+        ./include/libtempo/distance/erp.hpp
+        ./include/libtempo/distance/norm.hpp
+        ./include/libtempo/distance/wdtw.hpp
         ./include/libtempo/tseries/tseries.hpp
         # UTILS
         ./include/libtempo/utils/capsule.hpp

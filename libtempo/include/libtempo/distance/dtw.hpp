@@ -14,10 +14,10 @@ namespace libtempo::distance {
      *  Actual implementation assuming that some pre-conditions are fulfilled.
      * @tparam FloatType  The floating number type used to represent the series.
      * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
-     * @param length1     Length of the first series.
-     * @param length2     Length of the second series.
+     * @param nblines     Length of the line series. Must be 0 < nbcols <= nblines
+     * @param nbcols      Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
-     * @param cutoff.     Attempt to prune computation of alignments with cost > cutoff.
+     * @param cutoff      Attempt to prune computation of alignments with cost > cutoff.
      *                    May lead to early abandoning.
      * @return DTW between the two series or +INF if early abandoned.
      */

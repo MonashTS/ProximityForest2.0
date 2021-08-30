@@ -14,8 +14,8 @@ namespace libtempo::distance {
      *  Actual implementation assuming that some pre-conditions are fulfilled.
      * @tparam FloatType    The floating number type used to represent the series.
      * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
-     * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines < tempo::MAX_SERIES_LENGTH.
-     * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines < tempo::MAX_SERIES_LENGTH.
+     * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
+     * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist          Distance function, has to capture the series as it only gets the (li,co) coordinate
      * @param w             Half-window parameter (looking at w cells on each side of the diagonal)
      *                      Must be 0<=w<=nblines and nblines - nbcols <= w

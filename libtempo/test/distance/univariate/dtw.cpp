@@ -2,16 +2,57 @@
 #include <catch.hpp>
 #include <libtempo/distance/dtw.hpp>
 
-#include "references/dtw/dtw.hpp"
 #include "../mock/mockseries.hpp"
 
 using namespace mock;
 using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
 
-// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// Reference
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+namespace reference {
+
+  constexpr auto PINF = libtempo::utils::PINF<double>;
+
+  /// Naive DTW without a window. Reference code.
+  double dtw_matrix( const vector<double>& series1, const vector<double>& series2){
+    const auto length1 = series1.size();
+    const auto length2 = series2.size();
+    // Check lengths. Be explicit in the conditions.
+    if (length1==0 && length2==0) { return 0; }
+    if (length1==0 && length2!=0) { return PINF; }
+    if (length1!=0 && length2==0) { return PINF; }
+
+    // Allocate the working space: full matrix + space for borders (first column / first line)
+    size_t msize = max(length1, length2)+1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
+
+    // Initialisation (all the matrix is initialised at +INF)
+    matrix[0][0] = 0;
+
+    // For each line
+    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    for (size_t i = 1; i<=length1; i++) {
+      auto series1_i = series1[i-1];
+      for (size_t j = 1; j<=length2; j++) {
+        double prev = matrix[i][j-1];
+        double diag = matrix[i-1][j-1];
+        double top = matrix[i-1][j];
+        matrix[i][j] = min(prev, std::min(diag, top))+square_dist(series1_i, series2[j-1]);
+      }
+    }
+
+    return matrix[length1][length2];
+  }
+
+}
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
-// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;

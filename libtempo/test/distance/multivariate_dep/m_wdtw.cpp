@@ -147,7 +147,7 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = wdtw<double>(s1, s2, ndim, weights);
+          const auto v_eap = wdtw<double>(s1, s2, ndim, weights, bsf_eap);
           if (v_eap<bsf_eap) {
             idx_eap = j;
             bsf_eap = v_eap;

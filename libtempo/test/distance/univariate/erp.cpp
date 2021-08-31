@@ -177,7 +177,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
 
 TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
   // Setup univariate dataset with varying length
-  Mocker mocker{0};
+  Mocker mocker;
   const auto& wratios = mocker.wratios;
   const auto& gvalues = mocker.gvalues;
 

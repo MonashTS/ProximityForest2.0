@@ -150,7 +150,7 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = cdtw<double>(s1, s2, ndim, w);
+          const auto v_eap = cdtw<double>(s1, s2, ndim, w, bsf_eap);
           if (v_eap<bsf_eap) {
             idx_eap = j;
             bsf_eap = v_eap;

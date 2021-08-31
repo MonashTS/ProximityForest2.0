@@ -27,6 +27,7 @@ target_sources(test_distuni
         distance/multivariate_dep/m_dtw.cpp
         distance/multivariate_dep/m_cdtw.cpp
         distance/multivariate_dep/m_wdtw.cpp
+        distance/multivariate_dep/m_erp.cpp
         distance/multivariate_dep/m_norm.cpp
         # --- Reference implementation of distances
         distance/univariate/references/lcss/lcss.cpp

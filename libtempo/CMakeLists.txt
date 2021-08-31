@@ -31,6 +31,7 @@ target_include_directories(libtempo INTERFACE ./include)
 # CMake/IDE workaround: create a dummy target to force cmake/clion to consider header only library
 add_executable(executable cmake/dummy.cpp)
 target_link_libraries(executable PRIVATE libtempo)
+target_link_libraries(executable PRIVATE project_options)
 target_include_directories(executable PRIVATE ./include)
 
 

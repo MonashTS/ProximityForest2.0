@@ -13,8 +13,8 @@ namespace libtempo::distance {
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
      * @tparam FloatType    The floating number type used to represent the series.
-     * @tparam D          Type of underlying collection - given to dist
-     * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
+     * @tparam D            Type of underlying collection - given to dist
+     * @tparam FDist        Distance computation function, must be a (const D&, size_t, constD&, size_t)->FloatType
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist          Distance function, has to capture the series as it only gets the (li,co) coordinate
@@ -29,7 +29,7 @@ namespace libtempo::distance {
       const D& lines, size_t nblines,
       const D& cols, size_t nbcols,
       FDist dist, const size_t w, FloatType cutoff
-      ) {
+    ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
       assert(nblines!=0);
@@ -145,34 +145,37 @@ namespace libtempo::distance {
 
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
-  * @tparam FloatType  The floating number type used to represent the series.
-  * @tparam D          Type of underlying collection - given to dist
-  * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
-  * @param length1     Length of the first series.
-  * @param length2     Length of the second series.
-  * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
-  * @param w           Half warping window, in absolute size (look 'w' cells on each side of the diagonal)
-  * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
-  *                    May lead to early abandoning.
-  *                    If not provided, defaults to PINF,
-  *                    which triggers the computation of an upper bound based on the diagonal.
-  *                    Use QNAN to run without any upper bounding.
-  * @return DTW between the two series
-  */
+   * @tparam FloatType  The floating number type used to represent the series.
+   * @tparam D          Type of underlying collection - given to dist
+   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
+   * @param series1     Data for the first series
+   * @param length1     Length of the first series.
+   * @param series2     Data for the second series
+   * @param length2     Length of the second series.
+   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
+   * @param w           Half warping window, in absolute size (look 'w' cells on each side of the diagonal)
+   * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
+   *                    May lead to early abandoning.
+   *                    ub = PINF: use pruning
+   *                    ub = QNAN: no lower bounding
+   *                    ub = other value: use for pruning and early abandoning
+   * @return CDTW between the two series or +INF if early abandoned or maximum error (incompatible window).
+   */
   template<typename FloatType, typename D, typename FDist>
   [[nodiscard]] FloatType
-  cdtw(const D& series1, size_t length1, const D& series2, size_t length2, FDist dist, size_t w, FloatType ub = utils::PINF<double>) {
+  cdtw(const D& series1, size_t length1, const D& series2, size_t length2, FDist dist, size_t w,
+    FloatType ub = utils::PINF<double>) {
     const auto check_result = check_order_series<FloatType>(series1, length1, series2, length2);
     switch (check_result.index()) {
       case 0: { return std::get<0>(check_result); }
       case 1: {
         const auto[lines, nblines, cols, nbcols] = std::get<1>(check_result);
         // Cap the windows and check that, given the constraint, an alignment is possible
-        if (w > nblines) { w = nblines; }
-        if (nblines - nbcols > w) { return utils::PINF<FloatType>; }
+        if (w>nblines) { w = nblines; }
+        if (nblines-nbcols>w) { return utils::PINF<FloatType>; }
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // Compute a cutoff point using the diagonal
-        if (ub==utils::PINF<FloatType>) {
+        if (std::isinf(ub)) {
           ub = 0;
           // We know that nbcols =< nblines: cover all the columns, then cover the remaining line in the last column
           for (size_t i{0}; i<nbcols; ++i) { ub += dist(lines, i, cols, i); }
@@ -186,7 +189,6 @@ namespace libtempo::distance {
       default: utils::should_not_happen();
     }
   }
-
 
   /// Helper with a distance builder 'mkdist'
   template<typename FloatType>
@@ -208,13 +210,10 @@ namespace libtempo::distance {
 
   /// Multidimensional helper, with a distance builder 'mkdist'
   template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType cdtw(const D& s1, const D& s2, size_t ndim, size_t w, FloatType ub = utils::PINF<FloatType>) {
+  [[nodiscard]] inline FloatType
+  cdtw(const D& s1, const D& s2, size_t ndim, size_t w, FloatType ub = utils::PINF<FloatType>) {
     return cdtw(s1, s1.size()/ndim, s2, s2.size()/ndim, distance::sqed<FloatType, D>(ndim), w, ub);
   }
-
-
-
-
 
 
 } // End of namespace libtempo::distance

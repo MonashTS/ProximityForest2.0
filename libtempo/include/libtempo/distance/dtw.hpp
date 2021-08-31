@@ -183,7 +183,7 @@ namespace libtempo::distance {
         const auto[lines, nblines, cols, nbcols] = std::get<1>(check_result);
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // Compute a cutoff point using the diagonal
-        if (ub==utils::PINF<FloatType>) {
+        if (std::isinf(ub)) {
           ub = 0;
           // We know that nbcols =< nblines: cover all the columns, then cover the remaining line in the last column
           for (size_t i{0}; i<nbcols; ++i) { ub += dist(lines, i, cols, i); }

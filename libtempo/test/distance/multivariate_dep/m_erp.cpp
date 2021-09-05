@@ -93,7 +93,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
 
   const auto fset = mocker.vec_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("ERP(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
@@ -111,7 +111,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("ERP(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
@@ -132,7 +132,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 ERP") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -196,7 +196,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
   const auto& gvalues = mocker.gvalues;
   const auto fset = mocker.vec_rs_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("ERP(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
@@ -214,7 +214,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("ERP(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       for (double wr: wratios) {
         const auto& s1 = fset[i];
@@ -234,7 +234,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 ERP") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];

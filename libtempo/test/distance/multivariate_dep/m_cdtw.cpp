@@ -78,7 +78,7 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
 
   const auto fset = mocker.vec_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("CDTW(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr:wratios) {
         auto w = (size_t) (wr*mocker._fixl);
@@ -92,7 +92,7 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("CDTW(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
@@ -109,7 +109,7 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 CDTW") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -169,7 +169,7 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
   const auto& wratios = mocker.wratios;
   const auto fset = mocker.vec_rs_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("CDTW(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr:wratios) {
         const auto w = (size_t) (wr*(s.size()));
@@ -182,7 +182,7 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("CDTW(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       for (double wr:wratios) {
         const auto& s1 = fset[i];
@@ -198,7 +198,7 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 CDTW") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];

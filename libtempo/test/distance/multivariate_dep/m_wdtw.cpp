@@ -69,14 +69,14 @@ namespace {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
+TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_randvec(nbitems);
   // Random weight factors
   const auto weight_factors = mocker.randvec(nbweights, 0, 1);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("WDTW(s,s) == 0") {
     for (const auto& s: fset) {
       for (double g:weight_factors) {
         auto weights = generate_weights(g, mocker._fixl);
@@ -90,7 +90,7 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("WDTW(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
@@ -107,7 +107,7 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 WDTW") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -160,14 +160,14 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
   }// End section
 }
 
-TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]") {
+TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_rs_randvec(nbitems);
   // Random weight factors
   const auto weight_factors = mocker.randvec(nbweights, 0, 1);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("WDTW(s,s) == 0") {
     for (const auto& s: fset) {
       for (double g:weight_factors) {
         auto weights = generate_weights(g, s.size());
@@ -180,7 +180,7 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("WDTW(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       for (double g:weight_factors) {
         const auto& s1 = fset[i];
@@ -196,7 +196,7 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 WDTW") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];

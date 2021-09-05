@@ -16,7 +16,7 @@ namespace reference {
 
   using namespace libtempo::utils;
 
-  /// Naive DTW with a window. Reference code.
+  /// Naive ERP with a window. Reference code.
   double erp_matrix(const vector<double>& series1, const vector<double>& series2, double gValue, long w) {
     const long length1 = to_signed(series1.size());
     const long length2 = to_signed(series2.size());
@@ -84,7 +84,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
 
   const auto fset = mocker.vec_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("ERP(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
@@ -99,7 +99,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("ERP(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
@@ -119,7 +119,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 ERP") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -183,7 +183,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
 
   const auto fset = mocker.vec_rs_randvec(nbitems);
 
-  SECTION("DTW(s,s) == 0") {
+  SECTION("ERP(s,s) == 0") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
@@ -198,7 +198,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
     }
   }
 
-  SECTION("DTW(s1, s2)") {
+  SECTION("ERP(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       for (double wr: wratios) {
         const auto& s1 = fset[i];
@@ -215,7 +215,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
     }
   }
 
-  SECTION("NN1 DTW") {
+  SECTION("NN1 ERP") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];

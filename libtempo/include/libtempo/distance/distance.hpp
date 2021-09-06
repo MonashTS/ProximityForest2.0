@@ -27,23 +27,55 @@ namespace libtempo::distance {
       const size_t co_offset = co*ndim;
       FloatType acc{0};
       for (size_t k{0}; k<ndim; ++k) {
-        FloatType d = lines[li_offset+k]-cols[co_offset+k];
+        const FloatType d = lines[li_offset+k]-cols[co_offset+k];
         acc += d*d;
+      }
+      return acc;
+    }
+
+    /// Distance to midpoint dim N - use by MSM
+    template<typename FloatType, typename D>
+    [[nodiscard]] inline FloatType sqedNmid(const D& X, size_t xnew, size_t xi, const D& Y, size_t yi, size_t ndim){
+      const size_t xnew_offset = xnew*ndim;
+      const size_t xi_offset = xi*ndim;
+      const size_t yi_offset = yi*ndim;
+      FloatType acc{0};
+      for(size_t k{0}; k<ndim; ++k){
+        const FloatType mid = (X[xi_offset+k] + Y[yi_offset+k])/2;
+        const FloatType dmid = mid - X[xnew_offset+k];
+        acc+= dmid*dmid;
       }
       return acc;
     }
 
   } // End of namespace internal
 
+
+
   /// Get the univariate squares Euclidean distance
   template<typename FloatType, typename D>
   [[nodiscard]] inline auto sqed(){ return internal::sqed1<FloatType, D>; }
+
+  /// Get the univariate absolute distance
+  template<typename FloatType, typename D>
+  [[nodiscard]] inline auto abs(){
+    return [](const D& lines, size_t li, const D& cols, size_t co){return std::abs(lines[li]-cols[co]);};
+  }
+
 
   /// Get the multivariate squared Euclidean distance
   template<typename FloatType, typename D>
   [[nodiscard]] inline auto sqed(size_t ndim) {
     return [ndim](const D& lines, size_t li, const D& cols, size_t co) {
       return internal::sqedN<FloatType, D>(lines, li, cols, co, ndim);
+    };
+  }
+
+  /// Get the distance between xnew and the midpoint of xi and yi - Use by Multivariate MSM cost
+  template<typename FloatType, typename D>
+  [[nodiscard]] inline auto sqedNmid(size_t ndim){
+    return [ndim](const D& X, size_t xnew, size_t xi, const D& Y, size_t yi){
+      return internal::sqedNmid<FloatType, D>(X, xnew, xi, Y, yi);
     };
   }
 

@@ -23,16 +23,13 @@ target_sources(test_distuni
         distance/univariate/wdtw.cpp
         distance/univariate/erp.cpp
         distance/univariate/norm.cpp
+        distance/univariate/msm.cpp
         # --- Libtempo distances - Multivariate
         distance/multivariate_dep/m_dtw.cpp
         distance/multivariate_dep/m_cdtw.cpp
         distance/multivariate_dep/m_wdtw.cpp
         distance/multivariate_dep/m_erp.cpp
         distance/multivariate_dep/m_norm.cpp
-        # --- Reference implementation of distances
-        distance/univariate/references/lcss/lcss.cpp
-        distance/univariate/references/msm/msm.cpp
-        distance/univariate/references/twe/twe.cpp
 )
 
 target_link_libraries(test_distuni PRIVATE project_options)

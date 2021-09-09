@@ -18,6 +18,19 @@ namespace reference {
   using namespace libtempo::utils;
   using namespace std;
 
+  /// Naive Univariate Squared euclidean distance. Reference code.
+  template<typename V>
+  double norm_uni(const V& s1, const V& s2) {
+    if (s1.size()!=s2.size()) { return libtempo::utils::PINF<double>; }
+    double cost = 0;
+    for (size_t i = 0; i<s1.size(); ++i) {
+      const auto d = s1[i]-s2[i];
+      cost += d*d;
+    }
+    return cost;
+  }
+
+  /// Naive Univariate Squared euclidean distance. Reference code.
   double norm(const vector<double>& a, const vector<double>& b, size_t dim) {
     // Length of the series depends on the actual size of the data and the dimension
     const auto la = a.size()/dim;
@@ -58,11 +71,23 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[norm][multivariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      const double norm_ref_v = reference::norm(s1, s2, ndim);
-      INFO("Exact same operation order. Expect exact floating point equality.")
+      // Check Uni
+      {
+        const double norm_ref_v = reference::norm(s1, s2, 1);
+        const double norm_ref_uni_v = reference::norm_uni(s1, s2);
+        const auto norm_tempo_v = norm<double>(s1, s2, 1);
+        REQUIRE(norm_ref_v==norm_ref_uni_v);
+        REQUIRE(norm_ref_v==norm_tempo_v);
+      }
 
-      const auto norm_tempo_v = norm<double>(s1, s2, ndim);
-      REQUIRE(norm_ref_v==norm_tempo_v);
+      // Check Multi
+      {
+        const double norm_ref_v = reference::norm(s1, s2, ndim);
+        INFO("Exact same operation order. Expect exact floating point equality.")
+
+        const auto norm_tempo_v = norm<double>(s1, s2, ndim);
+        REQUIRE(norm_ref_v==norm_tempo_v);
+      }
     }
   }
 

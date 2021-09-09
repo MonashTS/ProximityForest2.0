@@ -77,11 +77,11 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double dtw_ref_v = reference::msm_matrix(s, s, c);
-        REQUIRE(dtw_ref_v==0);
+        const double msm_ref_v = reference::msm_matrix(s, s, c);
+        REQUIRE(msm_ref_v==0);
 
-        const auto dtw_v = msm<double>(s, s, c);
-        REQUIRE(dtw_v==0);
+        const auto msm_v = msm<double>(s, s, c);
+        REQUIRE(msm_v==0);
       }
     }
   }
@@ -92,11 +92,11 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
       const auto& s2 = fset[i+1];
 
       for (auto c: msm_costs) {
-        const double dtw_ref_v = reference::msm_matrix(s1, s2, c);
+        const double msm_ref_v = reference::msm_matrix(s1, s2, c);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo = msm<double>(s1, s2, c);
-        REQUIRE(dtw_ref_v==dtw_tempo);
+        const auto msm_tempo = msm<double>(s1, s2, c);
+        REQUIRE(msm_ref_v==msm_tempo);
       }
     }
   }
@@ -120,7 +120,7 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our msm functions
         for (auto c: msm_costs) {
           // --- --- --- --- --- --- --- --- --- --- --- ---
           const double v_ref = reference::msm_matrix(s1, s2, c);
@@ -157,11 +157,11 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double dtw_ref_v = reference::msm_matrix(s, s, c);
-        REQUIRE(dtw_ref_v==0);
+        const double msm_ref_v = reference::msm_matrix(s, s, c);
+        REQUIRE(msm_ref_v==0);
 
-        const auto dtw_v = msm<double>(s, s, c);
-        REQUIRE(dtw_v==0);
+        const auto msm_v = msm<double>(s, s, c);
+        REQUIRE(msm_v==0);
       }
     }
   }
@@ -171,11 +171,11 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
       for (auto c: msm_costs) {
-        const double dtw_ref_v = reference::msm_matrix(s1, s2, c);
+        const double msm_ref_v = reference::msm_matrix(s1, s2, c);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo_v = msm<double>(s1, s2, c, libtempo::utils::QNAN<double>);
-        REQUIRE(dtw_ref_v==dtw_tempo_v);
+        const auto msm_tempo_v = msm<double>(s1, s2, c, libtempo::utils::QNAN<double>);
+        REQUIRE(msm_ref_v==msm_tempo_v);
       }
     }
   }
@@ -199,7 +199,7 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our msm functions
         for (auto c: msm_costs) {
           // --- --- --- --- --- --- --- --- --- --- --- ---
           const double v_ref = reference::msm_matrix(s1, s2, c);

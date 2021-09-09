@@ -18,17 +18,6 @@ namespace reference {
   using namespace libtempo::utils;
   using namespace std;
 
-  double sqedN(const vector<double>& a, size_t astart, const vector<double>& b, size_t bstart, size_t dim) {
-    double acc{0};
-    const size_t aoffset = astart*dim;
-    const size_t boffset = bstart*dim;
-    for (size_t i{0}; i<dim; ++i) {
-      double di = a[aoffset+i]-b[boffset+i];
-      acc += di*di;
-    }
-    return acc;
-  }
-
   double norm(const vector<double>& a, const vector<double>& b, size_t dim) {
     // Length of the series depends on the actual size of the data and the dimension
     const auto la = a.size()/dim;
@@ -38,7 +27,7 @@ namespace reference {
     if (la==0 && lb!=0) { return PINF<double>; }
     if (la!=0 && lb==0) { return PINF<double>; }
     double cost = 0;
-    for(size_t i=0; i<la; ++i){ cost += sqedN(a, i, b, i, dim); }
+    for (size_t i = 0; i<la; ++i) { cost += sqedN(a, i, b, i, dim); }
     return cost;
   }
 }
@@ -72,8 +61,8 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[norm][multivariate]") {
       const double norm_ref_v = reference::norm(s1, s2, ndim);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto norm_eap_v = norm<double>(s1, s2, ndim);
-      REQUIRE(norm_ref_v==norm_eap_v);
+      const auto norm_tempo_v = norm<double>(s1, s2, ndim);
+      REQUIRE(norm_ref_v==norm_tempo_v);
     }
   }
 
@@ -88,8 +77,8 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[norm][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -114,13 +103,13 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[norm][multivariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_eap = norm<double>(s1, s2, ndim, bsf_eap);
-        if (v_eap<bsf_eap) {
-          idx_eap = j;
-          bsf_eap = v_eap;
+        const auto v_tempo = norm<double>(s1, s2, ndim, bsf_tempo);
+        if (v_tempo<bsf_tempo) {
+          idx_tempo = j;
+          bsf_tempo = v_tempo;
         }
 
-        REQUIRE(idx_ref==idx_eap);
+        REQUIRE(idx_ref==idx_tempo);
       }
     }// End query loop
   }// End section

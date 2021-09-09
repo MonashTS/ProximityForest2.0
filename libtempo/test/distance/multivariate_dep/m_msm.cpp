@@ -234,8 +234,8 @@ TEST_CASE("Multivariate Dependent MSM Fixed length", "[msm][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -263,13 +263,13 @@ TEST_CASE("Multivariate Dependent MSM Fixed length", "[msm][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = msm<double>(s1, s2, ndim, c, bsf_eap);
-          if (v_eap<bsf_eap) {
-            idx_eap = j;
-            bsf_eap = v_eap;
+          const auto v_tempo = msm<double>(s1, s2, ndim, c, bsf_tempo);
+          if (v_tempo<bsf_tempo) {
+            idx_tempo = j;
+            bsf_tempo = v_tempo;
           }
 
-          REQUIRE(idx_ref==idx_eap);
+          REQUIRE(idx_ref==idx_tempo);
         }
       }
     }// End query loop
@@ -333,8 +333,8 @@ TEST_CASE("Multivariate Dependent MSM Variable length", "[msm][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -360,13 +360,13 @@ TEST_CASE("Multivariate Dependent MSM Variable length", "[msm][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = msm<double>(s1, s2, ndim, c, bsf_eap);
-          if (v_eap<bsf_eap) {
-            idx_eap = j;
-            bsf_eap = v_eap;
+          const auto v_tempo = msm<double>(s1, s2, ndim, c, bsf_tempo);
+          if (v_tempo<bsf_tempo) {
+            idx_tempo = j;
+            bsf_tempo = v_tempo;
           }
 
-          REQUIRE(idx_ref==idx_eap);
+          REQUIRE(idx_ref==idx_tempo);
 
 
         }

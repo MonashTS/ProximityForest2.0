@@ -74,17 +74,6 @@ namespace {
     return matrix[nblines][nbcols];
   }
 
-  double sqedN(const vector<double>& a, size_t astart, const vector<double>& b, size_t bstart, size_t dim) {
-    double acc{0};
-    const size_t aoffset = astart*dim;
-    const size_t boffset = bstart*dim;
-    for (size_t i{0}; i<dim; ++i) {
-      double di = a[aoffset+i]-b[boffset+i];
-      acc += di*di;
-    }
-    return acc;
-  }
-
   /// Naive Univariate ERP with a window. Reference code.
   double erp_matrix(const vector<double>& a, const vector<double>& b, size_t dim, const vector<double>& gv, size_t w_) {
     // Length of the series depends on the actual size of the data and the dimension

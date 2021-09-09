@@ -7,12 +7,25 @@
 
 namespace mock {
   using namespace std;
-  namespace lu=libtempo::utils;
+  namespace lu = libtempo::utils;
 
   template<typename FloatType=double>
-  FloatType square_dist(FloatType a, FloatType b){
+  [[nodiscard]] inline FloatType square_dist(FloatType a, FloatType b) {
     FloatType d = a-b;
     return d*d;
+  }
+
+  template<typename FloatType=double>
+  [[nodiscard]] inline FloatType
+  sqedN(const vector<FloatType>& a, size_t astart, const vector<FloatType>& b, size_t bstart, size_t dim) {
+    FloatType acc{0};
+    const size_t aoffset = astart*dim;
+    const size_t boffset = bstart*dim;
+    for (size_t i{0}; i<dim; ++i) {
+      FloatType di = a[aoffset+i]-b[boffset+i];
+      acc += di*di;
+    }
+    return acc;
   }
 
   /// Mocker class - init with a
@@ -63,7 +76,7 @@ namespace mock {
     }
 
     /** Generate a vector of a given size*_dim with random real values in the half-closed interval [minv, maxv[. */
-    [[nodiscard]] std::vector<FloatType> randvec(size_t size, FloatType minv, FloatType maxv){
+    [[nodiscard]] std::vector<FloatType> randvec(size_t size, FloatType minv, FloatType maxv) {
       std::uniform_real_distribution<FloatType> udist{minv, maxv};
       auto generator = [this, &udist]() { return udist(_prng); };
       std::vector<FloatType> v(size*_dim);
@@ -72,14 +85,14 @@ namespace mock {
     }
 
     /** Generate a vector of _fixl size with random real values in the half-closed interval [_minv, _maxv[.*/
-    [[nodiscard]] std::vector<FloatType> randvec(){return randvec(_fixl, _minv, _maxv); }
+    [[nodiscard]] std::vector<FloatType> randvec() { return randvec(_fixl, _minv, _maxv); }
 
     /** Generate a dataset of fixed length series with nbitems, with values in [_minv, _maxv[ */
     [[nodiscard]] vector<vector<double>> vec_randvec(size_t nbitems) {
       vector<vector<double>> set;
-      for (size_t i = 0; i < nbitems; ++i) {
+      for (size_t i = 0; i<nbitems; ++i) {
         auto series = randvec(_fixl, _minv, _maxv);
-        assert(series.data() != nullptr);
+        assert(series.data()!=nullptr);
         set.push_back(std::move(series));
       }
       return set;
@@ -87,7 +100,7 @@ namespace mock {
 
     /** Generate a vector of a random size between [_minl, _maxl]
      * with random real values in the half-closed interval [_minv, _maxv[.*/
-    [[nodiscard]] std::vector<FloatType> rs_randvec(){
+    [[nodiscard]] std::vector<FloatType> rs_randvec() {
       size_t l = get_size(_minl, _maxl);
       return randvec(l, _minv, _maxv);
     }
@@ -95,9 +108,9 @@ namespace mock {
     /** Generate a dataset of variable length series with nbtimes, with values in [_minv, _maxv[ */
     [[nodiscard]] vector<vector<double>> vec_rs_randvec(size_t nbitems) {
       vector<vector<double>> set;
-      for (size_t i = 0; i < nbitems; ++i) {
+      for (size_t i = 0; i<nbitems; ++i) {
         auto series = rs_randvec();
-        assert(series.data() != nullptr);
+        assert(series.data()!=nullptr);
         set.push_back(std::move(series));
       }
       return set;

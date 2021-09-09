@@ -19,7 +19,7 @@ namespace {
   using namespace std;
 
   /// Naive Univariate DTW without a window. Reference code.
-  double dtw_matrix_uni( const vector<double>& series1, const vector<double>& series2){
+  double dtw_matrix_uni(const vector<double>& series1, const vector<double>& series2) {
     const auto length1 = series1.size();
     const auto length2 = series2.size();
     // Check lengths. Be explicit in the conditions.
@@ -48,19 +48,6 @@ namespace {
     }
 
     return matrix[length1][length2];
-  }
-
-
-
-  double sqedN(const vector<double>& a, size_t astart, const vector<double>& b, size_t bstart, size_t dim) {
-    double acc{0};
-    const size_t aoffset = astart*dim;
-    const size_t boffset = bstart*dim;
-    for (size_t i{0}; i<dim; ++i) {
-      double di = a[aoffset+i]-b[boffset+i];
-      acc += di*di;
-    }
-    return acc;
   }
 
   /// Naive Multivariate DTW without a window. Reference code.
@@ -95,9 +82,6 @@ namespace {
     return matrix[la][lb];
   }
 
-
-
-
 }
 
 
@@ -131,8 +115,8 @@ TEST_CASE("Multivariate Dependent DTW Fixed length", "[dtw][multivariate]") {
         const double dtw_ref_v = dtw_matrix(s1, s2, 1);
         const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
         const auto dtw_tempo_v = dtw<double>(s1, s2, 1);
-        REQUIRE(dtw_ref_v == dtw_ref_uni_v);
-        REQUIRE(dtw_ref_v == dtw_tempo_v);
+        REQUIRE(dtw_ref_v==dtw_ref_uni_v);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
 
       // Check Multi
@@ -215,14 +199,13 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-
       // Check Uni
       {
         const double dtw_ref_v = dtw_matrix(s1, s2, 1);
         const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
         const auto dtw_tempo_v = dtw<double>(s1, s2, 1);
-        REQUIRE(dtw_ref_v == dtw_ref_uni_v);
-        REQUIRE(dtw_ref_v == dtw_tempo_v);
+        REQUIRE(dtw_ref_v==dtw_ref_uni_v);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
 
       // Check Multi
@@ -233,7 +216,6 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
         const auto dtw_tempo_v = dtw<double>(s1, s2, ndim);
         REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
-
     }
   }
 

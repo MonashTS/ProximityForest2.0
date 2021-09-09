@@ -1,4 +1,5 @@
 #define CATCH_CONFIG_FAST_COMPILE
+
 #include <catch.hpp>
 #include <libtempo/distance/dtw.hpp>
 
@@ -17,7 +18,7 @@ namespace reference {
   using namespace libtempo::utils;
 
   /// Naive DTW without a window. Reference code.
-  double dtw_matrix( const vector<double>& series1, const vector<double>& series2){
+  double dtw_matrix(const vector<double>& series1, const vector<double>& series2) {
     const auto length1 = series1.size();
     const auto length2 = series2.size();
     // Check lengths. Be explicit in the conditions.
@@ -60,150 +61,150 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
   const auto fset = mocker.vec_randvec(nbitems);
 
   SECTION("DTW(s,s) == 0") {
-    for (const auto &s: fset) {
+    for (const auto& s: fset) {
       const double dtw_ref_v = reference::dtw_matrix(s, s);
-      REQUIRE(dtw_ref_v == 0);
+      REQUIRE(dtw_ref_v==0);
 
       const auto dtw_v = dtw<double>(s, s);
-      REQUIRE(dtw_v == 0);
+      REQUIRE(dtw_v==0);
     }
   }
 
   SECTION("DTW(s1, s2)") {
-    for (size_t i = 0; i < nbitems-1; ++i) {
-      const auto &s1 = fset[i];
-      const auto &s2 = fset[i + 1];
+    for (size_t i = 0; i<nbitems-1; ++i) {
+      const auto& s1 = fset[i];
+      const auto& s2 = fset[i+1];
 
       const double dtw_ref_v = reference::dtw_matrix(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
       const auto dtw_tempo_v = dtw<double>(s1, s2);
-      REQUIRE(dtw_ref_v == dtw_tempo_v);
+      REQUIRE(dtw_ref_v==dtw_tempo_v);
     }
   }
 
-  SECTION("NN1 DTW"){
+  SECTION("NN1 DTW") {
     // Query loop
-    for(size_t i=0; i<nbitems; i+=3) {
+    for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
       // Ref Variables
-      size_t idx_ref=0;
+      size_t idx_ref = 0;
       double bsf_ref = lu::PINF<double>;
       // Base Variables
-      size_t idx=0;
+      size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
       size_t idx_tempo = 0;
       double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
-      for (size_t j = 0; j < nbitems; j+=5) {
+      for (size_t j = 0; j<nbitems; j += 5) {
         // Skip self.
-        if(i==j){continue;}
+        if (i==j) { continue; }
         const auto& s2 = fset[j];
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const double v_ref = reference::dtw_matrix(s1, s2);
-        if (v_ref < bsf_ref) {
+        if (v_ref<bsf_ref) {
           idx_ref = j;
           bsf_ref = v_ref;
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const auto v = dtw<double>(s1, s2);
-        if (v < bsf) {
+        if (v<bsf) {
           idx = j;
           bsf = v;
         }
 
-        REQUIRE(idx_ref == idx);
+        REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const auto v_tempo = dtw<double>(s1, s2, bsf_tempo);
-        if (v_tempo < bsf_tempo) {
+        if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;
         }
 
-        REQUIRE(idx_ref == idx_tempo);
+        REQUIRE(idx_ref==idx_tempo);
       }
     }// End query loop
   }// End section
 }
 
-TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]"){
+TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
   // Setup univariate dataset with varying length
   Mocker mocker;
 
   const auto fset = mocker.vec_rs_randvec(nbitems);
 
   SECTION("DTW(s,s) == 0") {
-    for (const auto &s: fset) {
+    for (const auto& s: fset) {
       const double dtw_ref_v = reference::dtw_matrix(s, s);
-      REQUIRE(dtw_ref_v == 0);
+      REQUIRE(dtw_ref_v==0);
 
       const auto dtw_v = dtw<double>(s, s);
-      REQUIRE(dtw_v == 0);
+      REQUIRE(dtw_v==0);
     }
   }
 
   SECTION("DTW(s1, s2)") {
-    for (size_t i = 0; i < nbitems-1; ++i) {
-      const auto &s1 = fset[i];
-      const auto &s2 = fset[i + 1];
+    for (size_t i = 0; i<nbitems-1; ++i) {
+      const auto& s1 = fset[i];
+      const auto& s2 = fset[i+1];
 
       const double dtw_ref_v = reference::dtw_matrix(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
       const auto dtw_tempo_v = dtw<double>(s1, s2);
-      REQUIRE(dtw_ref_v == dtw_tempo_v);
+      REQUIRE(dtw_ref_v==dtw_tempo_v);
     }
   }
 
-  SECTION("NN1 DTW"){
+  SECTION("NN1 DTW") {
     // Query loop
-    for(size_t i=0; i<nbitems; i+=3) {
+    for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
       // Ref Variables
-      size_t idx_ref=0;
+      size_t idx_ref = 0;
       double bsf_ref = lu::PINF<double>;
       // Base Variables
-      size_t idx=0;
+      size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
       size_t idx_tempo = 0;
       double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
-      for (size_t j = 0; j < nbitems; j+=5) {
+      for (size_t j = 0; j<nbitems; j += 5) {
         // Skip self.
-        if(i==j){continue;}
+        if (i==j) { continue; }
         const auto& s2 = fset[j];
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const double v_ref = reference::dtw_matrix(s1, s2);
-        if (v_ref < bsf_ref) {
+        if (v_ref<bsf_ref) {
           idx_ref = j;
           bsf_ref = v_ref;
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const auto v = dtw<double>(s1, s2);
-        if (v < bsf) {
+        if (v<bsf) {
           idx = j;
           bsf = v;
         }
 
-        REQUIRE(idx_ref == idx);
+        REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
         const auto v_tempo = dtw<double>(s1, s2, bsf_tempo);
-        if (v_tempo < bsf_tempo) {
+        if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;
         }
 
-        REQUIRE(idx_ref == idx_tempo);
+        REQUIRE(idx_ref==idx_tempo);
       }
     }// End query loop
   }// End section

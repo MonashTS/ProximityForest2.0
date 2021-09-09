@@ -104,7 +104,7 @@ namespace libtempo::distance {
       // Create a new tighter upper bounds (most commonly used in the code).
       // First, take the "next float" after "cutoff" to deal with numerical instability.
       // Then, subtract the cost of the last alignment.
-      const FloatType ub = cutoff+100; /*initBlock {
+      const FloatType ub = initBlock {
         // The last alignment can only computed if we have nbcols >= 2
         if (nbcols>=2) {
           const auto i = nblines-1;
@@ -120,7 +120,7 @@ namespace libtempo::distance {
         } else {
           return FloatType(cutoff); // Force type to prevent auto-deduction failure
         }
-      };*/
+      };
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

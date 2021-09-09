@@ -19,6 +19,41 @@ namespace {
   using namespace libtempo::utils;
   using namespace std;
 
+  /// Naive Univariate CDTW with a window. Reference code.
+  double cdtw_matrix_uni(const vector<double>& series1, const vector<double>& series2, size_t w_) {
+    const long length1 = to_signed(series1.size());
+    const long length2 = to_signed(series2.size());
+    const long w = (long) w_;
+    // Check lengths. Be explicit in the conditions
+    if (length1==0 && length2==0) { return 0; }
+    if (length1==0 && length2!=0) { return PINF<double>; }
+    if (length1!=0 && length2==0) { return PINF<double>; }
+
+    // Allocate the working space: full matrix + space for borders (first column / first line)
+    size_t msize = max(length1, length2)+1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+
+    // Initialisation (all the matrix is initialised at +INF)
+    matrix[0][0] = 0;
+
+    // For each line
+    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    for (long i = 1; i<=length1; i++) {
+      auto series1_i = series1[i-1];
+      long jStart = max<long>(1, i-w);
+      long jStop = min<long>(i+w, length2);
+      for (long j = jStart; j<=jStop; j++) {
+        double prev = matrix[i][j-1];
+        double diag = matrix[i-1][j-1];
+        double top = matrix[i-1][j];
+        matrix[i][j] = min(prev, std::min(diag, top))+square_dist(series1_i, series2[j-1]);
+      }
+    }
+
+    return matrix[length1][length2];
+  }
+
   double sqedN(const vector<double>& a, size_t astart, const vector<double>& b, size_t bstart, size_t dim) {
     double acc{0};
     const size_t aoffset = astart*dim;
@@ -30,6 +65,8 @@ namespace {
     return acc;
   }
 
+
+  /// Naive Multivariate CDTW with a window. Reference code.
   double cdtw_matrix(const vector<double>& a, const vector<double>& b, size_t dim, size_t w_) {
     // Length of the series depends on the actual size of the data and the dimension
     const long la = (long) a.size()/(long) dim;
@@ -64,6 +101,7 @@ namespace {
 
     return matrix[la][lb];
   }
+
 
 }
 
@@ -100,11 +138,23 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
       for (double wr:wratios) {
         const auto w = (size_t) (wr*mocker._fixl);
 
+        // Check Uni
+        {
+          const double dtw_ref_v = cdtw_matrix(s1, s2, 1, w);
+          const double dtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
+          const auto dtw_tempo_v = cdtw<double>(s1, s2, 1, w);
+          REQUIRE(dtw_ref_v == dtw_ref_uni_v);
+          REQUIRE(dtw_ref_v == dtw_tempo_v);
+        }
+
+        // Check Multi
+        {
         const double dtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_eap_v = cdtw<double>(s1, s2, ndim, w);
-        REQUIRE(dtw_ref_v==dtw_eap_v);
+        const auto dtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
       }
     }
   }
@@ -120,8 +170,8 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -150,13 +200,13 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = cdtw<double>(s1, s2, ndim, w, bsf_eap);
-          if (v_eap<bsf_eap) {
-            idx_eap = j;
-            bsf_eap = v_eap;
+          const auto v_tempo = cdtw<double>(s1, s2, ndim, w, bsf_tempo);
+          if (v_tempo<bsf_tempo) {
+            idx_tempo = j;
+            bsf_tempo = v_tempo;
           }
 
-          REQUIRE(idx_ref==idx_eap);
+          REQUIRE(idx_ref==idx_tempo);
         }
       }
     }// End query loop
@@ -189,11 +239,23 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
         const auto& s2 = fset[i+1];
         const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
-        const double dtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
-        INFO("Exact same operation order. Expect exact floating point equality.")
+        // Check Uni
+        {
+          const double dtw_ref_v = cdtw_matrix(s1, s2, 1, w);
+          const double dtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
+          const auto dtw_tempo_v = cdtw<double>(s1, s2, 1, w);
+          REQUIRE(dtw_ref_v == dtw_ref_uni_v);
+          REQUIRE(dtw_ref_v == dtw_tempo_v);
+        }
 
-        const auto dtw_eap_v = cdtw<double>(s1, s2, ndim, w);
-        REQUIRE(dtw_ref_v==dtw_eap_v);
+        // Check Multi
+        {
+          const double dtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
+          INFO("Exact same operation order. Expect exact floating point equality.")
+
+          const auto dtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
       }
     }
   }
@@ -209,8 +271,8 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -238,13 +300,13 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_eap = cdtw<double>(s1, s2, ndim, w, bsf_eap);
-          if (v_eap<bsf_eap) {
-            idx_eap = j;
-            bsf_eap = v_eap;
+          const auto v_tempo = cdtw<double>(s1, s2, ndim, w, bsf_tempo);
+          if (v_tempo<bsf_tempo) {
+            idx_tempo = j;
+            bsf_tempo = v_tempo;
           }
 
-          REQUIRE(idx_ref==idx_eap);
+          REQUIRE(idx_ref==idx_tempo);
 
         }
       }

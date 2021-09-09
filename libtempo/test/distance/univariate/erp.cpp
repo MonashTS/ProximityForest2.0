@@ -130,8 +130,8 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -160,13 +160,13 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_eap = erp<double>(s1, s2, gv, w, bsf_eap);
-            if (v_eap<bsf_eap) {
-              idx_eap = j;
-              bsf_eap = v_eap;
+            const auto v_tempo = erp<double>(s1, s2, gv, w, bsf_tempo);
+            if (v_tempo<bsf_tempo) {
+              idx_tempo = j;
+              bsf_tempo = v_tempo;
             }
 
-            REQUIRE(idx_ref==idx_eap);
+            REQUIRE(idx_ref==idx_tempo);
           }
         }
       }
@@ -208,8 +208,8 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
           const double dtw_ref_v = reference::erp_matrix(s1, s2, gv, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_eap_v = erp<double>(s1, s2, gv, w, libtempo::utils::QNAN<double>);
-          REQUIRE(dtw_ref_v==dtw_eap_v);
+          const auto dtw_tempo_v = erp<double>(s1, s2, gv, w, libtempo::utils::QNAN<double>);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
         }
       }
     }
@@ -226,8 +226,8 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -258,13 +258,13 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_eap = erp<double>(s1, s2, gv, w, bsf_eap);
-            if (v_eap<bsf_eap) {
-              idx_eap = j;
-              bsf_eap = v_eap;
+            const auto v_tempo = erp<double>(s1, s2, gv, w, bsf_tempo);
+            if (v_tempo<bsf_tempo) {
+              idx_tempo = j;
+              bsf_tempo = v_tempo;
             }
 
-            REQUIRE(idx_ref==idx_eap);
+            REQUIRE(idx_ref==idx_tempo);
           }
         }
       }

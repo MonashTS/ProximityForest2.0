@@ -18,6 +18,40 @@ namespace {
   using namespace libtempo::utils;
   using namespace std;
 
+  /// Naive Univariate DTW without a window. Reference code.
+  double dtw_matrix_uni( const vector<double>& series1, const vector<double>& series2){
+    const auto length1 = series1.size();
+    const auto length2 = series2.size();
+    // Check lengths. Be explicit in the conditions.
+    if (length1==0 && length2==0) { return 0; }
+    if (length1==0 && length2!=0) { return PINF<double>; }
+    if (length1!=0 && length2==0) { return PINF<double>; }
+
+    // Allocate the working space: full matrix + space for borders (first column / first line)
+    size_t msize = max(length1, length2)+1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+
+    // Initialisation (all the matrix is initialised at +INF)
+    matrix[0][0] = 0;
+
+    // For each line
+    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    for (size_t i = 1; i<=length1; i++) {
+      auto series1_i = series1[i-1];
+      for (size_t j = 1; j<=length2; j++) {
+        double prev = matrix[i][j-1];
+        double diag = matrix[i-1][j-1];
+        double top = matrix[i-1][j];
+        matrix[i][j] = min(prev, std::min(diag, top))+square_dist(series1_i, series2[j-1]);
+      }
+    }
+
+    return matrix[length1][length2];
+  }
+
+
+
   double sqedN(const vector<double>& a, size_t astart, const vector<double>& b, size_t bstart, size_t dim) {
     double acc{0};
     const size_t aoffset = astart*dim;
@@ -29,6 +63,7 @@ namespace {
     return acc;
   }
 
+  /// Naive Multivariate DTW without a window. Reference code.
   double dtw_matrix(const vector<double>& a, const vector<double>& b, size_t dim) {
     // Length of the series depends on the actual size of the data and the dimension
     const auto la = a.size()/dim;
@@ -60,6 +95,9 @@ namespace {
     return matrix[la][lb];
   }
 
+
+
+
 }
 
 
@@ -88,11 +126,24 @@ TEST_CASE("Multivariate Dependent DTW Fixed length", "[dtw][multivariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
-      INFO("Exact same operation order. Expect exact floating point equality.")
+      // Check Uni
+      {
+        const double dtw_ref_v = dtw_matrix(s1, s2, 1);
+        const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
+        const auto dtw_tempo_v = dtw<double>(s1, s2, 1);
+        REQUIRE(dtw_ref_v == dtw_ref_uni_v);
+        REQUIRE(dtw_ref_v == dtw_tempo_v);
+      }
 
-      const auto dtw_eap_v = dtw<double>(s1, s2, ndim);
-      REQUIRE(dtw_ref_v==dtw_eap_v);
+      // Check Multi
+      {
+        const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
+        INFO("Exact same operation order. Expect exact floating point equality.")
+
+        const auto dtw_tempo_v = dtw<double>(s1, s2, ndim);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
+      }
+
     }
   }
 
@@ -107,8 +158,8 @@ TEST_CASE("Multivariate Dependent DTW Fixed length", "[dtw][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -133,13 +184,13 @@ TEST_CASE("Multivariate Dependent DTW Fixed length", "[dtw][multivariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_eap = dtw<double>(s1, s2, ndim, bsf_eap);
-        if (v_eap<bsf_eap) {
-          idx_eap = j;
-          bsf_eap = v_eap;
+        const auto v_tempo = dtw<double>(s1, s2, ndim, bsf_tempo);
+        if (v_tempo<bsf_tempo) {
+          idx_tempo = j;
+          bsf_tempo = v_tempo;
         }
 
-        REQUIRE(idx_ref==idx_eap);
+        REQUIRE(idx_ref==idx_tempo);
       }
     }// End query loop
   }// End section
@@ -164,11 +215,25 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
-      INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto dtw_eap_v = dtw<double>(s1, s2, ndim);
-      REQUIRE(dtw_ref_v==dtw_eap_v);
+      // Check Uni
+      {
+        const double dtw_ref_v = dtw_matrix(s1, s2, 1);
+        const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
+        const auto dtw_tempo_v = dtw<double>(s1, s2, 1);
+        REQUIRE(dtw_ref_v == dtw_ref_uni_v);
+        REQUIRE(dtw_ref_v == dtw_tempo_v);
+      }
+
+      // Check Multi
+      {
+        const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
+        INFO("Exact same operation order. Expect exact floating point equality.")
+
+        const auto dtw_tempo_v = dtw<double>(s1, s2, ndim);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
+      }
+
     }
   }
 
@@ -183,8 +248,8 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_eap = 0;
-      double bsf_eap = lu::PINF<double>;
+      size_t idx_tempo = 0;
+      double bsf_tempo = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -209,13 +274,13 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_eap = dtw<double>(s1, s2, ndim, bsf_eap);
-        if (v_eap<bsf_eap) {
-          idx_eap = j;
-          bsf_eap = v_eap;
+        const auto v_tempo = dtw<double>(s1, s2, ndim, bsf_tempo);
+        if (v_tempo<bsf_tempo) {
+          idx_tempo = j;
+          bsf_tempo = v_tempo;
         }
 
-        REQUIRE(idx_ref==idx_eap);
+        REQUIRE(idx_ref==idx_tempo);
       }
     }// End query loop
   }// End section

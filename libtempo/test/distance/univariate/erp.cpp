@@ -89,11 +89,11 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
         for (auto gv: gvalues) {
-          const double dtw_ref_v = reference::erp_matrix(s, s, gv, w);
-          REQUIRE(dtw_ref_v==0);
+          const double erp_ref_v = reference::erp_matrix(s, s, gv, w);
+          REQUIRE(erp_ref_v==0);
 
-          const auto dtw_v = erp<double>(s, s, gv, w);
-          REQUIRE(dtw_v==0);
+          const auto erp_v = erp<double>(s, s, gv, w);
+          REQUIRE(erp_v==0);
         }
       }
     }
@@ -109,11 +109,11 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
 
         for (auto gv: gvalues) {
 
-          const double dtw_ref_v = reference::erp_matrix(s1, s2, gv, w);
+          const double erp_ref_v = reference::erp_matrix(s1, s2, gv, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo = erp<double>(s1, s2, gv, w);
-          REQUIRE(dtw_ref_v==dtw_tempo);
+          const auto erp_tempo = erp<double>(s1, s2, gv, w);
+          REQUIRE(erp_ref_v==erp_tempo);
         }
       }
     }
@@ -138,7 +138,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our erp functions
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
 
@@ -188,11 +188,11 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
         for (auto gv: gvalues) {
-          const double dtw_ref_v = reference::erp_matrix(s, s, gv, w);
-          REQUIRE(dtw_ref_v==0);
+          const double erp_ref_v = reference::erp_matrix(s, s, gv, w);
+          REQUIRE(erp_ref_v==0);
 
-          const auto dtw_v = erp<double>(s, s, gv, w);
-          REQUIRE(dtw_v==0);
+          const auto erp_v = erp<double>(s, s, gv, w);
+          REQUIRE(erp_v==0);
         }
       }
     }
@@ -205,11 +205,11 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
         const auto& s2 = fset[i+1];
         const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
         for (auto gv: gvalues) {
-          const double dtw_ref_v = reference::erp_matrix(s1, s2, gv, w);
+          const double erp_ref_v = reference::erp_matrix(s1, s2, gv, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = erp<double>(s1, s2, gv, w, libtempo::utils::QNAN<double>);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const auto erp_tempo_v = erp<double>(s1, s2, gv, w, libtempo::utils::QNAN<double>);
+          REQUIRE(erp_ref_v==erp_tempo_v);
         }
       }
     }
@@ -234,7 +234,6 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
 
         for (double wr: wratios) {
           const auto w = (size_t) (wr*(min(s1.size(), s2.size())));

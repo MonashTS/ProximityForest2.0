@@ -86,42 +86,48 @@ namespace {
     if (la==0 && lb!=0) { return PINF<double>; }
     if (la!=0 && lb==0) { return PINF<double>; }
 
+    // We will only allocate a double-row buffer: use the smallest possible dimension as the columns.
+    const vector<double>& cols = (la<lb) ? a : b;
+    const vector<double>& lines = (la<lb) ? b : a;
+    const long nbcols = min(la, lb);
+    const long nblines = max(la, lb);
+
     // Cap the windows
-    if (w>la) { w = la; }
+    if (w>nblines) { w = nblines; }
 
     // Check if, given the constralong w, we can have an alignment.
-    if (la-lb>w) { return PINF<double>; }
+    if (nblines-nbcols>w) { return PINF<double>; }
 
     // Allocate a double buffer for the columns. Declare the index of the 'c'urrent and 'p'revious buffer.
     // Note: we use a vector as a way to initialize the buffer with PINF<double>
-    vector<std::vector<double>> matrix(la+1, std::vector<double>(lb+1, PINF<double>));
+    vector<std::vector<double>> matrix(nblines+1, std::vector<double>(nbcols+1, PINF<double>));
 
     // Initialisation of the first line and column
     matrix[0][0] = 0;
-    for (long j{1}; j<lb+1; j++) {
-      matrix[0][j] = matrix[0][j-1]+sqedN(gv, 0, b, j-1, dim);
+    for (long j{1}; j<nbcols+1; j++) {
+      matrix[0][j] = matrix[0][j-1]+sqedN(gv, 0, cols, j-1, dim);
     }
-    for (long i{1}; i<la+1; i++) {
-      matrix[i][0] = matrix[i-1][0]+sqedN(a, i-1, gv, 0, dim);
+    for (long i{1}; i<nblines+1; i++) {
+      matrix[i][0] = matrix[i-1][0]+sqedN(lines, i-1, gv, 0, dim);
     }
 
     // Iterate over the lines
-    for (long i{1}; i<la+1; ++i) {
+    for (long i{1}; i<nblines+1; ++i) {
       long l = max<long>(i-w, 1);
-      long r = min<long>(i+w+1, lb+1);
+      long r = min<long>(i+w+1, nbcols+1);
 
       // Iterate through the rest of the columns
       for (long j{l}; j<r; ++j) {
         matrix[i][j] = min(
-          matrix[i][j-1]+sqedN(gv, 0, b, j-1, dim),         // Previous
-          min(matrix[i-1][j-1]+sqedN(a, i-1, b, j-1, dim),  // Diagonal
-            matrix[i-1][j]+sqedN(a, i-1, gv, 0, dim)        // Above
+          matrix[i][j-1]+sqedN(gv, 0, cols, j-1, dim),              // Previous
+          min(matrix[i-1][j-1]+sqedN(lines, i-1, cols, j-1, dim),   // Diagonal
+            matrix[i-1][j]+sqedN(lines, i-1, gv, 0, dim)            // Above
           )
         );
       }
     } // End of for over lines
 
-    return matrix[la][lb];
+    return matrix[nblines][nbcols];
   }
 
 }
@@ -144,7 +150,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         auto w = (size_t) (wr*mocker._fixl);
 
         for (auto gv_: gvalues) {
-          vector<double> gv{ndim, gv_};
+          vector<double> gv(ndim, gv_);
 
           const double dtw_ref_v = erp_matrix(s, s, ndim, gv, w);
           REQUIRE(dtw_ref_v==0);
@@ -165,15 +171,17 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         const auto w = (size_t) (wr*mocker._fixl);
 
         for (auto gv_: gvalues) {
-          vector<double> gv{ndim, gv_};
+          vector<double> gv(ndim, gv_);
 
           // Check Uni
           {
             const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
             const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
             const auto erp_tempo_v = erp<double>(s1, s2, 1, gv, w);
-            REQUIRE(erp_ref_v==erp_ref_uni_v);
+            const auto erp_tempo_uni_v = erp<double>(s1, s2, gv_, w);
             REQUIRE(erp_ref_v==erp_tempo_v);
+            REQUIRE(erp_ref_uni_v==erp_tempo_uni_v);
+            REQUIRE(erp_tempo_v==erp_tempo_uni_v);
           }
 
           // Check Multi
@@ -214,7 +222,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
           for (auto gv_: gvalues) {
-            vector<double> gv{ndim, gv_};
+            vector<double> gv(ndim, gv_);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
             const double v_ref = erp_matrix(s1, s2, ndim, gv, w);
@@ -260,7 +268,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
         const auto w = (size_t) (wr*(s.size()));
 
         for (auto gv_: gvalues) {
-          vector<double> gv{ndim, gv_};
+          vector<double> gv(ndim, gv_);
 
           const double dtw_ref_v = erp_matrix(s, s, ndim, gv, w);
           REQUIRE(dtw_ref_v==0);
@@ -280,15 +288,17 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
         const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
         for (auto gv_: gvalues) {
-          vector<double> gv{ndim, gv_};
+          vector<double> gv(ndim, gv_);
 
           // Check Uni
           {
             const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
             const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
             const auto erp_tempo_v = erp<double>(s1, s2, 1, gv, w);
-            REQUIRE(erp_ref_v==erp_ref_uni_v);
+            const auto erp_tempo_uni_v = erp<double>(s1, s2, gv_, w);
             REQUIRE(erp_ref_v==erp_tempo_v);
+            REQUIRE(erp_ref_uni_v==erp_tempo_uni_v);
+            REQUIRE(erp_tempo_v==erp_tempo_uni_v);
           }
 
           // Check Multi
@@ -329,7 +339,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
           const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
           for (auto gv_: gvalues) {
-            vector<double> gv{ndim, gv_};
+            vector<double> gv(ndim, gv_);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
             const double v_ref = erp_matrix(s1, s2, ndim, gv, w);

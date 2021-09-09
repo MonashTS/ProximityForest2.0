@@ -20,6 +20,38 @@ namespace {
   using namespace libtempo::utils;
   using namespace std;
 
+  /// Naive Univariate WDTW. Reference code.
+  double wdtw_matrix_uni(const vector<double>& series1, const vector<double>& series2, const vector<double>& weights) {
+    const long length1 = to_signed(series1.size());
+    const long length2 = to_signed(series2.size());
+
+    // Check lengths. Be explicit in the conditions.
+    if (length1==0 && length2==0) { return 0; }
+    if (length1==0 && length2!=0) { return PINF<double>; }
+    if (length1!=0 && length2==0) { return PINF<double>; }
+    // Matrix
+    vector<std::vector<double>> matrix(length1, std::vector<double>(length2, 0));
+    // First value
+    matrix[0][0] = weights[0]*square_dist(series1[0], series2[0]);
+    // First line
+    for (long i = 1; i<length2; i++) {
+      matrix[0][i] = matrix[0][i-1]+weights[i]*square_dist(series1[0], series2[i]);
+    }
+    // First column
+    for (long i = 1; i<length1; i++) {
+      matrix[i][0] = matrix[i-1][0]+weights[i]*square_dist(series1[i], series2[0]);
+    }
+    // Matrix computation
+    for (long i = 1; i<length1; i++) {
+      for (long j = 1; j<length2; j++) {
+        const auto d = weights[abs(i-j)]*square_dist(series1[i], series2[j]);
+        const auto v = min(matrix[i][j-1], std::min(matrix[i-1][j], matrix[i-1][j-1]))+d;
+        matrix[i][j] = v;
+      }
+    }
+    return matrix[length1-1][length2-1];
+  }
+
   /// Naive Multivariate WDTW. Reference code.
   double wdtw_matrix(const vector<double>& a, const vector<double>& b, size_t dim, std::vector<double> weights) {
     // Length of the series depends on the actual size of the data and the dimension
@@ -71,11 +103,11 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
       for (double g: weight_factors) {
         auto weights = generate_weights(g, mocker._fixl);
 
-        const double dtw_ref_v = wdtw_matrix(s, s, ndim, weights);
-        REQUIRE(dtw_ref_v==0);
+        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
+        REQUIRE(wdtw_ref_v==0);
 
-        const auto dtw_v = wdtw<double>(s, s, ndim, weights);
-        REQUIRE(dtw_v==0);
+        const auto wdtw_v = wdtw<double>(s, s, ndim, weights);
+        REQUIRE(wdtw_v==0);
       }
     }
   }
@@ -88,11 +120,24 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
       for (double g: weight_factors) {
         auto weights = generate_weights(g, mocker._fixl);
 
-        const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
-        INFO("Exact same operation order. Expect exact floating point equality.")
+        // Check Uni
+        {
+          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
+          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
+          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
 
-        const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
-        REQUIRE(dtw_ref_v==dtw_tempo_v);
+        // Check Multi
+        {
+          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          INFO("Exact same operation order. Expect exact floating point equality.")
+
+          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
+
       }
     }
   }
@@ -116,7 +161,7 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our wdtw functions
         for (double g: weight_factors) {
           auto weights = generate_weights(g, mocker._fixl);
 
@@ -161,11 +206,11 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
     for (const auto& s: fset) {
       for (double g: weight_factors) {
         auto weights = generate_weights(g, s.size());
-        const double dtw_ref_v = wdtw_matrix(s, s, ndim, weights);
-        REQUIRE(dtw_ref_v==0);
+        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
+        REQUIRE(wdtw_ref_v==0);
 
-        const auto dtw_v = wdtw<double>(s, s, ndim, weights);
-        REQUIRE(dtw_v==0);
+        const auto wdtw_v = wdtw<double>(s, s, ndim, weights);
+        REQUIRE(wdtw_v==0);
       }
     }
   }
@@ -177,11 +222,23 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
         const auto& s2 = fset[i+1];
         auto weights = generate_weights(g, (min(s1.size(), s2.size())));
 
-        const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
-        INFO("Exact same operation order. Expect exact floating point equality.")
+        // Check Uni
+        {
+          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
+          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
+          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
 
-        const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
-        REQUIRE(dtw_ref_v==dtw_tempo_v);
+        // Check Multi
+        {
+          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          INFO("Exact same operation order. Expect exact floating point equality.")
+
+          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          REQUIRE(dtw_ref_v==dtw_tempo_v);
+        }
       }
     }
   }

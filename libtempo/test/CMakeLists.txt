@@ -30,6 +30,7 @@ target_sources(test_distuni
         distance/multivariate_dep/m_wdtw.cpp
         distance/multivariate_dep/m_erp.cpp
         distance/multivariate_dep/m_norm.cpp
+        distance/multivariate_dep/m_msm.cpp
 )
 
 target_link_libraries(test_distuni PRIVATE project_options)

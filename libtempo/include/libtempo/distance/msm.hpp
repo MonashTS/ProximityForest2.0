@@ -46,7 +46,7 @@ namespace libtempo::distance {
      *   If the distance between the midpoint and xnew > radius, xnew is not in the sphere.
      */
     template<typename FloatType, typename D, typename FDist, typename FDistMP>
-    [[nodiscard]] inline FloatType msms_cost_multi(
+    [[nodiscard]] inline FloatType msm_cost_multi(
       const D& X, size_t xnew, size_t xi,
       const D& Y, size_t yi,
       FDist dist,
@@ -281,7 +281,7 @@ namespace libtempo::distance {
           ub = 0;
           // We have less columns than lines: cover all the columns first -- Diag: move
           // Then go down in the last column -- Above: Split/Merge
-          for (size_t i{0}; i<nbcols; ++i) { ub += std::abs(lines[i]-cols[i]); }
+          for (size_t i{0}; i<nbcols; ++i) { ub += dist(lines, i, cols, i); }
           for (size_t i{nbcols}; i<nblines; ++i) { ub += msm_cost(lines, i, i-1, cols, nbcols-1, co); }
         } else if (std::isnan(ub)) { ub = utils::PINF<FloatType>; }
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -290,6 +290,9 @@ namespace libtempo::distance {
       default: utils::should_not_happen();
     }
   }
+
+
+
 
   /// Builder for the univariate MSM cost function
   template<typename FloatType, typename D>
@@ -313,28 +316,34 @@ namespace libtempo::distance {
 
 
 
-
-  /*
-  /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType msm(
-    const D& s1, const D& s2, size_t ndim, auto mkdist,
-    const D& gv, size_t w,
-    FloatType ub
-  ) {
-    return msm(s1, s1.size()/ndim, s2, s2.size()/ndim, mkdist(ndim), gv, w, ub);
+  /// Builder for the multivariate MSM cost function
+  template<typename FloatType, typename D, typename FDist, typename FDistMP>
+  [[nodiscard]] inline auto msm_cost_multi(size_t ndim, FDist dist, FDistMP distmpoint) {
+    return [ndim, dist, distmpoint](const D& X, size_t xnew_, size_t xi_, const D& Y, size_t yj_, FloatType cost) {
+      return internal::msm_cost_multi<FloatType, D, FDist, FDistMP>(
+        X, xnew_, xi_, Y, yj_, dist, distmpoint, cost
+      );
+    };
   }
 
-  /// Multidimensional helper, with a distance builder 'mkdist'
+  /// Helper with a distance builder 'mkdist' and a cost function builder 'mkcost'
   template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType msm(
-    const D& s1, const D& s2, size_t ndim,
-    const D& gv, size_t w,
-    FloatType ub = utils::PINF<FloatType>
-  ) {
-    return msm(s1, s1.size()/ndim, s2, s2.size()/ndim, distance::sqed<FloatType, D>(ndim), gv, w, ub);
+  [[nodiscard]] inline FloatType
+  msm(const D& s1, const D& s2, size_t ndim, auto mkdist, auto mkmid, const FloatType co, FloatType ub) {
+    return msm(s1, s1.size()/ndim, s2, s2.size()/ndim, mkdist(), mkmid(), co, ub);
   }
-   */
+
+  /// Helper with the Euclidean distance value as the default distance builder,
+  /// the default univariate msm cost, and a default ub at +INF
+  template<typename FloatType, typename D>
+  [[nodiscard]] inline FloatType
+  msm(const D& s1, const D& s2, size_t ndim, const FloatType co, FloatType ub = utils::PINF<FloatType>) {
+    return msm(s1, s1.size()/ndim, s2, s2.size()/ndim,
+      distance::ed<FloatType, D>(ndim),
+      msm_cost_multi<FloatType, D>(ndim, distance::ed<FloatType, D>(ndim), distance::edNmid<FloatType, D>(ndim)),
+      co, ub
+    );
+  }
 
 
 } // End of namespace libtempo::distance

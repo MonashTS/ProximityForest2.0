@@ -61,8 +61,6 @@ namespace reference {
 
     // Output
     return cost[length1-1][length2-1];
-
-
   }
 
 }

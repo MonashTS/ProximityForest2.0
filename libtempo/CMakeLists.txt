@@ -19,6 +19,7 @@ target_sources(libtempo
         ./include/libtempo/distance/erp.hpp
         ./include/libtempo/distance/norm.hpp
         ./include/libtempo/distance/wdtw.hpp
+        ./include/libtempo/distance/twe.hpp
         ./include/libtempo/tseries/tseries.hpp
         # UTILS
         ./include/libtempo/utils/capsule.hpp

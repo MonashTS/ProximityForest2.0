@@ -17,7 +17,7 @@ namespace reference {
   using namespace mock;
   using namespace libtempo::utils;
 
-  /// Based on reference implementation by Pierre-François Marteau.
+  /// Based on reference implementation by TWE author Pierre-François Marteau.
   /// * Added some checks.
   /// * Fix degree to 2 when evaluating the distance
   /// * Return TWE instead of modifying a pointed variable
@@ -114,6 +114,49 @@ namespace reference {
     return dist;
   }
 
+  /// Our own TWE reference code.
+  double twe_matrix(const vector<double>& series1, const vector<double>& series2, double nu, double lambda) {
+    const size_t length1 = series1.size();
+    const size_t length2 = series2.size();
+
+    // Check lengths. Be explicit in the conditions.
+    if (length1==0 && length2==0) { return 0; }
+    if (length1==0 && length2!=0) { return PINF<double>; }
+    if (length1!=0 && length2==0) { return PINF<double>; }
+
+    const size_t maxLength = max(length1, length2);
+    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF<double>));
+
+    const double nu_lambda = nu+lambda;
+    const double nu2 = 2*nu;
+
+    // Initialization: first cell, first column and first row
+    matrix[0][0] = sqdist(series1[0], series2[0]);
+    for (size_t i = 1; i<length1; i++) {
+      matrix[i][0] = matrix[i-1][0]+sqdist(series1[i], series1[i-1])+nu_lambda;
+    }
+    for (size_t j = 1; j<length2; j++) {
+      matrix[0][j] = matrix[0][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda;
+    }
+
+    // Main Loop
+    for (size_t i = 1; i<length1; i++) {
+      for (size_t j = 1; j<length2; j++) {
+        // Top: over the lines
+        double t = matrix[i-1][j]+sqdist(series1[i], series1[i-1])+nu_lambda;
+        // Diagonal
+        double d = matrix[i-1][j-1]+sqdist(series1[i], series2[j])+sqdist(series1[i-1], series2[j-1])+nu2*absdiff(i, j);
+        // Previous: over the columns
+        double p = matrix[i][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda;
+        //
+        matrix[i][j] = min(t, d, p);
+      }
+    }
+
+    // Output
+    return matrix[length1-1][length2-1];
+  }
+
 }
 
 
@@ -136,6 +179,9 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
           const double twe_ref_v = reference::twe_Marteau(s, s, nu, la);
           REQUIRE(twe_ref_v==0);
 
+          const double twe_ref_mat_v = reference::twe_matrix(s, s, nu, la);
+          REQUIRE(twe_ref_mat_v==0);
+
           const double twe_v = twe(s, s, nu, la);
           REQUIRE(twe_v==0);
         }
@@ -152,8 +198,11 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
         for (auto la: lambdas) {
           const double twe_ref_v = reference::twe_Marteau(s1, s2, nu, la);
           const double tempo_v = twe(s1, s2, nu, la);
-          INFO("Not exact same operation orders. Requires approximative equality.")
+          INFO("Not exact same operation orders. Requires approximate equality. " << nu << " " << la)
           REQUIRE(twe_ref_v==Approx(tempo_v));
+          const double twe_ref_mat_v = reference::twe_matrix(s1, s2, nu, la);
+          INFO("Ref Matrix code: same order of operation, exact same float")
+          REQUIRE(twe_ref_mat_v==tempo_v);
         }
       }
     }
@@ -225,6 +274,9 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
           const double twe_ref_v = reference::twe_Marteau(s, s, nu, la);
           REQUIRE(twe_ref_v==0);
 
+          const double twe_ref_mat_v = reference::twe_matrix(s, s, nu, la);
+          REQUIRE(twe_ref_mat_v==0);
+
           const auto twe_v = twe<double>(s, s, nu, la);
           REQUIRE(twe_v==0);
         }
@@ -242,6 +294,9 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
           const double tempo_v = twe(s1, s2, nu, la);
           INFO("Not exact same operation orders. Requires approximative equality.")
           REQUIRE(twe_ref_v==Approx(tempo_v));
+          const double twe_ref_mat_v = reference::twe_matrix(s1, s2, nu, la);
+          INFO("Ref Matrix code: same order of operation, exact same float")
+          REQUIRE(twe_ref_mat_v==tempo_v);
         }
       }
     }

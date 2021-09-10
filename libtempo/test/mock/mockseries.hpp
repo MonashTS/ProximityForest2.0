@@ -10,7 +10,7 @@ namespace mock {
   namespace lu = libtempo::utils;
 
   template<typename FloatType=double>
-  [[nodiscard]] inline FloatType square_dist(FloatType a, FloatType b) {
+  [[nodiscard]] inline FloatType sqdist(FloatType a, FloatType b) {
     FloatType d = a-b;
     return d*d;
   }
@@ -45,7 +45,7 @@ namespace mock {
     size_t _fixl{25};   // fixed
     // Possible values of the series
     FloatType _minv{0};
-    FloatType _maxv{1};
+    FloatType _maxv{10};
 
     // Parameters
     std::vector<double> wratios{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};

@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_FAST_COMPILE
 
 #include <catch.hpp>
-#include <libtempo/distance/wdtw.hpp>
+#include <libtempo/distance/twe.hpp>
 #include <iostream>
 
 #include "../mock/mockseries.hpp"
@@ -10,7 +10,6 @@ using namespace mock;
 using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
 constexpr size_t ndim = 3;
-constexpr size_t nbweights = 5;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -20,70 +19,75 @@ namespace {
   using namespace libtempo::utils;
   using namespace std;
 
-  /// Naive Univariate WDTW. Reference code.
-  double wdtw_matrix_uni(const vector<double>& series1, const vector<double>& series2, const vector<double>& weights) {
+  /// Naive Univariate TWE with a window. Reference code.
+  double twe_matrix_uni(const vector<double>& series1, const vector<double>& series2, size_t w_) {
     const long length1 = to_signed(series1.size());
     const long length2 = to_signed(series2.size());
-
-    // Check lengths. Be explicit in the conditions.
+    const long w = (long) w_;
+    // Check lengths. Be explicit in the conditions
     if (length1==0 && length2==0) { return 0; }
     if (length1==0 && length2!=0) { return PINF<double>; }
     if (length1!=0 && length2==0) { return PINF<double>; }
-    // Matrix
-    vector<std::vector<double>> matrix(length1, std::vector<double>(length2, 0));
-    // First value
-    matrix[0][0] = weights[0]*sqdist(series1[0], series2[0]);
-    // First line
-    for (long i = 1; i<length2; i++) {
-      matrix[0][i] = matrix[0][i-1]+weights[i]*sqdist(series1[0], series2[i]);
-    }
-    // First column
-    for (long i = 1; i<length1; i++) {
-      matrix[i][0] = matrix[i-1][0]+weights[i]*sqdist(series1[i], series2[0]);
-    }
-    // Matrix computation
-    for (long i = 1; i<length1; i++) {
-      for (long j = 1; j<length2; j++) {
-        const auto d = weights[abs(i-j)]*sqdist(series1[i], series2[j]);
-        const auto v = min(matrix[i][j-1], std::min(matrix[i-1][j], matrix[i-1][j-1]))+d;
-        matrix[i][j] = v;
+
+    // Allocate the working space: full matrix + space for borders (first column / first line)
+    size_t msize = max(length1, length2)+1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+
+    // Initialisation (all the matrix is initialised at +INF)
+    matrix[0][0] = 0;
+
+    // For each line
+    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    for (long i = 1; i<=length1; i++) {
+      auto series1_i = series1[i-1];
+      long jStart = max<long>(1, i-w);
+      long jStop = min<long>(i+w, length2);
+      for (long j = jStart; j<=jStop; j++) {
+        double prev = matrix[i][j-1];
+        double diag = matrix[i-1][j-1];
+        double top = matrix[i-1][j];
+        matrix[i][j] = min(prev, std::min(diag, top))+square_dist(series1_i, series2[j-1]);
       }
     }
-    return matrix[length1-1][length2-1];
+
+    return matrix[length1][length2];
   }
 
-  /// Naive Multivariate WDTW. Reference code.
-  double wdtw_matrix(const vector<double>& a, const vector<double>& b, size_t dim, std::vector<double> weights) {
+  /// Naive Multivariate TWE with a window. Reference code.
+  double twe_matrix(const vector<double>& a, const vector<double>& b, size_t dim, size_t w_) {
     // Length of the series depends on the actual size of the data and the dimension
     const long la = (long) a.size()/(long) dim;
     const long lb = (long) b.size()/(long) dim;
+    const long w = (long) w_;
 
     // Check lengths. Be explicit in the conditions.
     if (la==0 && lb==0) { return 0; }
     if (la==0 && lb!=0) { return PINF<double>; }
     if (la!=0 && lb==0) { return PINF<double>; }
 
-    // Matrix
-    vector<std::vector<double>> matrix(la, std::vector<double>(lb, 0));
-    // First value
-    matrix[0][0] = weights[0]*sqedN(a, 0, b, 0, dim);
-    // First line
-    for (long i = 1; i<lb; i++) {
-      matrix[0][i] = matrix[0][i-1]+weights[i]*sqedN(a, 0, b, i, dim);
-    }
-    // First column
-    for (long i = 1; i<la; i++) {
-      matrix[i][0] = matrix[i-1][0]+weights[i]*sqedN(a, i, b, 0, dim);
-    }
-    // Matrix computation
-    for (long i = 1; i<la; i++) {
-      for (long j = 1; j<lb; j++) {
-        const auto d = weights[abs(i-j)]*sqedN(a, i, b, j, dim);
-        const auto v = min(matrix[i][j-1], std::min(matrix[i-1][j], matrix[i-1][j-1]))+d;
-        matrix[i][j] = v;
+    // Allocate the working space: full matrix + space for borders (first column / first line)
+    size_t msize = max(la, lb)+1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+
+    // Initialisation (all the matrix is initialised at +INF)
+    matrix[0][0] = 0;
+
+    // For each line
+    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    for (long i = 1; i<=(long) la; i++) {
+      long jStart = max<long>(1, i-w);
+      long jStop = min<long>(i+w, lb);
+      for (long j = jStart; j<=jStop; j++) {
+        double prev = matrix[i][j-1];
+        double diag = matrix[i-1][j-1];
+        double top = matrix[i-1][j];
+        matrix[i][j] = min(prev, std::min(diag, top))+sqedN(a, i-1, b, j-1, dim);
       }
     }
-    return matrix[la-1][lb-1];
+
+    return matrix[la][lb];
   }
 
 }
@@ -91,58 +95,58 @@ namespace {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
+TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
+  mocker._dim = ndim;
+  const auto& wratios = mocker.wratios;
+
   const auto fset = mocker.vec_randvec(nbitems);
-  // Random weight factors
-  const auto weight_factors = mocker.randvec(nbweights, 0, 1);
 
-  SECTION("WDTW(s,s) == 0") {
+  SECTION("TWE(s,s) == 0") {
     for (const auto& s: fset) {
-      for (double g: weight_factors) {
-        auto weights = generate_weights(g, mocker._fixl);
+      for (double wr: wratios) {
+        auto w = (size_t) (wr*mocker._fixl);
 
-        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
-        REQUIRE(wdtw_ref_v==0);
+        const double dtw_ref_v = twe_matrix(s, s, ndim, w);
+        REQUIRE(dtw_ref_v==0);
 
-        const auto wdtw_v = wdtw<double>(s, s, ndim, weights);
-        REQUIRE(wdtw_v==0);
+        const auto dtw_v = twe<double>(s, s, ndim, w);
+        REQUIRE(dtw_v==0);
       }
     }
   }
 
-  SECTION("WDTW(s1, s2)") {
+  SECTION("TWE(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      for (double g: weight_factors) {
-        auto weights = generate_weights(g, mocker._fixl);
+      for (double wr: wratios) {
+        const auto w = (size_t) (wr*mocker._fixl);
 
         // Check Uni
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          const double dtw_ref_v = twe_matrix(s1, s2, 1, w);
+          const double dtw_ref_uni_v = twe_matrix_uni(s1, s2, w);
+          const auto dtw_tempo_v = twe<double>(s1, s2, 1, w);
           REQUIRE(dtw_ref_v==dtw_ref_uni_v);
           REQUIRE(dtw_ref_v==dtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double dtw_ref_v = twe_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          const auto dtw_tempo_v = twe<double>(s1, s2, ndim, w);
           REQUIRE(dtw_ref_v==dtw_tempo_v);
         }
-
       }
     }
   }
 
-  SECTION("NN1 WDTW") {
+  SECTION("NN1 TWE") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -161,19 +165,20 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our wdtw functions
-        for (double g: weight_factors) {
-          auto weights = generate_weights(g, mocker._fixl);
+        // Create the univariate squared Euclidean distance for our dtw functions
+
+        for (double wr: wratios) {
+          const auto w = (size_t) (wr*mocker._fixl);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = wdtw_matrix(s1, s2, ndim, weights);
+          const double v_ref = twe_matrix(s1, s2, ndim, w);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(s1, s2, ndim, weights);
+          const auto v = twe<double>(s1, s2, ndim, w);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -182,7 +187,7 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(s1, s2, ndim, weights, bsf_tempo);
+          const auto v_tempo = twe<double>(s1, s2, ndim, w, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;
@@ -195,55 +200,54 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
   }// End section
 }
 
-TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]") {
-  // Setup univariate with fixed length
+TEST_CASE("Multivariate Dependent TWE Variable length", "[twe][multivariate]") {
+  // Setup univariate dataset with varying length
   Mocker mocker;
+  const auto& wratios = mocker.wratios;
   const auto fset = mocker.vec_rs_randvec(nbitems);
-  // Random weight factors
-  const auto weight_factors = mocker.randvec(nbweights, 0, 1);
 
-  SECTION("WDTW(s,s) == 0") {
+  SECTION("TWE(s,s) == 0") {
     for (const auto& s: fset) {
-      for (double g: weight_factors) {
-        auto weights = generate_weights(g, s.size());
-        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
-        REQUIRE(wdtw_ref_v==0);
+      for (double wr: wratios) {
+        const auto w = (size_t) (wr*(s.size()));
+        const double dtw_ref_v = twe_matrix(s, s, ndim, w);
+        REQUIRE(dtw_ref_v==0);
 
-        const auto wdtw_v = wdtw<double>(s, s, ndim, weights);
-        REQUIRE(wdtw_v==0);
+        const auto dtw_v = twe<double>(s, s, ndim, w);
+        REQUIRE(dtw_v==0);
       }
     }
   }
 
-  SECTION("WDTW(s1, s2)") {
+  SECTION("TWE(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
-      for (double g: weight_factors) {
+      for (double wr: wratios) {
         const auto& s1 = fset[i];
         const auto& s2 = fset[i+1];
-        auto weights = generate_weights(g, (min(s1.size(), s2.size())));
+        const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
         // Check Uni
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          const double dtw_ref_v = twe_matrix(s1, s2, 1, w);
+          const double dtw_ref_uni_v = twe_matrix_uni(s1, s2, w);
+          const auto dtw_tempo_v = twe<double>(s1, s2, 1, w);
           REQUIRE(dtw_ref_v==dtw_ref_uni_v);
           REQUIRE(dtw_ref_v==dtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double dtw_ref_v = twe_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          const auto dtw_tempo_v = twe<double>(s1, s2, ndim, w);
           REQUIRE(dtw_ref_v==dtw_tempo_v);
         }
       }
     }
   }
 
-  SECTION("NN1 WDTW") {
+  SECTION("NN1 TWE") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -263,18 +267,18 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
         if (i==j) { continue; }
         const auto& s2 = fset[j];
 
-        for (double g: weight_factors) {
-          auto weights = generate_weights(g, (min(s1.size(), s2.size())));
+        for (double wr: wratios) {
+          const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = wdtw_matrix(s1, s2, ndim, weights);
+          const double v_ref = twe_matrix(s1, s2, ndim, w);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(s1, s2, ndim, weights);
+          const auto v = twe<double>(s1, s2, ndim, w);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -283,7 +287,7 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(s1, s2, ndim, weights, bsf_tempo);
+          const auto v_tempo = twe<double>(s1, s2, ndim, w, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;

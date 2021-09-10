@@ -45,10 +45,10 @@ namespace reference {
     // Initialisation of the first line and column
     matrix[0][0] = 0;
     for (long j{1}; j<nbcols+1; j++) {
-      matrix[0][j] = matrix[0][j-1]+square_dist(gValue, cols[j-1]);
+      matrix[0][j] = matrix[0][j-1]+sqdist(gValue, cols[j-1]);
     }
     for (long i{1}; i<nblines+1; i++) {
-      matrix[i][0] = matrix[i-1][0]+square_dist(lines[i-1], gValue);
+      matrix[i][0] = matrix[i-1][0]+sqdist(lines[i-1], gValue);
     }
 
     // Iterate over the lines
@@ -60,9 +60,9 @@ namespace reference {
       // Iterate through the rest of the columns
       for (long j{l}; j<r; ++j) {
         matrix[i][j] = min(
-          matrix[i][j-1]+square_dist(gValue, cols[j-1]),        // Previous
-          min(matrix[i-1][j-1]+square_dist(li, cols[j-1]),    // Diagonal
-            matrix[i-1][j]+square_dist(li, gValue)              // Above
+          matrix[i][j-1]+sqdist(gValue, cols[j-1]),        // Previous
+          min(matrix[i-1][j-1]+sqdist(li, cols[j-1]),    // Diagonal
+            matrix[i-1][j]+sqdist(li, gValue)              // Above
           )
         );
       }

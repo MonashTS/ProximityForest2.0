@@ -47,19 +47,19 @@ namespace reference {
     // Matrix
     vector<std::vector<double>> matrix(length1, std::vector<double>(length2, 0));
     // First value
-    matrix[0][0] = weights[0]*square_dist(series1[0], series2[0]);
+    matrix[0][0] = weights[0]*sqdist(series1[0], series2[0]);
     // First line
     for (long i = 1; i<length2; i++) {
-      matrix[0][i] = matrix[0][i-1]+weights[i]*square_dist(series1[0], series2[i]);
+      matrix[0][i] = matrix[0][i-1]+weights[i]*sqdist(series1[0], series2[i]);
     }
     // First column
     for (long i = 1; i<length1; i++) {
-      matrix[i][0] = matrix[i-1][0]+weights[i]*square_dist(series1[i], series2[0]);
+      matrix[i][0] = matrix[i-1][0]+weights[i]*sqdist(series1[i], series2[0]);
     }
     // Matrix computation
     for (long i = 1; i<length1; i++) {
       for (long j = 1; j<length2; j++) {
-        const auto d = weights[abs(i-j)]*square_dist(series1[i], series2[j]);
+        const auto d = weights[abs(i-j)]*sqdist(series1[i], series2[j]);
         const auto v = min(matrix[i][j-1], std::min(matrix[i-1][j], matrix[i-1][j-1]))+d;
         matrix[i][j] = v;
       }

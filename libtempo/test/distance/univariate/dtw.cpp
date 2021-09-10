@@ -42,7 +42,7 @@ namespace reference {
         double prev = matrix[i][j-1];
         double diag = matrix[i-1][j-1];
         double top = matrix[i-1][j];
-        matrix[i][j] = min(prev, std::min(diag, top))+square_dist(series1_i, series2[j-1]);
+        matrix[i][j] = min(prev, std::min(diag, top))+sqdist(series1_i, series2[j-1]);
       }
     }
 

@@ -132,12 +132,8 @@ namespace reference {
 
     // Initialization: first cell, first column and first row
     matrix[0][0] = sqdist(series1[0], series2[0]);
-    for (size_t i = 1; i<length1; i++) {
-      matrix[i][0] = matrix[i-1][0]+sqdist(series1[i], series1[i-1])+nu_lambda;
-    }
-    for (size_t j = 1; j<length2; j++) {
-      matrix[0][j] = matrix[0][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda;
-    }
+    for (size_t i = 1; i<length1; i++) { matrix[i][0] = matrix[i-1][0]+sqdist(series1[i], series1[i-1])+nu_lambda; }
+    for (size_t j = 1; j<length2; j++) { matrix[0][j] = matrix[0][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda; }
 
     // Main Loop
     for (size_t i = 1; i<length1; i++) {
@@ -158,9 +154,6 @@ namespace reference {
   }
 
 }
-
-
-
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing

@@ -66,11 +66,11 @@ TEST_CASE("Univariate CDTW Fixed length", "[cdtw][univariate]") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
-        const double dtw_ref_v = reference::cdtw_matrix(s, s, w);
-        REQUIRE(dtw_ref_v==0);
+        const double cdtw_ref_v = reference::cdtw_matrix(s, s, w);
+        REQUIRE(cdtw_ref_v==0);
 
-        const auto dtw_v = cdtw<double>(s, s, w);
-        REQUIRE(dtw_v==0);
+        const auto cdtw_v = cdtw<double>(s, s, w);
+        REQUIRE(cdtw_v==0);
       }
     }
   }
@@ -83,11 +83,11 @@ TEST_CASE("Univariate CDTW Fixed length", "[cdtw][univariate]") {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*mocker._fixl);
 
-        const double dtw_ref_v = reference::cdtw_matrix(s1, s2, w);
+        const double cdtw_ref_v = reference::cdtw_matrix(s1, s2, w);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo = cdtw<double>(s1, s2, w);
-        REQUIRE(dtw_ref_v==dtw_tempo);
+        const auto cdtw_tempo = cdtw<double>(s1, s2, w);
+        REQUIRE(cdtw_ref_v==cdtw_tempo);
       }
     }
   }
@@ -111,7 +111,7 @@ TEST_CASE("Univariate CDTW Fixed length", "[cdtw][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our cdtw functions
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
 
@@ -157,11 +157,11 @@ TEST_CASE("Univariate CDTW Variable length", "[cdtw][univariate]") {
     for (const auto& s: fset) {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
-        const double dtw_ref_v = reference::cdtw_matrix(s, s, w);
-        REQUIRE(dtw_ref_v==0);
+        const double cdtw_ref_v = reference::cdtw_matrix(s, s, w);
+        REQUIRE(cdtw_ref_v==0);
 
-        const auto dtw_v = cdtw<double>(s, s, w);
-        REQUIRE(dtw_v==0);
+        const auto cdtw_v = cdtw<double>(s, s, w);
+        REQUIRE(cdtw_v==0);
       }
     }
   }
@@ -173,11 +173,11 @@ TEST_CASE("Univariate CDTW Variable length", "[cdtw][univariate]") {
         const auto& s2 = fset[i+1];
         const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
-        const double dtw_ref_v = reference::cdtw_matrix(s1, s2, w);
+        const double cdtw_ref_v = reference::cdtw_matrix(s1, s2, w);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo_v = cdtw<double>(s1, s2, w);
-        REQUIRE(dtw_ref_v==dtw_tempo_v);
+        const auto cdtw_tempo_v = cdtw<double>(s1, s2, w);
+        REQUIRE(cdtw_ref_v==cdtw_tempo_v);
       }
     }
   }
@@ -201,7 +201,7 @@ TEST_CASE("Univariate CDTW Variable length", "[cdtw][univariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our cdtw functions
 
         for (double wr: wratios) {
           const auto w = (size_t) (wr*(min(s1.size(), s2.size())));

@@ -122,20 +122,20 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
 
         // Check Uni
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
-          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double wdtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
+          const double wdtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
+          const auto wdtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          REQUIRE(wdtw_ref_v==wdtw_ref_uni_v);
+          REQUIRE(wdtw_ref_v==wdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double wdtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const auto wdtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          REQUIRE(wdtw_ref_v==wdtw_tempo_v);
         }
 
       }
@@ -224,20 +224,20 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
 
         // Check Uni
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          const double dtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
-          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double wdtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
+          const double wdtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
+          const auto wdtw_tempo_v = wdtw<double>(s1, s2, 1, weights);
+          REQUIRE(wdtw_ref_v==wdtw_ref_uni_v);
+          REQUIRE(wdtw_ref_v==wdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double wdtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const auto wdtw_tempo_v = wdtw<double>(s1, s2, ndim, weights);
+          REQUIRE(wdtw_ref_v==wdtw_tempo_v);
         }
       }
     }

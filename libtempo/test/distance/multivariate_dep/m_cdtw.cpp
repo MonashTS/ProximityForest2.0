@@ -108,11 +108,11 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
 
-        const double dtw_ref_v = cdtw_matrix(s, s, ndim, w);
-        REQUIRE(dtw_ref_v==0);
+        const double cdtw_ref_v = cdtw_matrix(s, s, ndim, w);
+        REQUIRE(cdtw_ref_v==0);
 
-        const auto dtw_v = cdtw<double>(s, s, ndim, w);
-        REQUIRE(dtw_v==0);
+        const auto cdtw_v = cdtw<double>(s, s, ndim, w);
+        REQUIRE(cdtw_v==0);
       }
     }
   }
@@ -127,20 +127,20 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
 
         // Check Uni
         {
-          const double dtw_ref_v = cdtw_matrix(s1, s2, 1, w);
-          const double dtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
-          const auto dtw_tempo_v = cdtw<double>(s1, s2, 1, w);
-          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double cdtw_ref_v = cdtw_matrix(s1, s2, 1, w);
+          const double cdtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
+          const auto cdtw_tempo_v = cdtw<double>(s1, s2, 1, w);
+          REQUIRE(cdtw_ref_v==cdtw_ref_uni_v);
+          REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
+          const double cdtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const auto cdtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
+          REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
       }
     }
@@ -165,7 +165,7 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our cdtw functions
 
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
@@ -210,11 +210,11 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
     for (const auto& s: fset) {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
-        const double dtw_ref_v = cdtw_matrix(s, s, ndim, w);
-        REQUIRE(dtw_ref_v==0);
+        const double cdtw_ref_v = cdtw_matrix(s, s, ndim, w);
+        REQUIRE(cdtw_ref_v==0);
 
-        const auto dtw_v = cdtw<double>(s, s, ndim, w);
-        REQUIRE(dtw_v==0);
+        const auto cdtw_v = cdtw<double>(s, s, ndim, w);
+        REQUIRE(cdtw_v==0);
       }
     }
   }
@@ -228,20 +228,20 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
 
         // Check Uni
         {
-          const double dtw_ref_v = cdtw_matrix(s1, s2, 1, w);
-          const double dtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
-          const auto dtw_tempo_v = cdtw<double>(s1, s2, 1, w);
-          REQUIRE(dtw_ref_v==dtw_ref_uni_v);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double cdtw_ref_v = cdtw_matrix(s1, s2, 1, w);
+          const double cdtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
+          const auto cdtw_tempo_v = cdtw<double>(s1, s2, 1, w);
+          REQUIRE(cdtw_ref_v==cdtw_ref_uni_v);
+          REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double dtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
+          const double cdtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto dtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const auto cdtw_tempo_v = cdtw<double>(s1, s2, ndim, w);
+          REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
       }
     }

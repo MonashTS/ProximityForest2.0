@@ -152,11 +152,11 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         for (auto gv_: gvalues) {
           vector<double> gv(ndim, gv_);
 
-          const double dtw_ref_v = erp_matrix(s, s, ndim, gv, w);
-          REQUIRE(dtw_ref_v==0);
+          const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
+          REQUIRE(erp_ref_v==0);
 
-          const auto dtw_v = erp<double>(s, s, ndim, gv, w);
-          REQUIRE(dtw_v==0);
+          const auto erp_v = erp<double>(s, s, ndim, gv, w);
+          REQUIRE(erp_v==0);
         }
       }
     }
@@ -217,7 +217,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our erp functions
 
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
@@ -270,11 +270,11 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
         for (auto gv_: gvalues) {
           vector<double> gv(ndim, gv_);
 
-          const double dtw_ref_v = erp_matrix(s, s, ndim, gv, w);
-          REQUIRE(dtw_ref_v==0);
+          const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
+          REQUIRE(erp_ref_v==0);
 
-          const auto dtw_v = erp<double>(s, s, ndim, gv, w);
-          REQUIRE(dtw_v==0);
+          const auto erp_v = erp<double>(s, s, ndim, gv, w);
+          REQUIRE(erp_v==0);
         }
       }
     }

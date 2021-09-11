@@ -189,11 +189,11 @@ TEST_CASE("Multivariate Dependent MSM Fixed length", "[msm][multivariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double dtw_ref_v = msm_matrix(s, s, ndim, c);
-        REQUIRE(dtw_ref_v==0);
+        const double msm_ref_v = msm_matrix(s, s, ndim, c);
+        REQUIRE(msm_ref_v==0);
 
-        const auto dtw_v = msm<double>(s, s, ndim, c);
-        REQUIRE(dtw_v==0);
+        const auto msm_v = msm<double>(s, s, ndim, c);
+        REQUIRE(msm_v==0);
       }
     }
   }
@@ -206,18 +206,18 @@ TEST_CASE("Multivariate Dependent MSM Fixed length", "[msm][multivariate]") {
         // Ensure that things work in the univariate code
         // Note that we recoded the univariate with the Euclidean distance instead of using the L1 norm
         {
-          const double dtw_ref_v = msm_matrix(s1, s2, 1, c);
-          const double dtw_ref_univ = msm_matrix_uni(s1, s2, c);
-          REQUIRE(dtw_ref_v==dtw_ref_univ);
-          const double dtw_tempo_v = msm<double>(s1, s2, (size_t) 1, c);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double msm_ref_v = msm_matrix(s1, s2, 1, c);
+          const double msm_ref_univ = msm_matrix_uni(s1, s2, c);
+          REQUIRE(msm_ref_v==msm_ref_univ);
+          const double msm_tempo_v = msm<double>(s1, s2, (size_t) 1, c);
+          REQUIRE(msm_ref_v==msm_tempo_v);
         }
 
         // Ok, test the multivariate
         {
-          const double dtw_ref_v = msm_matrix(s1, s2, ndim, c);
-          const double dtw_tempo_v = msm<double>(s1, s2, ndim, c);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double msm_ref_v = msm_matrix(s1, s2, ndim, c);
+          const double msm_tempo_v = msm<double>(s1, s2, ndim, c);
+          REQUIRE(msm_ref_v==msm_tempo_v);
         }
       }
     }
@@ -242,7 +242,7 @@ TEST_CASE("Multivariate Dependent MSM Fixed length", "[msm][multivariate]") {
         // Skip self.
         if (i==j) { continue; }
         const auto& s2 = fset[j];
-        // Create the univariate squared Euclidean distance for our dtw functions
+        // Create the univariate squared Euclidean distance for our msm functions
 
         for (auto c: msm_costs) {
 
@@ -288,11 +288,11 @@ TEST_CASE("Multivariate Dependent MSM Variable length", "[msm][multivariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double dtw_ref_v = msm_matrix(s, s, ndim, c);
-        REQUIRE(dtw_ref_v==0);
+        const double msm_ref_v = msm_matrix(s, s, ndim, c);
+        REQUIRE(msm_ref_v==0);
 
-        const auto dtw_v = msm<double>(s, s, ndim, c);
-        REQUIRE(dtw_v==0);
+        const auto msm_v = msm<double>(s, s, ndim, c);
+        REQUIRE(msm_v==0);
       }
     }
   }
@@ -305,18 +305,18 @@ TEST_CASE("Multivariate Dependent MSM Variable length", "[msm][multivariate]") {
         // Ensure that things work in the univariate code
         // Note that we recoded the univariate with the Euclidean distance instead of using the L1 norm
         {
-          const double dtw_ref_v = msm_matrix(s1, s2, 1, c);
-          const double dtw_ref_univ = msm_matrix_uni(s1, s2, c);
-          REQUIRE(dtw_ref_v==dtw_ref_univ);
-          const double dtw_tempo_v = msm<double>(s1, s2, (size_t) 1, c);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double msm_ref_v = msm_matrix(s1, s2, 1, c);
+          const double msm_ref_univ = msm_matrix_uni(s1, s2, c);
+          REQUIRE(msm_ref_v==msm_ref_univ);
+          const double msm_tempo_v = msm<double>(s1, s2, (size_t) 1, c);
+          REQUIRE(msm_ref_v==msm_tempo_v);
         }
 
         // Ok, test the multivariate
         {
-          const double dtw_ref_v = msm_matrix(s1, s2, ndim, c);
-          const double dtw_tempo_v = msm<double>(s1, s2, ndim, c);
-          REQUIRE(dtw_ref_v==dtw_tempo_v);
+          const double msm_ref_v = msm_matrix(s1, s2, ndim, c);
+          const double msm_tempo_v = msm<double>(s1, s2, ndim, c);
+          REQUIRE(msm_ref_v==msm_tempo_v);
         }
       }
     }

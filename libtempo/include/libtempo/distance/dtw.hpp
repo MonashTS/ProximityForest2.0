@@ -19,7 +19,7 @@ namespace libtempo::distance {
      * @param nblines     Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols        Data for the columns
      * @param nbcols      Length of the column series. Must be 0 < nbcols <= nblines
-     * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+     * @param dist        Distance function of type FDist
      * @param cutoff      Attempt to prune computation of alignments with cost > cutoff.
      *                    May lead to early abandoning.
      * @return DTW between the two series or +INF if early abandoned.
@@ -28,7 +28,12 @@ namespace libtempo::distance {
      * this is not the size of the vector, but the size of the vector divided by the number of dimensions.
      */
     template<typename FloatType, typename D, typename FDist>
-    [[nodiscard]] inline FloatType dtw(const D& lines, size_t nblines, const D& cols, size_t nbcols, FDist dist, const FloatType cutoff) {
+    [[nodiscard]] inline FloatType dtw(
+      const D& lines, size_t nblines,
+      const D& cols, size_t nbcols,
+      FDist dist,
+      const FloatType cutoff
+    ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
       assert(nblines!=0);
@@ -162,7 +167,7 @@ namespace libtempo::distance {
    * @param series2     Data for the second series
    * @param length2     Length of the second series
    * @param nbcols      Length of the column series. Must be 0 < nbcols <= nblines
-   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+   * @param dist        Distance function of type FDist
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
    *                    ub = PINF: use pruning
@@ -175,7 +180,8 @@ namespace libtempo::distance {
    */
 
   template<typename FloatType, typename D, typename FDist>
-  [[nodiscard]] FloatType dtw(const D& series1, size_t length1, const D& series2, size_t length2, FDist dist, FloatType ub) {
+  [[nodiscard]] FloatType
+  dtw(const D& series1, size_t length1, const D& series2, size_t length2, FDist dist, FloatType ub) {
     const auto check_result = check_order_series<FloatType, D>(series1, length1, series2, length2);
     switch (check_result.index()) {
       case 0: { return std::get<0>(check_result); }

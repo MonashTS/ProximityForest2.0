@@ -19,7 +19,7 @@ namespace libtempo::distance {
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols          Data for the lines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param dist          Distance function, has to capture the series as it only gets the (li,co) coordinate
+     * @param dist          Distance function of type FDist
      * @param gValue        Data for the gValue - must have the correct dimension!
      * @param w             Half-window parameter (looking at w cells on each side of the diagonal)
      *                      Must be 0<=w<=nblines and nblines - nbcols <= w
@@ -225,7 +225,6 @@ namespace libtempo::distance {
 
   } // End of namespace internal
 
-
   /** Edit Distance with Real Penalty (ERP), with cut-off point for early abandoning and pruning.
    *  Double buffered implementation using O(n) space.
    *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
@@ -238,7 +237,7 @@ namespace libtempo::distance {
    * @param length1     Length of the first series.
    * @param series2     Data for the second series
    * @param length2     Length of the second series.
-   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+   * @param dist        Distance function of type FDist
    * @param gv          Data for the gValue - must have the correct dimension!
    * @param w           Half-window parameter (looking at w cells on each side of the diagonal)
    *                    Must be 0<=w<=nblines and nblines - nbcols <= w

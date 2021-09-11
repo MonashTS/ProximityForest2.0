@@ -33,7 +33,7 @@ namespace libtempo::distance {
      * @tparam D            Type of underlying collection - given to dist
      * @tparam FDist        Distance function, must be a (const D&, size_t, constD&, size_t)->FloatType
      * @tparam FDistMP      Distance to midpoint function, must be a (const D&, size_t, size_t, constD&, size_t)->FloatType
-     * @param  X            Main series: the series wher a new point is added (can be line or column!)
+     * @param  X            Main series: the series where a new point is added (can be line or column!)
      * @param  xnew         Index of the new point in X
      * @param  Y            The other series
      * @param  xi           Index of the last point in X
@@ -75,6 +75,7 @@ namespace libtempo::distance {
      * @param lines         Data for the lines
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols          Data for the lines
+     * @param dist          Distance function of type FDist
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param msms_cost     MSM cost function
      * @param co            MSM cost parameter, transmitted to msm_cost
@@ -255,7 +256,7 @@ namespace libtempo::distance {
    * @param length1     Length of the first series.
    * @param series2     Data for the second series
    * @param length2     Length of the second series.
-   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+   * @param dist        Distance function of type FDist
    * @param gv          Data for the gValue - must have the correct dimension!
    * @param w           Half-window parameter (looking at w cells on each side of the diagonal)
    *                    Must be 0<=w<=nblines and nblines - nbcols <= w
@@ -291,9 +292,6 @@ namespace libtempo::distance {
     }
   }
 
-
-
-
   /// Builder for the univariate MSM cost function
   template<typename FloatType, typename D>
   [[nodiscard]] inline auto msm_cost_uni() { return internal::msm_cost_uni<FloatType, D>; }
@@ -312,9 +310,6 @@ namespace libtempo::distance {
   msm(const D& s1, const D& s2, const FloatType co, FloatType ub = utils::PINF<FloatType>) {
     return msm(s1, s1.size(), s2, s2.size(), distance::abs<FloatType, D>(), msm_cost_uni<FloatType, D>(), co, ub);
   }
-
-
-
 
   /// Builder for the multivariate MSM cost function
   template<typename FloatType, typename D, typename FDist, typename FDistMP>

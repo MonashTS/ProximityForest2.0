@@ -17,7 +17,7 @@ namespace libtempo::distance {
      * @tparam FDist        Distance computation function, must be a (const D&, size_t, constD&, size_t)->FloatType
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param dist          Distance function, has to capture the series as it only gets the (li,co) coordinate
+     * @param dist          Distance function of type FDist
      * @param w             Half-window parameter (looking at w cells on each side of the diagonal)
      *                      Must be 0<=w<=nblines and nblines - nbcols <= w
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
@@ -152,7 +152,7 @@ namespace libtempo::distance {
    * @param length1     Length of the first series.
    * @param series2     Data for the second series
    * @param length2     Length of the second series.
-   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
+   * @param dist        Distance function of type FDist
    * @param w           Half warping window, in absolute size (look 'w' cells on each side of the diagonal)
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.

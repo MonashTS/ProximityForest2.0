@@ -16,7 +16,7 @@ namespace libtempo::distance {
      * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
      * @param length1     Length of the first series.
      * @param length2     Length of the second series.
-     * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+     * @param dist        Distance function of type FDist
      * @param cutoff.     Attempt to prune computation of alignments with cost > cutoff.
      *                    May lead to early abandoning.
      * @return Norm according to 'dist' between the two series, or +INF if early abandoned.
@@ -55,7 +55,7 @@ namespace libtempo::distance {
      * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
      * @param length1     Length of the first series.
      * @param length2     Length of the second series.
-     * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinate
+     * @param dist        Distance function of type FDist
      * @return Norm according to 'dist' between the two series
      */
     template<typename FloatType, typename D, typename FDist>

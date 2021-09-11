@@ -62,17 +62,19 @@ namespace libtempo::distance {
      * @tparam D            Type of underlying collection - given to dist
      * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
      * @tparam VecLike      Vector like datatype - type of "weights", accessed with [index]
-     * @param nblines   Length of the line series. Must be 0 < nbcols <= nblines
-     * @param nbcols    Length of the column series. Must be 0 < nbcols <= nblines
-     * @param weights   Pointer to the weights. Must be at least as long as nblines.
-     * @param cutoff.   Attempt to prune computation of alignments with cost > cutoff.
-     *                  May lead to early abandoning.
+     * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
+     * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
+     * @param dist          Distance function of type FDist
+     * @param weights       Pointer to the weights. Must be at least as long as nblines.
+     * @param cutoff.       Attempt to prune computation of alignments with cost > cutoff.
+     *                      May lead to early abandoning.
      * @return WDTW between the two series or +INF if early abandoned.
      */
     template<typename FloatType, typename D, typename FDist, typename VecLike>
     [[nodiscard]] inline FloatType wdtw(
       const D& lines, size_t nblines,
-      const D& cols, size_t nbcols, FDist dist,
+      const D& cols, size_t nbcols,
+      FDist dist,
       const VecLike& weights,
       FloatType cutoff
     ) {
@@ -196,7 +198,7 @@ namespace libtempo::distance {
    * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
-   * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
+   * @param dist        Distance function of type FDist
    * @param weights     Pointer to the weights. Must be at least as long as nblines.
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
@@ -209,7 +211,8 @@ namespace libtempo::distance {
   [[nodiscard]] FloatType
   wdtw(
     const D& series1, size_t length1,
-    const D& series2, size_t length2, FDist dist,
+    const D& series2, size_t length2,
+    FDist dist,
     const VecLike& weights,
     FloatType ub = utils::PINF<double>
   ) {

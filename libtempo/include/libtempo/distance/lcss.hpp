@@ -15,8 +15,8 @@ namespace libtempo::distance {
 
     /// Check if two FloatType numbers are within epsilon (true = similar) - used by LCSS
     template<typename FloatType, typename D>
-    [[nodiscard]] bool simN(const D& lines, size_t li, const D& cols, size_t co, FloatType epsilon, size_t ndim) {
-      return sqedN<FloatType, D>(lines, li, cols, co, ndim)<epsilon;
+    [[nodiscard]] bool simN(const D& lines, size_t li, const D& cols, size_t co, size_t ndim, FloatType epsilon) {
+      return internal::sqedN<FloatType, D>(lines, li, cols, co, ndim)<epsilon;
     }
   }
 
@@ -27,8 +27,8 @@ namespace libtempo::distance {
   /// Get the multivariate simple similarity measure FSim for LCSS
   template<typename FloatType, typename D>
   [[nodiscard]] inline auto sim(size_t ndim) {
-    return [ndim](const D& X, size_t xnew, size_t xi, const D& Y, size_t yi) {
-      return lcss_details::simN<FloatType, D>(X, xnew, xi, Y, yi, ndim);
+    return [ndim](const D& X, size_t xi, const D& Y, size_t yi, FloatType epsilon) {
+      return lcss_details::simN<FloatType, D>(X, xi, Y, yi, ndim, epsilon);
     };
   }
 

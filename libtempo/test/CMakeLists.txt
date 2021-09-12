@@ -34,6 +34,7 @@ target_sources(test_distuni
         distance/multivariate_dep/m_norm.cpp
         distance/multivariate_dep/m_msm.cpp
         distance/multivariate_dep/m_twe.cpp
+        distance/multivariate_dep/m_lcss.cpp
 )
 
 target_link_libraries(test_distuni PRIVATE project_options)

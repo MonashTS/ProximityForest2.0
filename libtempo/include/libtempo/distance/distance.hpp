@@ -43,7 +43,7 @@ namespace libtempo::distance {
       return std::sqrt(sqedN<FloatType, D>(lines, li, cols, co, ndim));
     }
 
-    /// Euclidean Distance to midpoint dim N - use by MSM
+    /// Euclidean Distance to midpoint dim N - used by MSM
     template<typename FloatType, typename D>
     [[nodiscard]] inline FloatType edNmid(const D& X, size_t xnew, size_t xi, const D& Y, size_t yi, size_t ndim) {
       const size_t xnew_offset = xnew*ndim;

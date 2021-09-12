@@ -45,7 +45,7 @@ namespace mock {
     size_t _fixl{25};   // fixed
     // Possible values of the series
     FloatType _minv{0};
-    FloatType _maxv{10};
+    FloatType _maxv{2};
 
     // Parameters
     std::vector<double> wratios{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
@@ -55,6 +55,8 @@ namespace mock {
     std::vector<double> twe_lambdas = {0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
                                         0.055555556, 0.066666667,
                                         0.077777778, 0.088888889, 0.1};
+    const vector<double> epsilons ={0.1, 0.2, 0.3, 0.8, 0.9, 1, 2, 5};
+
     // --- --- --- Constructor
 
     /** Build a mocker with a random seed. If none is given, one is generated */

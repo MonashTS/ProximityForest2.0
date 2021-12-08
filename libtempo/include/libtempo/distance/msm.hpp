@@ -10,7 +10,7 @@ namespace libtempo::distance {
     /** Univariate cost function used when transforming X=(x1, x2, ... xi) into Y = (y1, ..., yj) by Split or Merge (symmetric)
      * @tparam FT    The floating number type used to represent the series.
      * @tparam D            Type of underlying collection - given to dist
-     * @param X             Main series: the series wher a new point is added (can be line or column!)
+     * @param X             Main series: the series where a new point is added (can be line or column!)
      * @param xnew_         In either X or Y
      * @param xi_           Last point of X
      * @param Y             The other series

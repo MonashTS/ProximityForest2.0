@@ -24,7 +24,6 @@ target_sources(libtempo
         ./include/libtempo/tseries/tseries.hpp
         # UTILS
         ./include/libtempo/utils/capsule.hpp
-        ./include/libtempo/utils/point.hpp
         ./include/libtempo/utils/utils.hpp
 )
 target_include_directories(libtempo INTERFACE ./include)

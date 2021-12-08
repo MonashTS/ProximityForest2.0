@@ -1,7 +1,6 @@
 #pragma once
 
 #include <libtempo/utils/utils.hpp>
-#include <libtempo/utils/point.hpp>
 
 #include <functional>
 #include <variant>

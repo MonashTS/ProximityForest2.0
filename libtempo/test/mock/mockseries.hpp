@@ -48,6 +48,7 @@ namespace mock {
     FloatType _maxv{2};
 
     // Parameters
+    std::vector<double> adtw_penalties;
     std::vector<double> wratios{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
     std::vector<double> gvalues{0.0, 0.01, 0.5, 1, 10, 100};
     std::vector<double> msm_costs = {0, 0.01, 0.5, 1, 10, 100};
@@ -69,6 +70,11 @@ namespace mock {
         _seed = r();
       }
       _prng = PRNG(_seed);
+      // --- --- --- Generate a random set of penalties for ADTW
+      // Create a random set of penalties based on the min/max possible value
+      double step = std::pow(_maxv-_minv, 2)/100;
+      adtw_penalties.push_back(0);
+      for(size_t i=1; i <=100; ++i){ adtw_penalties.push_back(i*step); }
     }
 
 

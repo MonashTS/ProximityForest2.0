@@ -19,6 +19,7 @@ target_sources(test_distuni
         mock/mockseries.hpp
         # --- Libtempo distances - Univariate
         distance/univariate/dtw.cpp
+        distance/univariate/adtw.cpp
         distance/univariate/cdtw.cpp
         distance/univariate/wdtw.cpp
         distance/univariate/erp.cpp

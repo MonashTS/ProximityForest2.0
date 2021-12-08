@@ -18,7 +18,7 @@ target_sources(libtempo
         ./include/libtempo/distance/dtw.hpp
         ./include/libtempo/distance/erp.hpp
         ./include/libtempo/distance/lcss.hpp
-        ./include/libtempo/distance/norm.hpp
+        include/libtempo/distance/direct.hpp
         ./include/libtempo/distance/twe.hpp
         ./include/libtempo/distance/wdtw.hpp
         ./include/libtempo/tseries/tseries.hpp

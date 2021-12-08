@@ -1,7 +1,7 @@
 #define CATCH_CONFIG_FAST_COMPILE
 
 #include <catch.hpp>
-#include <libtempo/distance/norm.hpp>
+#include <libtempo/distance/direct.hpp>
 
 #include "../mock/mockseries.hpp"
 
@@ -12,7 +12,7 @@ constexpr size_t nbitems = 500;
 namespace reference {
 
   template<typename V>
-  double norm(const V& s1, const V& s2) {
+  double directa(const V& s1, const V& s2) {
     if (s1.size()!=s2.size()) { return libtempo::utils::PINF<double>; }
     double cost = 0;
     for (size_t i = 0; i<s1.size(); ++i) {
@@ -27,7 +27,7 @@ namespace reference {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-TEST_CASE("Univariate NORM Fixed length", "[norm][univariate]") {
+TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
 
@@ -35,11 +35,11 @@ TEST_CASE("Univariate NORM Fixed length", "[norm][univariate]") {
 
   SECTION("NORM(s,s) == 0") {
     for (const auto& s: fset) {
-      const double norm_ref_v = reference::norm(s, s);
-      REQUIRE(norm_ref_v==0);
+      const double directa_ref_v = reference::directa(s, s);
+      REQUIRE(directa_ref_v==0);
 
-      const auto norm_v = norm<double>(s, s);
-      REQUIRE(norm_v==0);
+      const auto directa_v = directa<double>(s, s);
+      REQUIRE(directa_v==0);
     }
   }
 
@@ -48,11 +48,11 @@ TEST_CASE("Univariate NORM Fixed length", "[norm][univariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      const double norm_ref_v = reference::norm(s1, s2);
+      const double directa_ref_v = reference::directa(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto norm_tempo_v = norm<double>(s1, s2);
-      REQUIRE(norm_ref_v==norm_tempo_v);
+      const auto directa_tempo_v = directa<double>(s1, s2);
+      REQUIRE(directa_ref_v==directa_tempo_v);
     }
   }
 
@@ -77,14 +77,14 @@ TEST_CASE("Univariate NORM Fixed length", "[norm][univariate]") {
         const auto& s2 = fset[j];
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const double v_ref = reference::norm(s1, s2);
+        const double v_ref = reference::directa(s1, s2);
         if (v_ref<bsf_ref) {
           idx_ref = j;
           bsf_ref = v_ref;
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = norm<double>(s1, s2);
+        const auto v = directa<double>(s1, s2);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -93,7 +93,7 @@ TEST_CASE("Univariate NORM Fixed length", "[norm][univariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = norm<double>(s1, s2, bsf_tempo);
+        const auto v_tempo = directa<double>(s1, s2, bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;

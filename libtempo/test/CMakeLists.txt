@@ -23,7 +23,7 @@ target_sources(test_distuni
         distance/univariate/cdtw.cpp
         distance/univariate/wdtw.cpp
         distance/univariate/erp.cpp
-        distance/univariate/norm.cpp
+        distance/univariate/direct.cpp
         distance/univariate/msm.cpp
         distance/univariate/twe.cpp
         distance/univariate/lcss.cpp
@@ -32,7 +32,7 @@ target_sources(test_distuni
         distance/multivariate_dep/m_cdtw.cpp
         distance/multivariate_dep/m_wdtw.cpp
         distance/multivariate_dep/m_erp.cpp
-        distance/multivariate_dep/m_norm.cpp
+        distance/multivariate_dep/m_direct.cpp
         distance/multivariate_dep/m_msm.cpp
         distance/multivariate_dep/m_twe.cpp
         distance/multivariate_dep/m_lcss.cpp

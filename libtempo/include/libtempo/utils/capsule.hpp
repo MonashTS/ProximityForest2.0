@@ -9,15 +9,15 @@ namespace libtempo::utils {
   using Capsule = std::shared_ptr<std::any>;
 
   /// Capsule builder helper
-  template<typename CapsuleT, typename... Args>
+  template<typename T, typename... Args>
   [[nodiscard]] inline Capsule make_capsule(Args &&... args) {
-    return std::make_shared<std::any>(std::make_any<CapsuleT>(args...));
+    return std::make_shared<std::any>(std::make_any<T>(args...));
   }
 
   /// Capsule pointer accessor
-  template<typename CapsuleT>
-  [[nodiscard]] inline CapsuleT *capsule_ptr(const std::shared_ptr <std::any> &ptr) {
-    return std::any_cast<CapsuleT>(ptr.get());
+  template<typename T>
+  [[nodiscard]] inline T *get_capsule_ptr(const std::shared_ptr <std::any> &capsule) {
+    return std::any_cast<T>(capsule.get());
   }
 
 

@@ -27,6 +27,7 @@ target_sources(libtempo
         ./include/libtempo/utils/utils.hpp
 )
 target_include_directories(libtempo INTERFACE ./include)
+target_link_libraries(libtempo INTERFACE Eigen3::Eigen)
 
 
 # CMake/IDE workaround: create a dummy target to force cmake/clion to consider header only library

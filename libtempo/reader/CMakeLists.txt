@@ -11,7 +11,7 @@ target_sources(libtempo-reader
             ts/ts.hpp
             ts/ts.cpp
         PRIVATE
-            readintools.hpp
+        readingtools.hpp
         )
 
 target_link_libraries(libtempo-reader PUBLIC libtempo::tseries)

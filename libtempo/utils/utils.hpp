@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 #include <limits>
+#include <cassert>
+#include <cmath>
 
 namespace libtempo::utils {
 

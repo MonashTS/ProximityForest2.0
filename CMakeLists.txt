@@ -1,16 +1,27 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.19)
+
 project(tempo
         VERSION 0.0.1
         DESCRIPTION "Time Series classification library"
         LANGUAGES CXX)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
-
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-# C++ and Interface target
+# Global flags
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-find_package(Eigen3 3.4 REQUIRED NO_MODULE PATHS ${CMAKE_CURRENT_LIST_FILE}/third_party/Eigen NO_DEFAULT_PATHS)
+add_definitions("-fverbose-asm")
 
+if(MSVCV)
+    add_compile_options(/W3)
+else()
+    add_compile_options(-W -Wall)
+endif()
+
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+# Load subprojects
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 add_subdirectory(libtempo)

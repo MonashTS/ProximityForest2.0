@@ -1,9 +1,10 @@
 #pragma once
 
+#include <libtempo/utils/utils.hpp>
+
 #include <random>
 #include <optional>
-
-#include <libtempo/utils/utils.hpp>
+#include <vector>
 
 namespace mock {
   using namespace std;

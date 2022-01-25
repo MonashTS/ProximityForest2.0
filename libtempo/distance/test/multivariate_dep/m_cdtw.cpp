@@ -1,10 +1,9 @@
 #define CATCH_CONFIG_FAST_COMPILE
 
 #include <catch.hpp>
+#include <mock/mockseries.hpp>
 #include <libtempo/distance/cdtw.hpp>
-#include <iostream>
 
-#include "../mock/mockseries.hpp"
 
 using namespace mock;
 using namespace libtempo::distance;

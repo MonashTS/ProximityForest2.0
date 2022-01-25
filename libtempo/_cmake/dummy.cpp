@@ -1,10 +1,14 @@
 #include <libtempo/tseries/tseries.hpp>
-#include <libtempo/distance/erp.hpp>
+#include <libtempo/reader/ts/ts.hpp>
+
 
 #include <vector>
 #include <cmath>
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 
+namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
 
@@ -39,4 +43,20 @@ int main(int argc, char** argv){
     cout << endl;
   }
 
+  // --- --- --- Reading of a time series
+  if(argc>1) {
+    std::string strpath(argv[1]);
+    fs::path adiac_train(strpath);
+    std::ifstream istream(adiac_train);
+    auto res = libtempo::reader::TSReader::read(istream);
+    if (res.index()==0) {
+      cerr << "reading error: " << get<0>(res) << endl;
+      return 1;
+    }
+    auto tsdata = std::move(get<1>(res));
+    cout << tsdata.problem_name.value_or("no problem name specified") << endl;
+    cout << "Has missing value: " << tsdata.missing.value() << endl;
+  }
+
+  return 0;
 }

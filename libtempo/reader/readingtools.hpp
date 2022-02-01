@@ -123,7 +123,7 @@ namespace libtempo::reader {
       std::stringstream sstream(str);
       size_t result;
       sstream >> result;
-      return {result};
+      return result;
     }
     catch (...) {
       return {};

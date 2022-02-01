@@ -4,7 +4,7 @@
 #include <libtempo/distance/twe.hpp>
 #include <iostream>
 
-#include "../mock/mockseries.hpp"
+#include <mock/mockseries.hpp>
 
 using namespace mock;
 using namespace libtempo::distance;

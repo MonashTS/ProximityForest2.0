@@ -10,19 +10,20 @@ project(libtempo
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Load our components
+# Note: use EXCLUDE_FROM_ALL as we do not want to generate targets for subcomponents
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-add_subdirectory(distance)
-add_subdirectory(tseries)
-add_subdirectory(reader)
-add_subdirectory(utils)
+add_subdirectory(distance EXCLUDE_FROM_ALL)
+add_subdirectory(tseries EXCLUDE_FROM_ALL)
+add_subdirectory(reader EXCLUDE_FROM_ALL)
+add_subdirectory(utils EXCLUDE_FROM_ALL)
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # libtempo library
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-add_library(libtempo INTERFACE)
+add_library(libtempo)
 target_link_libraries(libtempo INTERFACE libtempo::distance)
 target_link_libraries(libtempo INTERFACE libtempo::tseries)
-target_link_libraries(libtempo INTERFACE libtempo::reader)
+target_link_libraries(libtempo PUBLIC libtempo::reader)
 target_link_libraries(libtempo INTERFACE libtempo::utils)
 
 
@@ -39,40 +40,8 @@ target_link_libraries(executable PRIVATE libtempo)
 # Adding the tests
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Link with Catch, coming from our _test directory
-add_subdirectory(_test)
 add_executable(c2test _test/tests.cpp)
-target_link_libraries(c2test PRIVATE Catch)
+target_include_directories(c2test PRIVATE _test)
+target_link_libraries(c2test PRIVATE Catch2)
 target_link_libraries(c2test PRIVATE libtempo::test::distance)
 target_link_libraries(c2test PRIVATE libtempo)
-
-#
-# target_sources(test_distuni
-#     PRIVATE
-#         tests.cpp
-#         mock/mockseries.hpp
-#         # --- Libtempo distances - Univariate
-#         distance/univariate/dtw.cpp
-#         distance/univariate/adtw.cpp
-#         distance/univariate/cdtw.cpp
-#         distance/univariate/wdtw.cpp
-#         distance/univariate/erp.cpp
-#         distance/univariate/direct.cpp
-#         distance/univariate/msm.cpp
-#         distance/univariate/twe.cpp
-#         distance/univariate/lcss.cpp
-#         # --- Libtempo distances - Multivariate
-#         distance/multivariate_dep/m_dtw.cpp
-#         distance/multivariate_dep/m_cdtw.cpp
-#         distance/multivariate_dep/m_wdtw.cpp
-#         distance/multivariate_dep/m_erp.cpp
-#         distance/multivariate_dep/m_direct.cpp
-#         distance/multivariate_dep/m_msm.cpp
-#         distance/multivariate_dep/m_twe.cpp
-#         distance/multivariate_dep/m_lcss.cpp
-# )
-#
-# target_link_libraries(test_distuni PRIVATE project_options)
-# target_link_libraries(test_distuni PRIVATE Catch)
-# target_link_libraries(test_distuni PRIVATE libtempo)
-
-

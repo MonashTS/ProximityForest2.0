@@ -13,7 +13,7 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 add_definitions("-fverbose-asm")
 
-if(MSVCV)
+if(MSVC)
     add_compile_options(/W3)
 else()
     add_compile_options(-W -Wall)
@@ -24,4 +24,5 @@ endif()
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Load subprojects
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+add_subdirectory(third_party/catch)
 add_subdirectory(libtempo)

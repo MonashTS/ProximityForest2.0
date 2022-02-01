@@ -3,7 +3,7 @@
 #include <catch.hpp>
 #include <libtempo/distance/wdtw.hpp>
 
-#include "../mock/mockseries.hpp"
+#include <mock/mockseries.hpp>
 
 using namespace mock;
 using namespace libtempo::distance;

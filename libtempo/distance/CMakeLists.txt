@@ -23,7 +23,7 @@ add_library(libtempo::distance ALIAS libtempo-distance)
 
 add_library(libtempo-distance-test INTERFACE)
 target_sources(libtempo-distance-test INTERFACE
-    #test/multivariate_dep/m_cdtw.cpp
+    test/multivariate_dep/m_cdtw.cpp
     #test/multivariate_dep/m_direct.cpp
     #test/multivariate_dep/m_dtw.cpp
     #test/multivariate_dep/m_erp.cpp

@@ -2,6 +2,7 @@
 
 #include <libtempo/utils/utils.hpp>
 #include <libtempo/distance/distance.hpp>
+#include <libtempo/concepts.hpp>
 
 #include <cmath>
 
@@ -21,11 +22,16 @@ namespace libtempo::distance {
      *                    May lead to early abandoning.
      * @return Norm according to 'dist' between the two series, or +INF if early abandoned.
      */
-    template<typename FloatType, typename D, typename FDist>
-    [[nodiscard]] inline FloatType
-    directa(const D& s1, size_t length1, const D& s2, size_t length2, FDist dist, const FloatType cutoff) {
+    template<Float F>
+    [[nodiscard]] inline F
+    directa(
+      const size_t length1,
+      const size_t length2,
+      CFun<F> auto dist,
+      const F cutoff
+    ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-      constexpr auto PINF = utils::PINF<FloatType>;
+      constexpr auto PINF = utils::PINF<F>;
       // Check sizes. If both series are empty, return 0, else if one is empty and not the other, maximal error.
       if (length1!=length2) { return PINF; }
       if (length1==0) { return 0; }
@@ -34,13 +40,13 @@ namespace libtempo::distance {
       // First, take the "next float" after "cutoff" to deal with numerical instability.
       // Then, subtract the cost of the last alignment.
       // Adjust the lower bound, taking the last alignment into account
-      const FloatType lastA = dist(s1, length1-1, s2, length1-1);
-      const FloatType ub = std::nextafter(cutoff, PINF)-lastA;
+      const F lastA = dist(length1-1, length1-1);
+      const F ub = std::nextafter(cutoff, PINF)-lastA;
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Compute the Euclidean-like distance up to, excluding, the last alignment
       double cost = 0;
       for (size_t i{0}; i<length1-1; ++i) { // Stop before the last: counted in the bound!
-        cost += dist(s1, i, s2, i);
+        cost += dist(i, i);
         if (cost>ub) { return PINF; }
       }
       // Add the last alignment and check the result
@@ -58,19 +64,17 @@ namespace libtempo::distance {
      * @param dist        Distance function of type FDist
      * @return Norm according to 'dist' between the two series
      */
-    template<typename FloatType, typename D, typename FDist>
-    [[nodiscard]] inline FloatType directa(const D& s1, size_t length1, const D& s2, size_t length2, FDist dist) {
+    template<Float F>
+    [[nodiscard]] inline F directa(const size_t length1, const size_t length2, CFun<F> auto dist) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Max error on different length.
-      if (length1!=length2) { return utils::PINF<FloatType>; }
+      if (length1!=length2) { return utils::PINF<F>; }
       // Compute the Euclidean-like distance
-      FloatType cost = 0.0;
-      for (size_t i{0}; i<length1; ++i) { cost += dist(s1, i, s2, i); }
+      F cost = 0.0;
+      for (size_t i{0}; i<length1; ++i) { cost += dist(i, i); }
       return cost;
     }
   } // End of namespace internal
-
-
 
 
   /** Direct alignment distance. Can early abandon but not prune.
@@ -88,37 +92,51 @@ namespace libtempo::distance {
    *                    ub = other value: use for pruning and early abandoning
    * @return Norm according to 'dist' between the two series
   */
-  template<typename FloatType, typename D, typename FDist>
-  [[nodiscard]] FloatType
-  directa(const D& series1, size_t length1, const D& series2, size_t length2, FDist dist, FloatType ub) {
+  template<Float F>
+  [[nodiscard]] F
+  directa(const size_t length1, const size_t length2, CFun<F> auto dist, F ub) {
     if (std::isinf(ub) || std::isnan(ub)) {
-      return internal::directa<FloatType, D, FDist>(series1, length1, series2, length2, dist);
+      return internal::directa<F>(length1, length2, dist);
+    } else { return internal::directa<F>(length1, length2, dist, ub); }
+  }
+
+  /// Helper for TSLike
+  template<Float F, TSLike T>
+  [[nodiscard]] inline F
+  directa(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, F ub = utils::PINF<F>) {
+    const auto ls = lines.length();
+    const auto cs = cols.length();
+    const CFun<F> auto dist = mkdist(lines, cols);
+    return directa<F>(ls, cs, dist, ub);
+  }
+
+  namespace univariate {
+
+    /// Default, using univariate ad2
+    template<Float F, TSLike T>
+    [[nodiscard]] inline F directa(const T& lines, const T& cols, F ub = utils::PINF<F>) {
+      return directa(lines, cols, ad2<F, T>, ub);
     }
-    else { return internal::directa<FloatType, D, FDist>(series1, length1, series2, length2, dist, ub); }
-  }
 
-  /// Helper with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType directa(const D& s1, const D& s2, auto mkdist, FloatType ub) {
-    return directa(s1, s1.size(), s2, s2.size(), mkdist(), ub);
-  }
+    /// Specific overload for univariate vector
+    template<Float F>
+    [[nodiscard]] inline F directa(const std::vector<double>& lines, const std::vector<double>& cols,
+      CFunBuilder<std::vector<double>> auto mkdist, F ub = utils::PINF<F>
+    ) {
+      const auto ls = lines.size();
+      const auto cs = cols.size();
+      const CFun<F> auto dist = mkdist(lines, cols);
+      std::vector<F> v;
+      return directa<F>(ls, cs, dist, ub);
+    }
 
-  /// Helper with the sqed as the default distance builder, and a default ub at +INF
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType directa(const D& s1, const D& s2, FloatType ub = utils::PINF<FloatType>) {
-    return directa(s1, s1.size(), s2, s2.size(), distance::sqed<FloatType, D>(), ub);
-  }
+    /// Specific overload for univariate vector
+    template<Float F>
+    [[nodiscard]] inline F
+    directa(const std::vector<double>& lines, const std::vector<double>& cols, F ub = utils::PINF<F>) {
+      return directa<F>(lines, cols, ad2<double, std::vector<double>>, ub);
+    }
 
-  /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType directa(const D& s1, const D& s2, size_t ndim, auto mkdist, FloatType ub) {
-    return directa(s1, s1.size()/ndim, s2, s2.size()/ndim, mkdist(ndim), ub);
-  }
-
-  /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType directa(const D& s1, const D& s2, size_t ndim, FloatType ub = utils::PINF<FloatType>) {
-    return directa(s1, s1.size()/ndim, s2, s2.size()/ndim, distance::sqed<FloatType, D>(ndim), ub);
   }
 
 

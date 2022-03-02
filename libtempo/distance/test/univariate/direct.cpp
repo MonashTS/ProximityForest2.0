@@ -6,7 +6,7 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance;
+using namespace libtempo::distance::univariate;
 constexpr size_t nbitems = 500;
 
 namespace reference {

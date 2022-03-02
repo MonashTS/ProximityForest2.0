@@ -16,10 +16,10 @@ namespace libtempo::distance {
 
   namespace internal {
 
-    /*
-    dist(gValue, 0, cols, nbcols-1),          // Previous
-    dist(lines, nblines-1, cols, nbcols-1),   // Diagonal
-    dist(lines, nblines-1, gValue, 0)         // Above
+    /* The gap value function must implement something like this for Previous (gv_cols) and Above (gv_lines)
+    dist(gValue, cols[j]),    // Previous
+    dist(lines[i], cols[j]),  // Diagonal
+    dist(lines[i], gValue)    // Above
      */
 
     /** Edit Distance with Real Penalty (ERP), with cut-off point for early abandoning and pruning.

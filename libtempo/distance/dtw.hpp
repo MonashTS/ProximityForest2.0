@@ -230,7 +230,7 @@ namespace libtempo::distance {
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
       std::vector<F> v;
-      const auto r = dtw<F>(ls, cs, dist, ub, v);
+      const auto r = libtempo::distance::dtw<F>(ls, cs, dist, ub, v);
       return r;
     }
 

@@ -205,7 +205,7 @@ namespace libtempo::distance {
     /// Default CDTW using univariate ad2
     template<Float F, TSLike T>
     [[nodiscard]] inline F cdtw(const T& lines, const T& cols, size_t w, F ub = utils::PINF<F>) {
-      return cdtw(lines, cols, w, ad2<F, T>, ub);
+      return cdtw<F>(lines, cols, w, ad2<F, T>, ub);
     }
 
     /// Specific overload for univariate vector
@@ -216,7 +216,7 @@ namespace libtempo::distance {
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
       std::vector<F> v;
-      const auto r = cdtw<F>(ls, cs, w, dist, ub, v);
+      const auto r = libtempo::distance::cdtw<F>(ls, cs, w, dist, ub, v);
       return r;
     }
 

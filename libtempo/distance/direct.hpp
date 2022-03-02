@@ -127,7 +127,7 @@ namespace libtempo::distance {
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
       std::vector<F> v;
-      return directa<F>(ls, cs, dist, ub);
+      return libtempo::distance::directa<F>(ls, cs, dist, ub);
     }
 
     /// Specific overload for univariate vector

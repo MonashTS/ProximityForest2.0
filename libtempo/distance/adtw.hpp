@@ -196,11 +196,11 @@ namespace libtempo::distance {
         // Cover diagonal
         const auto m = std::min(nblines, nbcols);
         for (size_t i{0}; i<m; ++i) { ub = ub+dist(i, i); }
-        // Fewer line than columns: complete the last line
+        // Fewer line than columns: complete the last line (advance in the columns)
         if (nblines<nbcols) {
           for (size_t i{nblines}; i<nbcols; ++i) { ub = ub+dist(nblines-1, i)+omega; }
         }
-          // Fewer columns than lines: complete the last column
+          // Fewer columns than lines: complete the last column (advance in the lines)
         else if (nbcols<nblines) {
           for (size_t i{nbcols}; i<nblines; ++i) { ub = ub+dist(i, nbcols-1)+omega; }
         }
@@ -237,7 +237,7 @@ namespace libtempo::distance {
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
       std::vector<F> v;
-      return adtw<F>(ls, cs, omega, dist, ub, v);
+      return libtempo::distance::adtw<F>(ls, cs, omega, dist, ub, v);
     }
 
     /// Specific overload for univariate vector

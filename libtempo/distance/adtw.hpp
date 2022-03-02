@@ -210,7 +210,7 @@ namespace libtempo::distance {
     }
   }
 
-  /// Helper for TSLike
+  /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
   adtw(const T& lines, const T& cols, F omega, CFunBuilder<T> auto mkdist, F ub = utils::PINF<F>) {

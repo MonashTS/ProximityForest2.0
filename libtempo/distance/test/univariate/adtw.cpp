@@ -5,10 +5,9 @@
 
 #include <libtempo/distance/adtw.hpp>
 
-
 using namespace mock;
-using namespace libtempo::distance;
-constexpr size_t nbitems = 5000;
+using namespace libtempo::distance::univariate;
+constexpr size_t nbitems = 500;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -67,7 +66,7 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
       for (double p: penalties) {
         const double adtw_ref_v = reference::adtw_matrix(s, s, p);
         REQUIRE(adtw_ref_v==0);
-        const auto adtw_v = adtw<double>(s, s, p);
+        const double adtw_v = adtw(s, s, p);
         REQUIRE(adtw_v==0);
       }
     }
@@ -156,13 +155,15 @@ TEST_CASE("Univariate ADTW Variable length", "[adtw][univariate]") {
   }
 
   SECTION("ADTW(s1, s2)") {
-    for (size_t i = 0; i<nbitems-1; ++i) {
-      for (double p: penalties) {
+    for (size_t i = 28; i<nbitems-1; ++i) {
+      for(size_t pi=44; pi<penalties.size(); ++pi){
+        const auto p = penalties[pi];
         const auto& s1 = fset[i];
         const auto& s2 = fset[i+1];
         const double adtw_ref_v = reference::adtw_matrix(s1, s2, p);
         INFO("Exact same operation order. Expect exact floating point equality.")
         const auto adtw_tempo_v = adtw<double>(s1, s2, p);
+        INFO(i << " " << pi << " length s1 = " << s1.size() << "  length s2 = " << s2.size())
         REQUIRE(adtw_ref_v==adtw_tempo_v);
       }
     }

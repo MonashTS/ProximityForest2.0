@@ -1,12 +1,46 @@
 #pragma once
 
 #include <libtempo/utils/utils.hpp>
+#include <libtempo/concepts.hpp>
 
 #include <functional>
 #include <variant>
 #include <tuple>
 
 namespace libtempo::distance {
+
+  /// Univariate Absolute difference exponent 1
+  template<Float F, Subscriptable D>
+  auto ad1(const D& lines, const D& cols) {
+    return [lines, cols](size_t i, size_t j) {
+      const F d = lines[i]-cols[j];
+      return std::abs(d);
+    };
+  }
+
+  /// Univariate Absolute difference exponent 2
+  template<Float F, Subscriptable D>
+  auto ad2(const D& lines, const D& cols) {
+    return [lines, cols](size_t i, size_t j) {
+      const F d = lines[i]-cols[j];
+      return d*d;
+    };
+  }
+
+  /// Multivariate Absolute difference exponent 2
+  template<Float F, Subscriptable D>
+  auto ad2N(const D& lines, const D& cols, size_t ndim) {
+    return [lines, cols, ndim](size_t i, size_t j) {
+      const size_t li_offset = i*ndim;
+      const size_t co_offset = j*ndim;
+      F acc{0};
+      for (size_t k{0}; k<ndim; ++k) {
+        const F d = lines[li_offset+k]-cols[co_offset+k];
+        acc += d*d;
+      }
+      return acc;
+    };
+  }
 
   namespace internal {
 
@@ -97,8 +131,6 @@ namespace libtempo::distance {
       return internal::edNmid<FloatType, D>(X, xnew, xi, Y, yi, ndim);
     };
   }
-
-
 
   /// Type alias for a tuple representing (nblines, nbcols)
   template<typename D>

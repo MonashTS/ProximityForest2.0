@@ -231,8 +231,8 @@ namespace libtempo::distance {
 
     /// Specific overload for univariate vector
     template<Float F>
-    [[nodiscard]] inline F adtw(const std::vector<double>& lines, const std::vector<double>& cols, F omega,
-      CFunBuilder<std::vector<double>> auto mkdist, F ub = utils::PINF<F>) {
+    [[nodiscard]] inline F adtw(const std::vector<F>& lines, const std::vector<F>& cols, F omega,
+      CFunBuilder<std::vector<F>> auto mkdist, F ub = utils::PINF<F>) {
       const auto ls = lines.size();
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
@@ -243,8 +243,8 @@ namespace libtempo::distance {
     /// Specific overload for univariate vector
     template<Float F>
     [[nodiscard]] inline F
-    adtw(const std::vector<double>& lines, const std::vector<double>& cols, F omega, F ub = utils::PINF<F>) {
-      return adtw<F>(lines, cols, omega, ad2<double, std::vector<double>>, ub);
+    adtw(const std::vector<F>& lines, const std::vector<F>& cols, F omega, F ub = utils::PINF<F>) {
+      return adtw<F>(lines, cols, omega, ad2<F, std::vector<F>>, ub);
     }
 
   }

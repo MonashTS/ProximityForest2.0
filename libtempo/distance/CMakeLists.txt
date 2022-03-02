@@ -5,7 +5,7 @@ add_library(libtempo-distance INTERFACE
         cdtw.hpp
         adtw.hpp
         direct.hpp
-        distance.hpp
+        cost_function.hpp
         dtw.hpp
         erp.hpp
         lcss.hpp

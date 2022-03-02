@@ -210,6 +210,13 @@ namespace libtempo::distance {
     }
   }
 
+  /// Helper without having to provide a buffer
+  template<Float F>
+  [[nodiscard]] inline F adtw(size_t nblines, size_t nbcols, const F omega, CFun<F> auto dist, F ub) {
+    std::vector<F> v;
+    return adtw(nblines, nbcols, omega, dist, ub, v);
+  }
+
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
@@ -236,8 +243,7 @@ namespace libtempo::distance {
       const auto ls = lines.size();
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
-      std::vector<F> v;
-      return libtempo::distance::adtw<F>(ls, cs, omega, dist, ub, v);
+      return libtempo::distance::adtw<F>(ls, cs, omega, dist, ub);
     }
 
     /// Specific overload for univariate vector

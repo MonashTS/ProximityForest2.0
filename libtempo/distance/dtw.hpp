@@ -204,6 +204,13 @@ namespace libtempo::distance {
     }
   }
 
+  /// Helper without having to provide a buffer
+  template<Float F>
+  [[nodiscard]] inline F dtw(size_t nblines, size_t nbcols, CFun<F> auto dist, F ub) {
+    std::vector<F> v;
+    return dtw(nblines, nbcols, dist, ub, v);
+  }
+
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
@@ -229,8 +236,7 @@ namespace libtempo::distance {
       const auto ls = lines.size();
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols);
-      std::vector<F> v;
-      const auto r = libtempo::distance::dtw<F>(ls, cs, dist, ub, v);
+      const auto r = libtempo::distance::dtw<F>(ls, cs, dist, ub);
       return r;
     }
 

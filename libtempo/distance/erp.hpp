@@ -298,7 +298,15 @@ namespace libtempo::distance {
     }
   }
 
-  /// Function creating a CFunGV based on a and a gap value
+  /// Helper without having to provide a buffer
+  template<Float F>
+  [[nodiscard]] inline F erp(const size_t nblines, const size_t nbcols, const size_t w, CFunGV<F> auto dist_gv_lines,
+    CFunGV<F> auto dist_gv_cols, CFun<F> auto dist, F ub) {
+    std::vector<F> v;
+    return erp(nblines, nbcols, w, dist_gv_lines, dist_gv_cols, dist, ub, v);
+  }
+
+  /// CVFunGVBuilder: Function creating a CFunGV based on a series and a gap value
   template<typename T, typename D, typename F>
   concept CFunGVBuilder = Float<F> && requires(T builder, const D& s, const F gv){
     builder(s, gv);
@@ -316,8 +324,7 @@ namespace libtempo::distance {
     const CFun<F> auto dist = mkdist(lines, cols);
     const CFunGV<F> auto lines_gv = mkdist_gv(lines, gv);
     const CFunGV<F> auto cols_gv = mkdist_gv(cols, gv);
-    std::vector<F> v;
-    return erp<F>(ls, cs, w, lines_gv, cols_gv, dist, ub, v);
+    return erp<F>(ls, cs, w, lines_gv, cols_gv, dist, ub);
   }
 
   namespace univariate {

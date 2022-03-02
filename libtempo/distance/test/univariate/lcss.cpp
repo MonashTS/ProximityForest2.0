@@ -6,7 +6,7 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance;
+using namespace libtempo::distance::univariate;
 constexpr size_t nbitems = 500;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -17,7 +17,7 @@ namespace reference {
   using namespace libtempo::utils;
 
   /// Naive DTW with a window. Reference code.
-  double lcss_matrix(const vector<double>& series1, const vector<double>& series2, double epsilon, long w) {
+  double lcss_matrix(const vector<double>& series1, const vector<double>& series2, long w, double epsilon) {
     constexpr double PINF = libtempo::utils::PINF<double>;
     size_t length1 = series1.size();
     size_t length2 = series2.size();
@@ -37,7 +37,7 @@ namespace reference {
 
     // LCSS
     // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
-    //       hence, we have i-1 and j-1 when accessing series1 and series2
+    //       hencw, ee have i-1 and j-1 when accessing series1 and series2
     for (long i = 1; i<=(long) length1; ++i) {
       auto series1_i = series1[i-1];
       long jStart = max<long>(1, i-w);
@@ -66,7 +66,7 @@ namespace reference {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
   // Setup univariate with fixed length
-  Mocker mocker;
+  Mocker mocker(1);
   const auto& wratios = mocker.wratios;
   const auto& epsilons = mocker.epsilons;
   const auto fset = mocker.vec_randvec(nbitems);
@@ -77,10 +77,10 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
         for (double wr: wratios) {
           auto w = (size_t) (wr*mocker._fixl);
           INFO("epsilon = " << e << " w = " << w);
-          const double lcss_ref_v = reference::lcss_matrix(s, s, e, w);
+          const double lcss_ref_v = reference::lcss_matrix(s, s, w, e);
           REQUIRE(lcss_ref_v==0);
 
-          const auto lcss_v = lcss<double>(s, s, e, w);
+          const auto lcss_v = lcss<double>(s, s, w, e);
           REQUIRE(lcss_v==0);
         }
       }
@@ -94,9 +94,9 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
       for (double e: epsilons) {
         for (double wr: wratios) {
           const auto w = (size_t) (wr*mocker._fixl);
-          const double lcss_ref_v = reference::lcss_matrix(s1, s2, e, w);
+          const double lcss_ref_v = reference::lcss_matrix(s1, s2, w, e);
           INFO("Exact same operation order. Expect exact floating point equality.")
-          const auto lcss_tempo = lcss<double>(s1, s2, e, w);
+          const auto lcss_tempo = lcss<double>(s1, s2, w, e);
           REQUIRE(lcss_ref_v==lcss_tempo);
         }
       }
@@ -127,14 +127,14 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
             const auto w = (size_t) (wr*mocker._fixl);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = reference::lcss_matrix(s1, s2, e, w);
+            const double v_ref = reference::lcss_matrix(s1, s2, w, e);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = lcss<double>(s1, s2, e, w);
+            const auto v = lcss<double>(s1, s2, w, e);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -143,7 +143,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = lcss<double>(s1, s2, e, w, bsf_tempo);
+            const auto v_tempo = lcss<double>(s1, s2, w, e, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;
@@ -160,7 +160,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
 
 TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
   // Setup univariate dataset with varying length
-  Mocker mocker;
+  Mocker mocker(1);
   const auto& wratios = mocker.wratios;
   const auto& epsilons = mocker.epsilons;
   const auto fset = mocker.vec_rs_randvec(nbitems);
@@ -170,9 +170,9 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
       for (double e: epsilons) {
         for (double wr: wratios) {
           const auto w = (size_t) (wr*(s.size()));
-          const double lcss_ref_v = reference::lcss_matrix(s, s, e, w);
+          const double lcss_ref_v = reference::lcss_matrix(s, s, w, e);
           REQUIRE(lcss_ref_v==0);
-          const auto lcss_v = lcss<double>(s, s, e, w);
+          const auto lcss_v = lcss<double>(s, s, w, e);
           REQUIRE(lcss_v==0);
         }
       }
@@ -181,14 +181,17 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
 
   SECTION("LCSS(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
-      for (double e: epsilons) {
-        for (double wr: wratios) {
+      for (size_t ie = 0; ie<epsilons.size(); ++ie) {
+        double e = epsilons[ie];
+        for (size_t iw = 2; iw<wratios.size(); ++iw) {
+          double wr = wratios[iw];
           const auto& s1 = fset[i];
           const auto& s2 = fset[i+1];
           const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
-          const double lcss_ref_v = reference::lcss_matrix(s1, s2, e, w);
+          const double lcss_ref_v = reference::lcss_matrix(s1, s2, w, e);
           INFO("Exact same operation order. Expect exact floating point equality.")
-          const auto lcss_tempo_v = lcss<double>(s1, s2, e, w);
+          INFO(i << " " << ie << " " << iw)
+          const auto lcss_tempo_v = lcss<double>(s1, s2, w, e);
           REQUIRE(lcss_ref_v==lcss_tempo_v);
         }
       }
@@ -218,20 +221,20 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
           for (double wr: wratios) {
             const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = reference::lcss_matrix(s1, s2, e, w);
+            const double v_ref = reference::lcss_matrix(s1, s2, w, e);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = lcss<double>(s1, s2, e, w);
+            const auto v = lcss<double>(s1, s2, w, e);
             if (v<bsf) {
               idx = j;
               bsf = v;
             }
             REQUIRE(idx_ref==idx);
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = lcss<double>(s1, s2, e, w, bsf_tempo);
+            const auto v_tempo = lcss<double>(s1, s2, w, e, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

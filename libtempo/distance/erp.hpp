@@ -316,14 +316,14 @@ namespace libtempo::distance {
   template<Float F, TSLike T>
   [[nodiscard]] inline F
   erp(const T& lines, const T& cols, const size_t w, const F gv,
-    CFunBuilder<T> auto mkdist,
     CFunGVBuilder<T, F> auto mkdist_gv,
+    CFunBuilder<T> auto mkdist,
     F ub = utils::PINF<F>) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFun<F> auto dist = mkdist(lines, cols);
     const CFunGV<F> auto lines_gv = mkdist_gv(lines, gv);
     const CFunGV<F> auto cols_gv = mkdist_gv(cols, gv);
+    const CFun<F> auto dist = mkdist(lines, cols);
     return erp<F>(ls, cs, w, lines_gv, cols_gv, dist, ub);
   }
 
@@ -340,16 +340,16 @@ namespace libtempo::distance {
 
     /// CFunGVBuilder Univariate Absolute difference exponent 2
     template<Float F, Subscriptable D>
-    auto ad2gv(const D& series, const F gv) {
+    auto inline ad2gv(const D& series, const F gv) {
       return [series, gv](size_t i) {
         const F d = series[i]-gv;
         return d*d;
       };
     }
 
-    /// CFunGVBuilder Univariate Absolute difference exponent 2
+    /// CFunGVBuilder Univariate Absolute difference exponent e
     template<Float F, Subscriptable D>
-    auto adegv(const D& series, const F gv, const F e) {
+    auto inline adegv(const D& series, const F gv, const F e) {
       return [series, gv, e](size_t i) {
         const F d = series[i]-gv;
         return std::pow(d, e);
@@ -359,15 +359,15 @@ namespace libtempo::distance {
     /// Default ERP using univariate ad2
     template<Float F, TSLike T>
     [[nodiscard]] inline F erp(const T& lines, const T& cols, const size_t w, const F gv, F ub = utils::PINF<F>) {
-      return erp(lines, cols, w, gv, ad2<F, T>, ad2gv<F, T>, ub);
+      return erp(lines, cols, w, gv, ad2gv<F, T>, ad2<F, T>, ub);
     }
 
     /// Specific overload for univariate vector
     template<Float F>
     [[nodiscard]] inline F erp(const std::vector<F>& lines, const std::vector<F>& cols,
       const size_t w, const F gv,
-      CFunBuilder<std::vector<F>> auto mkdist,
       CFunGVBuilder<std::vector<F>, F> auto mkdist_gv,
+      CFunBuilder<std::vector<F>> auto mkdist,
       F ub = utils::PINF<F>) {
       const auto ls = lines.size();
       const auto cs = cols.size();
@@ -382,7 +382,7 @@ namespace libtempo::distance {
     template<Float F>
     [[nodiscard]] inline F
     erp(const std::vector<F>& lines, const std::vector<F>& cols, const size_t w, const F gv, F ub = utils::PINF<F>) {
-      return erp<F>(lines, cols, w, gv, ad2<F, std::vector<F>>, ad2gv<F, std::vector<F>>, ub);
+      return erp<F>(lines, cols, w, gv, ad2gv<F, std::vector<F>>, ad2<F, std::vector<F>>, ub);
     }
   }
 

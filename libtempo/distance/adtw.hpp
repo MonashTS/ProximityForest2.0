@@ -198,7 +198,7 @@ namespace libtempo::distance {
         for (size_t i{0}; i<m; ++i) { ub = ub+dist(i, i); }
         // Fewer line than columns: complete the last line (advance in the columns)
         if (nblines<nbcols) {
-          for (size_t i{nblines}; i<nbcols; ++i) { ub = ub+dist(nblines-1, i)+omega; }
+          for (size_t j{nblines}; j<nbcols; ++j) { ub = ub+dist(nblines-1, j)+omega; }
         }
           // Fewer columns than lines: complete the last column (advance in the lines)
         else if (nbcols<nblines) {

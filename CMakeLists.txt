@@ -11,12 +11,11 @@ project(tempo
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-add_definitions("-fverbose-asm")
-
 if(MSVC)
     add_compile_options(/W3)
 else()
     add_compile_options(-W -Wall)
+    add_compile_options(-fverbose-asm -save-temps)
 endif()
 
 
@@ -30,4 +29,4 @@ add_subdirectory(libtempo)
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Load executable
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-add_subdirectory(exec/nn1)
+#add_subdirectory(exec/nn1)

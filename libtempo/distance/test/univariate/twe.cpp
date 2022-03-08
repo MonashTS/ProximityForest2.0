@@ -4,7 +4,7 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance;
+using namespace libtempo::distance::univariate;
 constexpr size_t nbitems = 500;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -115,6 +115,7 @@ namespace reference {
   }
 
   /// Our own TWE reference code.
+  /// Warning: in the code, keep parenthesis: mimic how the costs are calculated, giving the exact same order of operations
   double twe_matrix(const vector<double>& series1, const vector<double>& series2, double nu, double lambda) {
     const size_t length1 = series1.size();
     const size_t length2 = series2.size();
@@ -132,18 +133,18 @@ namespace reference {
 
     // Initialization: first cell, first column and first row
     matrix[0][0] = sqdist(series1[0], series2[0]);
-    for (size_t i = 1; i<length1; i++) { matrix[i][0] = matrix[i-1][0]+sqdist(series1[i], series1[i-1])+nu_lambda; }
-    for (size_t j = 1; j<length2; j++) { matrix[0][j] = matrix[0][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda; }
+    for (size_t i = 1; i<length1; i++) { matrix[i][0] = matrix[i-1][0]+(sqdist(series1[i], series1[i-1])+nu_lambda); }
+    for (size_t j = 1; j<length2; j++) { matrix[0][j] = matrix[0][j-1]+(sqdist(series2[j], series2[j-1])+nu_lambda); }
 
     // Main Loop
     for (size_t i = 1; i<length1; i++) {
       for (size_t j = 1; j<length2; j++) {
         // Top: over the lines
-        double t = matrix[i-1][j]+sqdist(series1[i], series1[i-1])+nu_lambda;
+        double t = matrix[i-1][j]+(sqdist(series1[i], series1[i-1])+nu_lambda);
         // Diagonal
-        double d = matrix[i-1][j-1]+sqdist(series1[i], series2[j])+sqdist(series1[i-1], series2[j-1])+nu2*absdiff(i, j);
+        double d = matrix[i-1][j-1]+(sqdist(series1[i], series2[j])+sqdist(series1[i-1], series2[j-1])+nu2*absdiff(i, j));
         // Previous: over the columns
-        double p = matrix[i][j-1]+sqdist(series2[j], series2[j-1])+nu_lambda;
+        double p = matrix[i][j-1]+(sqdist(series2[j], series2[j-1])+nu_lambda);
         //
         matrix[i][j] = min(t, d, p);
       }

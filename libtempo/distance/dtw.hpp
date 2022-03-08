@@ -40,7 +40,6 @@ namespace libtempo::distance {
       // In debug mode, check preconditions
       assert(nblines!=0);
       assert(nbcols!=0);
-      assert(nbcols<=nblines);
       // Adapt constants to the floating point type
       constexpr auto PINF = utils::PINF<F>;
       using utils::min;

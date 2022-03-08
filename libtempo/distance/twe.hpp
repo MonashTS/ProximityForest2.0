@@ -1,89 +1,106 @@
 #pragma once
 
+#include <memory>
+
 #include <libtempo/utils/utils.hpp>
+#include <libtempo/concepts.hpp>
 #include "cost_function.hpp"
 
 namespace libtempo::distance {
 
+  /// TWE specific cost function concept, computing the cost when taking a **non diagonal**
+  /// step (warping the alignments). All required information must be captured.
+  template<typename Fun, typename R>
+  concept CFunTWE = Float<R> && requires(Fun fun, size_t i){
+    { fun(i) }->std::same_as<R>;
+  };
+
   namespace internal {
 
-    /** Edit Distance with Real Penalty (MSM), with cut-off point for early abandoning and pruning.
+    /** Time Warp Edit (TWE), with cut-off point for early abandoning and pruning.
      *  Double buffered implementation using O(n) space.
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam FloatType    The floating number type used to represent the series.
-     * @tparam D            Type of underlying collection - given to dist
-     * @tparam FDist        Distance computation function, must be a (const D&, size_t, constD&, size_t)->FloatType
-     * @tparam FCost        MSM cost computation function - see twe_cost_uni and msms_cost_multi
+     * @tparam Float        The floating number type used to represent the series.
      * @param lines         Data for the lines
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols          Data for the lines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param dist          Distance function of type FDist
+     * @param dist_diag     Diag step function of type FDist
      * @param nu            Stiffness parameter
      * @param lambda        Penalty parameter
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
      *                      May lead to early abandoning.
-     * @return MSM value or +INF if early abandoned, or , given w, no alignment is possible
+     * @return TWE value or +INF if early abandoned, or , given w, no alignment is possible
      */
-    template<typename FloatType, typename D, typename FDist>
-    [[nodiscard]] inline FloatType twe(
-      const D& lines, size_t nblines,
-      const D& cols, size_t nbcols,
-      FDist dist,
-      const FloatType nu, const FloatType lambda,
-      FloatType cutoff
+    template<Float F>
+    [[nodiscard]] inline F twe(
+      const size_t nblines,
+      const size_t nbcols,
+      CFunTWE<F> auto dist_lines,
+      CFunTWE<F> auto dist_cols,
+      CFun<F> auto dist_diag,
+      F cutoff,
+      std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
       assert(nblines!=0);
       assert(nbcols!=0);
-      assert(nbcols<=nblines);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<FloatType>;
+      constexpr auto PINF = utils::PINF<F>;
 
-      // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-      // Constants: we only consider timestamp spaced by 1, so:
-      // In the "delete" case, we always have a time difference of 1, so we always have 1*nu+lambda
-      const auto nu_lambda = nu+lambda;
-      // In the "match" case, we always have nu*(|i-j|+|(i-1)-(j-1)|) == 2*nu*|i-j|
-      const auto nu2 = FloatType(2)*nu;
+      //  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+      //  // Constants: we only consider timestamp spaced by 1, so:
+      //  // In the "delete" case, we always have a time difference of 1, so we always have 1*nu+lambda
+      //  const auto nu_lambda = nu+lambda;
+      //  // In the "match" case, we always have nu*(|i-j|+|(i-1)-(j-1)|) == 2*nu*|i-j|
+      //  const auto nu2_ = F(2)*nu;
+      //  const auto nu2d = [=](size_t i, size_t j){return nu2_*absdiff(i, j);};
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly used in the code).
       // First, take the "next float" after "cutoff" to deal with numerical instability.
       // Then, subtract the cost of the last alignment.
-      const FloatType ub = initBlock {
+      const F ub = initBlock {
         // The last alignment can only computed if we have nbcols >= 2
         if (nbcols>=2) {
           const auto la = min(
             // "Delete_B": over the columns / Prev
-            dist(cols, nbcols-1, cols, nbcols-1)+nu_lambda,
+            // dist(cols, nbcols-2, cols, nbcols-1)+nu_lambda,
+            //dist_cols(nbcols-1)+nu_lambda,
+            dist_cols(nbcols-1),
             // Match: Diag. Ok: nblines >= nbcols
-            dist(lines, nblines-1, cols, nbcols-1)+dist(lines, nblines-2, cols, nbcols-2)+nu2*(nblines-nbcols),
+            // dist(lines, nblines-1, cols, nbcols-1)+dist(lines, nblines-2, cols, nbcols-2)+nu2d(nblines-nbcols),
+            //dist(nblines-1, nbcols-1)+dist(nblines-2, nbcols-2)+nu2d(nblines,nbcols),
+            dist_diag(nblines-1, nbcols-1),
             // "Delete_A": over the lines / Top
-            dist(lines, nblines-2, lines, nblines-1)+nu_lambda
+            // dist(lines, nblines-2, lines, nblines-1)+nu_lambda
+            // dist_lines(nblines-1)+nu_lambda
+            dist_lines(nblines-1)
           );
-          return FloatType(nextafter(cutoff, PINF)-la);
-        } else { return FloatType(cutoff); }
+          return F(nextafter(cutoff, PINF)-la);
+        } else { return F(cutoff); }
       };
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Double buffer allocation, no initialisation required (border condition manage in the code).
       // Base indices for the 'c'urrent row and the 'p'revious row.
-      auto buffers = std::unique_ptr<FloatType[]>(new FloatType[nbcols*2]);
+      //auto buffers = std::unique_ptr<F[]>(new F[nbcols*2]);
+      buffer_v.assign(nbcols*2, 0);
+      auto* buffers = buffer_v.data();
       size_t c{0}, p{nbcols};
 
       // Buffer holding precomputed distance between columns
-      auto distcol = std::unique_ptr<FloatType[]>(new FloatType[nbcols]);
+      auto distcol = std::unique_ptr<F[]>(new F[nbcols]);
 
       // Line & column counters
       size_t i{0}, j{0};
 
       // Cost accumulator. Also used as the "left neighbour".
-      FloatType cost;
+      F cost;
 
       // EAP variables: track where to start the next line, and the position of the previous pruning point.
       // Must be init to 0: index 0 is the next starting index and also the "previous pruning point"
@@ -93,7 +110,7 @@ namespace libtempo::distance {
       // Initialisation of the first line. Deal with the line top border condition.
       {
         // Case [0,0]: special "Match case"
-        cost = dist(lines, 0, cols, 0);
+        cost = dist_diag(0, 0);
         buffers[c+0] = cost;
         // Distance for the first column is relative to 0 "by conventions" (from the paper, section 4.2)
         // Something like
@@ -105,17 +122,14 @@ namespace libtempo::distance {
         // Rest of the line: [i==0, j>=1]: "Delete_B case" (prev)
         // We also initialize 'distcol' here.
         for (j = 1; j<nbcols; ++j) {
-          const double d = dist(cols, j-1, cols, j);
+          const double d = dist_cols(j);
           distcol[j] = d;
-          cost = cost+d+nu_lambda;
+          cost = cost+d;
           buffers[c+j] = cost;
           if (cost<=ub) { prev_pp = j+1; } else { break; }
         }
         // Complete the initialisation of distcol
-        for (; j<nbcols; ++j) {
-          const double d = dist(cols, j-1, cols, j);
-          distcol[j] = d;
-        }
+        for (; j<nbcols; ++j) { distcol[j] = dist_cols(j); }
         // Next line.
         ++i;
       }
@@ -126,12 +140,15 @@ namespace libtempo::distance {
       for (; i<nblines; ++i) {
         // --- --- --- Swap and variables init
         std::swap(c, p);
-        const double distli = dist(lines, i-1, lines, i);
+        //const double distli = dist_lines(i);
+        // dist line(i) + nu+lambda
+        //const double distli = dist_lines(i)+nu_lambda;
+        const double distli = dist_lines(i);
         size_t curr_pp = next_start; // Next pruning point init at the start of the line
         j = next_start;
         // --- --- --- Stage 0: Special case for the first column. Can only look up (border on the left)
         {
-          cost = buffers[p+j]+distli+nu_lambda; // "Delete_A" / Top
+          cost = buffers[p+j]+distli; // "Delete_A" / Top
           buffers[c+j] = cost;
           if (cost<=ub) { curr_pp = j+1; } else { ++next_start; }
           ++j;
@@ -139,8 +156,8 @@ namespace libtempo::distance {
         // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
         for (; j==next_start && j<prev_pp; ++j) {
           cost = std::min(
-            buffers[p+j-1]+dist(lines, i, cols, j)+dist(lines, i-1, cols, j-1)+nu2*absdiff(i, j), // "Match" / Diag
-            buffers[p+j]+distli+nu_lambda // "Delete_A" / Top
+            buffers[p+j-1]+dist_diag(i, j),    // "Match" / Diag
+            buffers[p+j]+distli           // "Delete_A" / Top
           );
           buffers[c+j] = cost;
           if (cost<=ub) { curr_pp = j+1; } else { ++next_start; }
@@ -148,9 +165,9 @@ namespace libtempo::distance {
         // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
         for (; j<prev_pp; ++j) {
           cost = min(
-            cost+distcol[j]+nu_lambda,      // "Delete_B": over the columns / Prev
-            buffers[p+j-1]+dist(lines, i, cols, j)+dist(lines, i-1, cols, j-1)+nu2*absdiff(i, j), // Match: Diag
-            buffers[p+j]+distli+nu_lambda   // "Delete_A": over the lines / Top
+            cost+distcol[j],            // "Delete_B": over the columns / Prev
+            buffers[p+j-1]+dist_diag(i, j),  // Match: Diag
+            buffers[p+j]+distli         // "Delete_A": over the lines / Top
           );
           buffers[c+j] = cost;
           if (cost<=ub) { curr_pp = j+1; }
@@ -158,7 +175,7 @@ namespace libtempo::distance {
         // --- --- --- Stage 3: At the previous pruning point. Check if we are within bounds.
         if (j<nbcols) { // If so, two cases.
           if (j==next_start) { // Case 1: Advancing next start: only diag.
-            cost = buffers[p+j-1]+dist(lines, i, cols, j)+dist(lines, i-1, cols, j-1)+nu2*absdiff(i, j); // Match: Diag
+            cost = buffers[p+j-1]+dist_diag(i, j); // Match: Diag
             buffers[c+j] = cost;
             if (cost<=ub) { curr_pp = j+1; }
             else {
@@ -167,8 +184,8 @@ namespace libtempo::distance {
             }
           } else { // Case 2: Not advancing next start: possible path in previous cells: left and diag.
             cost = std::min(
-              cost+distcol[j]+nu_lambda,     // "Delete_B": over the columns / Prev
-              buffers[p+j-1]+dist(lines, i, cols, j)+dist(lines, i-1, cols, j-1)+nu2*absdiff(i, j) // Match: Diag
+              cost+distcol[j],            // "Delete_B": over the columns / Prev
+              buffers[p+j-1]+dist_diag(i, j)   // Match: Diag
             );
             buffers[c+j] = cost;
             if (cost<=ub) { curr_pp = j+1; }
@@ -183,7 +200,7 @@ namespace libtempo::distance {
         // --- --- --- Stage 4: After the previous pruning point: only prev.
         // Go on while we advance the curr_pp; if it did not advance, the rest of the line is guaranteed to be > ub.
         for (; j==curr_pp && j<nbcols; ++j) {
-          cost = cost+distcol[j]+nu_lambda; // "Delete_B": over the columns / Prev
+          cost = cost+distcol[j]; // "Delete_B": over the columns / Prev
           buffers[c+j] = cost;
           if (cost<=ub) { ++curr_pp; }
         }
@@ -201,10 +218,10 @@ namespace libtempo::distance {
 
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
-   * @tparam FloatType  The floating number type used to represent the series.
+   * @tparam F  The floating number type used to represent the series.
    * @tparam D          Type of underlying collection - given to dist
    * @tparam VecLike    Vector like datatype - type of "weights", accessed with [index]
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
+   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->F
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function of type FDist
@@ -217,81 +234,138 @@ namespace libtempo::distance {
    *                    Use QNAN to run without any upper bounding.
    * @return DTW between the two series
    */
-  template<typename FloatType, typename D, typename FDist>
-  [[nodiscard]] FloatType inline twe(
-    const D& series1, size_t length1,
-    const D& series2, size_t length2,
-    FDist dist,
-    const FloatType nu, const FloatType lambda,
-    FloatType ub = utils::PINF<double>
+  template<Float F>
+  [[nodiscard]] F inline _twe(
+    const size_t nblines,
+    const size_t nbcols,
+    CFunTWE<F> auto dist_lines,
+    CFunTWE<F> auto dist_cols,
+    CFun<F> auto dist_diag,
+    F ub,
+    std::vector<F>& buffer_v
   ) {
-    const auto check_result = check_order_series<FloatType>(series1, length1, series2, length2);
-    switch (check_result.index()) {
-      case 0: { return std::get<0>(check_result); }
-      case 1: {
-        const auto[lines, nblines, cols, nbcols] = std::get<1>(check_result);
-        // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-        // Compute a cutoff point using the diagonal
-        if (ub==utils::PINF<FloatType>) {
-          const auto nu_lambda = nu+lambda;
-          // Compute a cutoff point using the diagonal. Init with the first cell at (0,0)
-          ub = dist(lines, 0, cols, 0);
-          // We have less columns than lines: cover all the columns first. Starts at (1,1)
-          // Match: diagonal with absdiff(i,i) == 0
-          // TODO: optimize as we reuse (i, i) in the next step as (i-1, i-1)
-          for (size_t i{1}; i<nbcols; ++i) {
-            ub = ub+dist(lines, i, cols, i)+dist(lines, i-1, cols, i-1);
-          }
-          // Then go down in the last column
-          for (size_t i{nbcols}; i<nblines; ++i) { ub = ub+dist(lines, i-1, lines, i)+nu_lambda; }
-          // A bit of wiggle room due to floats rounding
-          ub = nextafter(ub, utils::PINF<FloatType>);
-        } else if (std::isnan(ub)) { ub = utils::PINF<FloatType>; }
-        // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-        return internal::twe<FloatType, D>(lines, nblines, cols, nbcols, dist, nu, lambda, ub);
-      }
-      default: utils::should_not_happen();
+    constexpr F INF = utils::PINF<F>;
+    if (nblines==0 && nbcols==0) { return 0; }
+    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else {
+      // Compute a cutoff point using the diagonal
+      if (std::isinf(ub)) {
+        const auto m = std::min(nblines, nbcols);
+        ub = 0;
+        // Cover diagonal
+        for (size_t i{0}; i<m; ++i) { ub = ub+dist_diag(i, i); }
+        // Fewer line than columns: complete the last line (advancing in the columns)
+        if (nblines<nbcols) {
+          for (size_t j{nblines}; j<nbcols; ++j) { ub = ub+dist_cols(j); }
+        }
+          // Fewer columns than lines: complete the last column (advancing in the lines)
+        else if (nbcols<nblines) {
+          for (size_t i{nbcols}; i<nblines; ++i) { ub = ub+dist_lines(i); }
+        }
+      } else if (std::isnan(ub)) { ub = INF; }
+      // ub computed
+      return internal::twe<F>(nblines, nbcols, dist_lines, dist_cols, dist_diag, ub, buffer_v);
     }
   }
 
-  /// Helper with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType twe(
-    const D& s1, const D& s2, auto mkdist,
-    const FloatType nu, const FloatType lambda,
-    FloatType ub
-  ) {
-    return twe(s1, s1.size(), s2, s2.size(), mkdist(), nu, lambda, ub);
+  /// Helper without having to provide a buffer
+  template<Float F>
+  [[nodiscard]] inline F twe(
+    const size_t nblines,
+    const size_t nbcols,
+    CFunTWE<F> auto dist_lines,
+    CFunTWE<F> auto dist_cols,
+    CFun<F> auto dist_diag,
+    F ub) {
+    std::vector<F> v;
+    return _twe<F>(nblines, nbcols, dist_lines, dist_cols, dist_diag, ub, v);
   }
 
-  /// Helper with the sqed as the default distance builder, and a default ub at +INF
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType twe(
-    const D& s1, const D& s2,
-    const FloatType nu, const FloatType lambda,
-    FloatType ub = utils::PINF<FloatType>
-  ) {
-    return twe(s1, s1.size(), s2, s2.size(), distance::sqed<FloatType, D>(), nu, lambda, ub);
+  /// CFunTWEBuilder: Function creating a CFunTWE based on 1 series, nu, and lambda
+  /// Use for warping step (cost matrix: step takes line or col)
+  template<typename T, typename D, typename F>
+  concept CFunWarpTWEBuilder = Float<F> && requires(T builder, const D& s, const F nu, const F lambda){
+    builder(s, nu, lambda);
+  };
+
+  /// CFunDiagTWEBuilder: Function creating a CFunTWE based on 2 series (line, column), nu, and lambda
+  /// Use for non warping step (cost matrix: set takes diagonal)
+  template<typename T, typename D, typename F>
+  concept CFunDiagTWEBuilder = Float<F>
+    && requires(T builder, const D& lines, const D& cols, const F nu, const F lambda){
+      builder(lines, cols, nu, lambda);
+    };
+
+  /// Helper for TSLike, without having to provide a buffer
+  template<Float F, TSLike T>
+  [[nodiscard]] inline F
+  twe(const T& lines, const T& cols, const F nu, const F lambda,
+    CFunWarpTWEBuilder<T, F> auto mkdist_lines,
+    CFunWarpTWEBuilder<T, F> auto mkdist_cols,
+    CFunDiagTWEBuilder<T, F> auto mkdist_diag,
+    F ub = utils::PINF<F>) {
+    const auto ls = lines.length();
+    const auto cs = cols.length();
+    const CFunTWE<F> auto dist_lines = mkdist_lines(lines, nu, lambda);
+    const CFunTWE<F> auto dists_cols = mkdist_cols(cols, nu, lambda);
+    const CFun<F> auto dist_diag = mkdist_diag(lines, cols, nu, lambda);
+    return _twe<F>(ls, cs, dist_lines, dists_cols, dist_diag, ub);
   }
 
-  /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType>
-  [[nodiscard]] inline FloatType twe(
-    const auto& s1, const auto& s2, size_t ndim, auto mkdist,
-    const FloatType nu, const FloatType lambda,
-    FloatType ub
-  ) {
-    return twe(s1, s1.size()/ndim, s2, s2.size()/ndim, mkdist(ndim), nu, lambda, ub);
-  }
+  namespace univariate {
 
-  /// Multidimensional helper, with a distance builder 'mkdist'
-  template<typename FloatType, typename D>
-  [[nodiscard]] inline FloatType twe(
-    const D& s1, const D& s2, size_t ndim,
-    const FloatType nu, const FloatType lambda,
-    FloatType ub = utils::PINF<FloatType>
-  ) {
-    return twe(s1, s1.size()/ndim, s2, s2.size()/ndim, distance::sqed<FloatType, D>(ndim), nu, lambda, ub);
+    /// Default TWE warping step cost function, using univariate ad2
+    template<Float F, Subscriptable D>
+    [[nodiscard]] inline auto twe_warp_ad2(const D& s, const F nu, const F lambda) {
+      const F nl = nu+lambda;
+      return [s, nl](size_t i) {
+        const auto d = s[i]-s[i-1];
+        return (d*d)+nl;
+      };
+    }
+
+    /// Default TWE diagonal step cost function, using univariate ad2
+    template<Float F, Subscriptable D>
+    [[nodiscard]] inline auto twe_diag_ad2(const D& lines, const D& cols, const F nu, [[maybe_unused]]const F lambda) {
+      const F nu2 = nu*2;
+      return [lines, cols, nu2](size_t i, size_t j) {
+        const auto da = lines[i]-cols[j];
+        const auto db = lines[i-1]-cols[j-1];
+        return (da*da)+(db*db)+(nu2*utils::absdiff(i, j));
+      };
+    }
+
+    /// Default TWE using univariate ad2
+    template<Float F, TSLike T>
+    [[nodiscard]] inline F twe(const T& lines, const T& cols, const F nu, const F lambda, F ub = utils::PINF<F>) {
+      return libtempo::distance::twe(lines, cols, nu, lambda, twe_warp_ad2<F, T>, twe_warp_ad2<F, T>,
+        twe_diag_ad2<F, T>, ub);
+    }
+
+    /// Specific overload for univariate vector
+    template<Float F>
+    [[nodiscard]] inline F twe(const std::vector<F>& lines, const std::vector<F>& cols, const F nu, const F lambda,
+      CFunWarpTWEBuilder<std::vector<F>, F> auto mkdist_lines,
+      CFunWarpTWEBuilder<std::vector<F>, F> auto mkdist_cols,
+      CFunDiagTWEBuilder<std::vector<F>, F> auto mkdist_diag,
+      F ub = utils::PINF<F>) {
+      const auto ls = lines.size();
+      const auto cs = cols.size();
+      const CFunTWE<F> auto dist_lines = mkdist_lines(lines, nu, lambda);
+      const CFunTWE<F> auto dists_cols = mkdist_cols(cols, nu, lambda);
+      const CFun<F> auto dist_diag = mkdist_diag(lines, cols, nu, lambda);
+      return libtempo::distance::twe<F>(ls, cs, dist_lines, dists_cols, dist_diag, ub);
+    }
+
+    /// Specific overload for univariate vector using ad2
+    template<Float F>
+    [[nodiscard]] inline F
+    twe(const std::vector<F>& lines, const std::vector<F>& cols, const F nu, const F lambda, F ub = utils::PINF<F>) {
+      return twe(lines, cols, nu, lambda,
+        twe_warp_ad2<F, std::vector<F>>, twe_warp_ad2<F, std::vector<F>>, twe_diag_ad2<F, std::vector<F>>, ub
+      );
+    }
+
   }
 
 

@@ -13,9 +13,9 @@ namespace libtempo::distance {
     { fun(i, j) }->std::same_as<R>;
   };
 
-namespace internal {
+  namespace internal {
 
-    /** Edit Distance with Real Penalty (MSM), with cut-off point for early abandoning and pruning.
+    /** Move Split Merge (MSM), with cut-off point for early abandoning and pruning.
      *  Double buffered implementation using O(n) space.
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
@@ -105,10 +105,8 @@ namespace internal {
         // Rest of the line, a cell only depends on the previous cell. Stop when > ub, update prev_pp.
         for (j = 1; j<nbcols; ++j) {
           cost = cost+dist_cols(0, j); // Previous
-          if (cost<=ub) {
-            buffer[c+j] = cost;
-            prev_pp = j+1;
-          } else { break; }
+          buffer[c+j] = cost;
+          if (cost<=ub) { prev_pp = j+1; } else { break; }
         }
         // Next line.
         ++i;
@@ -230,22 +228,22 @@ namespace internal {
     std::vector<F>& buffer_v
   ) {
     constexpr F INF = utils::PINF<F>;
-    if (nblines == 0 && nbcols == 0) { return 0; }
-    else if ((nblines == 0) != (nbcols == 0)) { return INF; }
+    if (nblines==0 && nbcols==0) { return 0; }
+    else if ((nblines==0)!=(nbcols==0)) { return INF; }
     else {
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
         const auto m = std::min(nblines, nbcols);
         ub = 0;
         // Cover diagonal
-        for (size_t i{0}; i < m; ++i) { ub = ub + dist(i, i); }
+        for (size_t i{0}; i<m; ++i) { ub = ub+dist(i, i); }
         // Fewer line than columns: complete the last line (advancing in the columns)
-        if (nblines < nbcols) {
-          for (size_t j{nblines}; j < nbcols; ++j) { ub = ub + dist_cols(nblines - 1, j); }
+        if (nblines<nbcols) {
+          for (size_t j{nblines}; j<nbcols; ++j) { ub = ub+dist_cols(nblines-1, j); }
         }
           // Fewer columns than lines: complete the last column (advancing in the lines)
-        else if (nbcols < nblines) {
-          for (size_t i{nbcols}; i < nblines; ++i) { ub = ub + dist_lines(i, nbcols - 1); }
+        else if (nbcols<nblines) {
+          for (size_t i{nbcols}; i<nblines; ++i) { ub = ub+dist_lines(i, nbcols-1); }
         }
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed
@@ -261,12 +259,12 @@ namespace internal {
     CFunMSM<F> auto dist_lines,
     CFunMSM<F> auto dist_cols,
     CFun<F> auto dist,
-    F ub){
+    F ub) {
     std::vector<F> v;
     return msm<F>(nblines, nbcols, dist_lines, dist_cols, dist, ub, v);
   }
 
-  /// CVFunMSMBuilder: Function creating a CFunMSM based on 2 series and a cost c
+  /// CFunMSMBuilder: Function creating a CFunMSM based on 2 series and a cost c
   template<typename T, typename D, typename F>
   concept CFunMSMBuilder = Float<F> && requires(T builder, const D& s1, const D& s2, const F c){
     builder(s1, s2, c);
@@ -312,50 +310,52 @@ namespace internal {
 
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto msm_lines_ad1(const D& lines, const D& cols, const F c) {
-      return [lines, cols, c](size_t i, size_t j) {
+      return [&lines, &cols, c](size_t i, size_t j) {
         return _msm_cost_ad1(lines, i, i-1, cols, j, c);
       };
     }
 
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto msm_cols_ad1(const D& lines, const D& cols, const F c) {
-      return [lines, cols, c](size_t i, size_t j) {
+      return [&lines, &cols, c](size_t i, size_t j) {
         return _msm_cost_ad1(cols, j, j-1, lines, i, c);
       };
     }
 
-  /// Default MSM using univariate ad1
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F msm(const T& lines, const T& cols, const F c, F ub = utils::PINF<F>) {
-    return libtempo::distance::msm(lines, cols, c, msm_lines_ad1, msm_cols_ad1, ad1, ub);
+    /// Default MSM using univariate ad1
+    template<Float F, TSLike T>
+    [[nodiscard]] inline F msm(const T& lines, const T& cols, const F c, F ub = utils::PINF<F>) {
+      return libtempo::distance::msm(lines, cols, c, msm_lines_ad1, msm_cols_ad1, ad1, ub);
+    }
+
+    /// Specific overload for univariate vector
+    template<Float F>
+    [[nodiscard]] inline F msm(const std::vector<F>& lines, const std::vector<F>& cols, const F c,
+      CFunMSMBuilder<std::vector<F>, F> auto mkdist_lines,
+      CFunMSMBuilder<std::vector<F>, F> auto mkdist_cols,
+      CFunBuilder<std::vector<F>> auto mkdist,
+      F ub = utils::PINF<F>) {
+      const auto ls = lines.size();
+      const auto cs = cols.size();
+      const CFunMSM<F> auto dist_lines = mkdist_lines(lines, cols, c);
+      const CFunMSM<F> auto dists_cols = mkdist_cols(lines, cols, c);
+      const CFun<F> auto dist = mkdist(lines, cols);
+      return libtempo::distance::msm<F>(ls, cs, dist_lines, dists_cols, dist, ub);
+    }
+
+    /// Specific overload for univariate vector using ad1
+    template<Float F>
+    [[nodiscard]] inline F
+    msm(const std::vector<F>& lines, const std::vector<F>& cols, const F c, F ub = utils::PINF<F>) {
+      return msm(lines, cols, c,
+        msm_lines_ad1<F, std::vector<F>>,
+        msm_cols_ad1<F, std::vector<F>>,
+        ad1<F, std::vector<F>>,
+        ub);
+    }
+
   }
 
-  /// Specific overload for univariate vector
-  template<Float F>
-  [[nodiscard]] inline F msm(const std::vector<F>& lines, const std::vector<F>& cols, const F c,
-    CFunMSMBuilder<std::vector<F>, F> auto mkdist_lines,
-    CFunMSMBuilder<std::vector<F>, F> auto mkdist_cols,
-    CFunBuilder<std::vector<F>> auto mkdist,
-    F ub = utils::PINF<F>) {
-    const auto ls = lines.size();
-    const auto cs = cols.size();
-    const CFunMSM<F> auto dist_lines = mkdist_lines(lines, cols, c);
-    const CFunMSM<F> auto dists_cols = mkdist_cols(lines, cols, c);
-    const CFun<F> auto dist = mkdist(lines, cols);
-    return libtempo::distance::msm<F>(ls, cs, dist_lines, dists_cols, dist, ub);
-  }
-
-  /// Specific overload for univariate vector using ad1
-  template<Float F>
-  [[nodiscard]] inline F msm(const std::vector<F>& lines, const std::vector<F>& cols, const F c, F ub = utils::PINF<F>) {
-    return msm(lines, cols, c,
-      msm_lines_ad1<F, std::vector<F>>,
-      msm_cols_ad1<F, std::vector<F>>,
-      ad1<F, std::vector<F>>,
-      ub);
-  }
-
-  }
 
 
 
@@ -363,43 +363,42 @@ namespace internal {
 
 
 
-
-// /** Multivariate cost function when transforming
-//  *  X=(x1, x2, ... xi) into Y = (y1, ..., yj) by Split or Merge (symmetric - dependening how we move in the matrix).
-//  * @tparam FloatType    The floating number type used to represent the series.
-//  * @tparam D            Type of underlying collection - given to dist
-//  * @tparam FDist        Distance function, must be a (const D&, size_t, constD&, size_t)->FloatType
-//  * @tparam FDistMP      Distance to midpoint function, must be a (const D&, size_t, size_t, constD&, size_t)->FloatType
-//  * @param  X            Main series: the series where a new point is added (can be line or column!)
-//  * @param  xnew         Index of the new point in X
-//  * @param  Y            The other series
-//  * @param  xi           Index of the last point in X
-//  * @param  yi           Index of the last point in Y
-//  * From Shifaz et al 2021
-//  * Elastic Similarity Measures for Multivariate Time Series Classification
-//  * https://arxiv.org/abs/2102.10231
-//  *   We check if xnew is "between" xi an yi by checking if it is inside the hyper-sphere
-//  *   defined by xi and yi: take the midpoint between xi and yi and the sphere radius.
-//  *   If the distance between the midpoint and xnew > radius, xnew is not in the sphere.
-//  */
-// template<typename FloatType, typename D, typename FDist, typename FDistMP>
-// [[nodiscard]] inline FloatType msm_cost_multi(
-//   const D& X, size_t xnew, size_t xi,
-//   const D& Y, size_t yi,
-//   FDist dist,
-//   FDistMP distmpoint,
-//   FloatType cost
-// ) {
-//   const FloatType radius = dist(X, xi, Y, yi)/2; // distance between xi and yi give us the sphere diameter
-//   const FloatType d_to_mid = distmpoint(X, xnew, xi, Y, yi);
-//   if (d_to_mid<=radius) { return cost; }
-//   else {
-//     const FloatType d_to_prev = dist(X, xnew, X, xi);
-//     const FloatType d_to_other = dist(X, xnew, Y, yi);
-//     return cost+std::min<FloatType>(d_to_prev, d_to_other);
-//   }
-// }
-//
+  // /** Multivariate cost function when transforming
+  //  *  X=(x1, x2, ... xi) into Y = (y1, ..., yj) by Split or Merge (symmetric - dependening how we move in the matrix).
+  //  * @tparam FloatType    The floating number type used to represent the series.
+  //  * @tparam D            Type of underlying collection - given to dist
+  //  * @tparam FDist        Distance function, must be a (const D&, size_t, constD&, size_t)->FloatType
+  //  * @tparam FDistMP      Distance to midpoint function, must be a (const D&, size_t, size_t, constD&, size_t)->FloatType
+  //  * @param  X            Main series: the series where a new point is added (can be line or column!)
+  //  * @param  xnew         Index of the new point in X
+  //  * @param  Y            The other series
+  //  * @param  xi           Index of the last point in X
+  //  * @param  yi           Index of the last point in Y
+  //  * From Shifaz et al 2021
+  //  * Elastic Similarity Measures for Multivariate Time Series Classification
+  //  * https://arxiv.org/abs/2102.10231
+  //  *   We check if xnew is "between" xi an yi by checking if it is inside the hyper-sphere
+  //  *   defined by xi and yi: take the midpoint between xi and yi and the sphere radius.
+  //  *   If the distance between the midpoint and xnew > radius, xnew is not in the sphere.
+  //  */
+  // template<typename FloatType, typename D, typename FDist, typename FDistMP>
+  // [[nodiscard]] inline FloatType msm_cost_multi(
+  //   const D& X, size_t xnew, size_t xi,
+  //   const D& Y, size_t yi,
+  //   FDist dist,
+  //   FDistMP distmpoint,
+  //   FloatType cost
+  // ) {
+  //   const FloatType radius = dist(X, xi, Y, yi)/2; // distance between xi and yi give us the sphere diameter
+  //   const FloatType d_to_mid = distmpoint(X, xnew, xi, Y, yi);
+  //   if (d_to_mid<=radius) { return cost; }
+  //   else {
+  //     const FloatType d_to_prev = dist(X, xnew, X, xi);
+  //     const FloatType d_to_other = dist(X, xnew, Y, yi);
+  //     return cost+std::min<FloatType>(d_to_prev, d_to_other);
+  //   }
+  // }
+  //
 
 
 } // End of namespace libtempo::distance

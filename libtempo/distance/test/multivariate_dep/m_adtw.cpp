@@ -16,73 +16,74 @@ constexpr double INF = libtempo::utils::PINF<double>;
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 namespace {
 
-  using namespace libtempo::utils;
-  using namespace std;
+using namespace libtempo::utils;
+using namespace std;
 
-  /// Naive univariate ADTW. Reference code.
-  double adtw_matrix_uni(const vector<double>& a, const vector<double>& b, double penalty) {
-    const long la = to_signed(a.size());
-    const long lb = to_signed(b.size());
-    // Check lengths. Be explicit in the conditions
-    if (la==0 && lb==0) { return 0; }
-    if (la==0 && lb!=0) { return PINF<double>; }
-    if (la!=0 && lb==0) { return PINF<double>; }
+/// Naive univariate ADTW. Reference code.
+double adtw_matrix_uni(const vector<double> &a, const vector<double> &b, double penalty) {
+  const long la = to_signed(a.size());
+  const long lb = to_signed(b.size());
+  // Check lengths. Be explicit in the conditions
+  if (la == 0 && lb == 0) { return 0; }
+  if (la == 0 && lb != 0) { return PINF<double>; }
+  if (la != 0 && lb == 0) { return PINF<double>; }
 
-    // Allocate the working space: full matrix + space for borders (first column / first line)
-    size_t msize = max(la, lb)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+  // Allocate the working space: full matrix + space for borders (first column / first line)
+  size_t msize = max(la, lb) + 1;
+  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
 
-    // Initialisation (all the matrix is initialised at +INF)
-    matrix[0][0] = 0;
+  // Initialisation (all the matrix is initialised at +INF)
+  matrix[0][0] = 0;
 
-    // For each line
-    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
-    //       hence, we have i-1 and j-1 when accessing series1 and series2
-    for (long i = 1; i<=la; i++) {
-      for (long j = 1; j<=lb; j++) {
-        double g = sqdist(a[i-1], b[j-1]);
-        double prev = matrix[i][j-1]+g+penalty;
-        double diag = matrix[i-1][j-1]+g;
-        double top = matrix[i-1][j]+g+penalty;
-        matrix[i][j] = min(prev, std::min(diag, top));
-      }
+  // For each line
+  // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+  //       hence, we have i-1 and j-1 when accessing series1 and series2
+  for (long i = 1; i <= la; i++) {
+    for (long j = 1; j <= lb; j++) {
+      double g = sqdist(a[i - 1], b[j - 1]);
+      double prev = matrix[i][j - 1] + g + penalty;
+      double diag = matrix[i - 1][j - 1] + g;
+      double top = matrix[i - 1][j] + g + penalty;
+      matrix[i][j] = min(prev, std::min(diag, top));
     }
-
-    return matrix[la][lb];
   }
 
+  return matrix[la][lb];
+}
 
-  /// Naive multivariate ADTW. Reference code.
-  double adtw_matrix(const vector<double>& a, const vector<double>& b, size_t dim, double penalty) {
-    const long la = (long) a.size()/(long) dim;
-    const long lb = (long) b.size()/(long) dim;
-    // Check lengths. Be explicit in the conditions
-    if (la==0 && lb==0) { return 0; }
-    if (la==0 && lb!=0) { return PINF<double>; }
-    if (la!=0 && lb==0) { return PINF<double>; }
+/// Naive multivariate ADTW. Reference code.
+double adtw_matrix(const vector<double> &a, const vector<double> &b, size_t dim, double penalty) {
+  const long la = (long) a.size() / (long) dim;
+  const long lb = (long) b.size() / (long) dim;
+  // Check lengths. Be explicit in the conditions
+  if (la == 0 && lb == 0) { return 0; }
+  if (la == 0 && lb != 0) { return PINF<double>; }
+  if (la != 0 && lb == 0) { return PINF<double>; }
 
-    // Allocate the working space: full matrix + space for borders (first column / first line)
-    size_t msize = max(la, lb)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+  // Allocate the working space: full matrix + space for borders (first column / first line)
+  size_t msize = max(la, lb) + 1;
+  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
 
-    // Initialisation (all the matrix is initialised at +INF)
-    matrix[0][0] = 0;
+  // Initialisation (all the matrix is initialised at +INF)
+  matrix[0][0] = 0;
 
-    // For each line
-    // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
-    //       hence, we have i-1 and j-1 when accessing series1 and series2
-    for (long i = 1; i<=la; i++) {
-      for (long j = 1; j<=lb; j++) {
-        double g = sqedN(a, i-1, b, j-1, dim);
-        double prev = matrix[i][j-1]+g+penalty;
-        double diag = matrix[i-1][j-1]+g;
-        double top = matrix[i-1][j]+g+penalty;
-        matrix[i][j] = min(prev, std::min(diag, top));
-      }
+  // For each line
+  // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
+  //       hence, we have i-1 and j-1 when accessing series1 and series2
+  for (long i = 1; i <= la; i++) {
+    for (long j = 1; j <= lb; j++) {
+      double g = sqedN(a, i - 1, b, j - 1, dim);
+      double prev = matrix[i][j - 1] + g + penalty;
+      double diag = matrix[i - 1][j - 1] + g;
+      double top = matrix[i - 1][j] + g + penalty;
+      matrix[i][j] = min(prev, std::min(diag, top));
     }
-
-    return matrix[la][lb];
   }
+
+  return matrix[la][lb];
+}
+
+}
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
@@ -287,6 +288,4 @@ TEST_CASE("Multivariate Dependent ADTW Variable length", "[adtw][multivariate]")
       }
     }// End query loop
   }// End section
-}
-
 }

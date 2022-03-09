@@ -318,7 +318,7 @@ namespace libtempo::distance {
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto twe_warp_ad2(const D& s, const F nu, const F lambda) {
       const F nl = nu+lambda;
-      return [s, nl](size_t i) {
+      return [&, nl](size_t i) {
         const auto d = s[i]-s[i-1];
         return (d*d)+nl;
       };
@@ -328,7 +328,7 @@ namespace libtempo::distance {
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto twe_diag_ad2(const D& lines, const D& cols, const F nu, [[maybe_unused]]const F lambda) {
       const F nu2 = nu*2;
-      return [lines, cols, nu2](size_t i, size_t j) {
+      return [&, nu2](size_t i, size_t j) {
         const auto da = lines[i]-cols[j];
         const auto db = lines[i-1]-cols[j-1];
         return (da*da)+(db*db)+(nu2*utils::absdiff(i, j));

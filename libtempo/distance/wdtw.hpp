@@ -274,7 +274,7 @@ namespace libtempo::distance {
     /// Default TWE warping step cost function, using univariate ad2
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto wdtw_ad2(const D& li, const D& co, const std::vector<F>& weights) {
-    return [&li, &co, &weights](size_t i, size_t j) {
+    return [&](size_t i, size_t j) {
       const auto d = li[i]-co[j];
       return (d*d)*weights[utils::absdiff(i, j)];
     };

@@ -332,7 +332,7 @@ namespace libtempo::distance {
     /// CFunGVBuilder Univariate Absolute difference exponent 1
     template<Float F, Subscriptable D>
     auto ad1gv(const D& series, const F gv) {
-      return [series, gv](size_t i) {
+      return [&, gv](size_t i) {
         const F d = series[i]-gv;
         return std::abs(d);
       };
@@ -341,7 +341,7 @@ namespace libtempo::distance {
     /// CFunGVBuilder Univariate Absolute difference exponent 2
     template<Float F, Subscriptable D>
     auto inline ad2gv(const D& series, const F gv) {
-      return [series, gv](size_t i) {
+      return [&, gv](size_t i) {
         const F d = series[i]-gv;
         return d*d;
       };
@@ -350,7 +350,7 @@ namespace libtempo::distance {
     /// CFunGVBuilder Univariate Absolute difference exponent e
     template<Float F, Subscriptable D>
     auto inline adegv(const D& series, const F gv, const F e) {
-      return [series, gv, e](size_t i) {
+      return [&, gv, e](size_t i) {
         const F d = series[i]-gv;
         return std::pow(d, e);
       };

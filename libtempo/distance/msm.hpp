@@ -310,14 +310,14 @@ namespace libtempo::distance {
 
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto msm_lines_ad1(const D& lines, const D& cols, const F c) {
-      return [&lines, &cols, c](size_t i, size_t j) {
+      return [&, c](size_t i, size_t j) {
         return _msm_cost_ad1(lines, i, i-1, cols, j, c);
       };
     }
 
     template<Float F, Subscriptable D>
     [[nodiscard]] inline auto msm_cols_ad1(const D& lines, const D& cols, const F c) {
-      return [&lines, &cols, c](size_t i, size_t j) {
+      return [&, c](size_t i, size_t j) {
         return _msm_cost_ad1(cols, j, j-1, lines, i, c);
       };
     }

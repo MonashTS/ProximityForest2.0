@@ -2,13 +2,16 @@
 
 #include <catch.hpp>
 #include <libtempo/distance/direct.hpp>
+#include <libtempo/distance/cost_function.hpp>
 
 #include <mock/mockseries.hpp>
 
 using namespace mock;
 using namespace libtempo::distance;
+using namespace libtempo::distance::multivariate;
 constexpr size_t nbitems = 500;
 constexpr size_t ndim = 3;
+constexpr double INF = libtempo::utils::PINF<double>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -49,24 +52,25 @@ namespace reference {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-TEST_CASE("Multivariate Dependent NORM Fixed length", "[directa][multivariate]") {
+TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   mocker._dim = ndim;
-
+  const auto l = mocker._fixl;
+  const auto l1 = mocker._fixl * ndim;
   const auto fset = mocker.vec_randvec(nbitems);
 
-  SECTION("NORM(s,s) == 0") {
+  SECTION("DA(s,s) == 0") {
     for (const auto& s: fset) {
       const double directa_ref_v = reference::directa(s, s, ndim);
       REQUIRE(directa_ref_v==0);
 
-      const auto directa_v = directa<double>(s, s, ndim);
+      const auto directa_v = directa<double>(l, l, ad2N<double>(s, s, ndim), INF);
       REQUIRE(directa_v==0);
     }
   }
 
-  SECTION("NORM(s1, s2)") {
+  SECTION("DA(s1, s2)") {
     for (size_t i = 0; i<nbitems-1; ++i) {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
@@ -75,7 +79,7 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[directa][multivariate]")
       {
         const double directa_ref_v = reference::directa(s1, s2, 1);
         const double directa_ref_uni_v = reference::directa_uni(s1, s2);
-        const auto directa_tempo_v = directa<double>(s1, s2, 1);
+        const auto directa_tempo_v = directa<double>(l1, l1, ad2N<double>(s1, s2, 1), INF);
         REQUIRE(directa_ref_v==directa_ref_uni_v);
         REQUIRE(directa_ref_v==directa_tempo_v);
       }
@@ -85,13 +89,13 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[directa][multivariate]")
         const double directa_ref_v = reference::directa(s1, s2, ndim);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto directa_tempo_v = directa<double>(s1, s2, ndim);
+        const auto directa_tempo_v = directa<double>(l, l, ad2N<double>(s1, s2, ndim), INF);
         REQUIRE(directa_ref_v==directa_tempo_v);
       }
     }
   }
 
-  SECTION("NN1 NORM") {
+  SECTION("NN1 DA") {
     // Query loop
     for (size_t i = 0; i<nbitems; i += 3) {
       const auto& s1 = fset[i];
@@ -119,7 +123,7 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[directa][multivariate]")
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = directa<double>(s1, s2, ndim);
+        const auto v = directa<double>(l, l, ad2N<double>(s1, s2, ndim), INF);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -128,7 +132,7 @@ TEST_CASE("Multivariate Dependent NORM Fixed length", "[directa][multivariate]")
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = directa<double>(s1, s2, ndim, bsf_tempo);
+        const auto v_tempo = directa<double>(l, l, ad2N<double>(s1, s2, ndim), bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;

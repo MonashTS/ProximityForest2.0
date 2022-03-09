@@ -14,7 +14,7 @@ namespace libtempo::distance {
     /// CFunBuilder Univariate Absolute difference exponent 1
     template<Float F, Subscriptable D>
     auto ad1(const D& lines, const D& cols) {
-      return [lines, cols](size_t i, size_t j) {
+      return [&](size_t i, size_t j) {
         const F d = lines[i]-cols[j];
         return std::abs(d);
       };
@@ -23,7 +23,7 @@ namespace libtempo::distance {
     /// CFunBuilder Univariate Absolute difference exponent 2
     template<Float F, Subscriptable D>
     auto ad2(const D& lines, const D& cols) {
-      return [lines, cols](size_t i, size_t j) {
+      return [&](size_t i, size_t j) {
         const F d = lines[i]-cols[j];
         return d*d;
       };
@@ -32,7 +32,7 @@ namespace libtempo::distance {
     /// CFunBuilder Univariate Absolute difference exponent e
     template<Float F, Subscriptable D>
     auto ade(const D& lines, const D& cols, const F e) {
-      return [lines, cols, e](size_t i, size_t j) {
+      return [&, e](size_t i, size_t j) {
         const F d = lines[i]-cols[j];
         return std::pow(d, e);
       };
@@ -45,7 +45,7 @@ namespace libtempo::distance {
     /// CFunBuilder Multivariate Absolute difference exponent 2
     template<Float F, Subscriptable D>
     auto ad2N(const D& lines, const D& cols, size_t ndim) {
-      return [lines, cols, ndim](size_t i, size_t j) {
+      return [&, ndim](size_t i, size_t j) {
         const size_t li_offset = i*ndim;
         const size_t co_offset = j*ndim;
         F acc{0};
@@ -59,6 +59,7 @@ namespace libtempo::distance {
 
   }
 
+  /*
   namespace internal {
 
     /// Squared Euclidean Distance dim 1
@@ -166,5 +167,7 @@ namespace libtempo::distance {
     return (length1>length2) ? std::forward_as_tuple(s1, length1, s2, length2) : std::forward_as_tuple(s2, length2, s1,
       length1);
   }
+
+   */
 
 } // Enf of namespace libtempo::distance

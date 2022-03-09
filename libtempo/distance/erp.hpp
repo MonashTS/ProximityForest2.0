@@ -300,7 +300,9 @@ namespace libtempo::distance {
 
   /// Helper without having to provide a buffer
   template<Float F>
-  [[nodiscard]] inline F erp(const size_t nblines, const size_t nbcols, const size_t w, CFunGV<F> auto dist_gv_lines,
+  [[nodiscard]] inline F erp(
+    const size_t nblines, const size_t nbcols, const size_t w,
+    CFunGV<F> auto dist_gv_lines,
     CFunGV<F> auto dist_gv_cols, CFun<F> auto dist, F ub) {
     std::vector<F> v;
     return erp(nblines, nbcols, w, dist_gv_lines, dist_gv_cols, dist, ub, v);

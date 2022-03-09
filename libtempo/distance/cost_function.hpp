@@ -50,7 +50,7 @@ namespace libtempo::distance {
         const size_t co_offset = j*ndim;
         F acc{0};
         for (size_t k{0}; k<ndim; ++k) {
-          const F d = lines[li_offset+k]-cols[co_offset+k];
+          const auto d = lines[li_offset+k]-cols[co_offset+k];
           acc += d*d;
         }
         return acc;

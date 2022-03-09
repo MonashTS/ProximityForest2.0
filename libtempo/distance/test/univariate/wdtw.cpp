@@ -7,6 +7,7 @@
 
 using namespace mock;
 using namespace libtempo::distance;
+using namespace libtempo::distance::univariate;
 constexpr size_t nbitems = 500;
 constexpr size_t nbweights = 5;
 

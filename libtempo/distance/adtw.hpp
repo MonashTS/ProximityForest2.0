@@ -12,17 +12,17 @@ namespace libtempo::distance {
      *  Double buffered implementation using O(n) space.
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
-     *  Actual implementation assuming that some pre-conditions are fulfilled.
      *  Note: if we have  0 < nbcols <= nblines, (keeping the number of columns shorter than the lines),
      *  the memory allocation will be minimized (allocating 2 lines, i.e. according to the number of columns)
      * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series.
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param penalty       Fixed cost penalty for warping steps; must be >=0
-     * @param dist        Cost function of concept CFun
+     * @param dist          Cost function of concept CFun<F>
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
      *                      May lead to early abandoning.
-     * @return CDTW between the two series or +PINF if early abandoned or, given w, no alignment is possible.
+     * @param buffers_v     Buffer used to perform the computation. Will reallocate if require.
+     * @return ADTW between the two series or +PINF if early abandoned.
      */
     template<Float F>
     [[nodiscard]] inline F adtw(
@@ -37,7 +37,7 @@ namespace libtempo::distance {
       // In debug mode, check preconditions
       assert(nblines!=0);
       assert(nbcols!=0);
-      //assert(nbcols<=nblines);
+
       // Adapt constants to the floating point type
       constexpr auto PINF = utils::PINF<F>;
       using utils::min;
@@ -170,18 +170,16 @@ namespace libtempo::distance {
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
    * @tparam Float      The floating number type used to represent the series.
-   * @param series1     Data for the first series
    * @param nblines     Length of the first series.
-   * @param series2     Data for the second series
    * @param nbcols      Length of the second series.
    * @param omega       Additive penalty for warping steps
-   * @param dist        Cost function of concept CFun
+   * @param dist        Cost function of concept CFun<F>, capturing the series matching the lines and columns
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
    *                    ub = PINF: use pruning
    *                    ub = QNAN: no lower bounding
    *                    ub = other value: use for pruning and early abandoning
-   * @return CDTW between the two series or +PINF if early abandoned or maximum error (incompatible window).
+   * @return ADTW between the two series or +PINF if early abandoned
    */
   template<Float F>
   [[nodiscard]] F

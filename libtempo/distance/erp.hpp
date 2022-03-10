@@ -388,4 +388,24 @@ namespace libtempo::distance {
     }
   }
 
+
+  namespace multivariate {
+
+  /// WARP distance based on the squared absolute difference and a vector for gv
+  /// Dimension is the same as the size of gv (all dimensions used)
+  template<Float F, Subscriptable D>
+  inline auto ad2gv(const D &series, const std::vector<F> &gv) {
+    const auto ndim = gv.size();
+    return [&, ndim](size_t i) {
+      const size_t offset = i * ndim;
+      F acc{0};
+      for (size_t k{0}; k < ndim; ++k) {
+        const F d = series[offset + k] - gv[k];
+        acc += d * d;
+      }
+      return acc;
+    };
+  };
+
+      }
 } // End of namespace libtempo::distance

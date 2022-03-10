@@ -66,7 +66,7 @@ namespace reference {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
   // Setup univariate with fixed length
-  Mocker mocker(1);
+  Mocker mocker;
   const auto& wratios = mocker.wratios;
   const auto& epsilons = mocker.epsilons;
   const auto fset = mocker.vec_randvec(nbitems);
@@ -160,7 +160,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
 
 TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
   // Setup univariate dataset with varying length
-  Mocker mocker(1);
+  Mocker mocker;
   const auto& wratios = mocker.wratios;
   const auto& epsilons = mocker.epsilons;
   const auto fset = mocker.vec_rs_randvec(nbitems);

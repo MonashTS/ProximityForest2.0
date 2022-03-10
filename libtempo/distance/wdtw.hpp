@@ -27,14 +27,14 @@ namespace libtempo::distance {
    */
   template<typename FloatType>
   [[nodiscard]] inline FloatType compute_weight(FloatType g, FloatType half_max_length, FloatType i, double wmax) {
-    return wmax/(1+exp(-g*(i-half_max_length)));
+    return wmax / (1 + exp(-g * (i - half_max_length)));
   }
 
   /// Populate the weights_array of size length with weights derive from the g factor
   template<typename FloatType>
-  inline void populate_weights(FloatType g, FloatType* weights_array, size_t length, double wmax = WDTW_MAX_WEIGHT) {
-    FloatType half_max_length = FloatType(length)/2;
-    for (size_t i{0}; i<length; ++i) {
+  inline void populate_weights(FloatType g, FloatType *weights_array, size_t length, double wmax = WDTW_MAX_WEIGHT) {
+    FloatType half_max_length = FloatType(length) / 2;
+    for (size_t i{0}; i < length; ++i) {
       weights_array[i] = compute_weight(g, half_max_length, FloatType(i), wmax);
     }
   }
@@ -74,13 +74,13 @@ namespace libtempo::distance {
       const size_t nblines,
       const size_t nbcols,
       CFun<F> auto dist,
-      F   cutoff,
-      std::vector<F>& buffers_v
+      F cutoff,
+      std::vector<F> &buffers_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
-      assert(nblines!=0);
-      assert(nbcols!=0);
+      assert(nblines != 0);
+      assert(nbcols != 0);
       // Adapt constants to the floating point type
       using namespace utils;
       constexpr auto PINF = utils::PINF<F>;
@@ -90,7 +90,7 @@ namespace libtempo::distance {
       // First, take the "next float" after "cutoff" to deal with numerical instability.
       // Then, subtract the cost of the last alignment.
       const F ub = initBlock {
-        return nextafter(cutoff, PINF)-dist(nblines-1, nbcols-1);
+        return nextafter(cutoff, PINF) - dist(nblines - 1, nbcols - 1);
       };
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -98,9 +98,9 @@ namespace libtempo::distance {
       // Base indices for the 'c'urrent row and the 'p'revious row. Account for the extra cell (+1 and +2)
       // std::vector<FloatType> buffers_v((1+nbcols)*2, PINF);
       // auto* buffers = buffers_v.data();
-      buffers_v.assign((1+nbcols)*2, PINF);
-      auto* buffers = buffers_v.data();
-      size_t c{0+1}, p{nbcols+2};
+      buffers_v.assign((1 + nbcols) * 2, PINF);
+      auto *buffers = buffers_v.data();
+      size_t c{0 + 1}, p{nbcols + 2};
 
       // Line & column counters
       size_t i{0}, j{0};
@@ -114,11 +114,11 @@ namespace libtempo::distance {
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Initialisation of the top border: already initialized to +INF. Initialise the left corner to 0.
-      buffers[c-1] = 0;
+      buffers[c - 1] = 0;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Main loop
-      for (; i<nblines; ++i) {
+      for (; i < nblines; ++i) {
         // --- --- --- Swap and variables init
         std::swap(c, p);
         size_t curr_pp = next_start; // Next pruning point init at the start of the line
@@ -126,55 +126,55 @@ namespace libtempo::distance {
         // --- --- --- Stage 0: Initialise the left border
         {
           cost = PINF;
-          buffers[c+next_start-1] = PINF;
+          buffers[c + next_start - 1] = PINF;
         }
         // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
-        for (; j==next_start && j<prev_pp; ++j) {
+        for (; j == next_start && j < prev_pp; ++j) {
           const auto d = dist(i, j);
-          cost = std::min(buffers[p+j-1], buffers[p+j])+d;
-          buffers[c+j] = cost;
-          if (cost<=ub) { curr_pp = j+1; } else { ++next_start; }
+          cost = std::min(buffers[p + j - 1], buffers[p + j]) + d;
+          buffers[c + j] = cost;
+          if (cost <= ub) { curr_pp = j + 1; } else { ++next_start; }
         }
         // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
-        for (; j<prev_pp; ++j) {
+        for (; j < prev_pp; ++j) {
           const auto d = dist(i, j);
-          cost = min(cost, buffers[p+j-1], buffers[p+j])+d;
-          buffers[c+j] = cost;
-          if (cost<=ub) { curr_pp = j+1; }
+          cost = min(cost, buffers[p + j - 1], buffers[p + j]) + d;
+          buffers[c + j] = cost;
+          if (cost <= ub) { curr_pp = j + 1; }
         }
         // --- --- --- Stage 3: At the previous pruning point. Check if we are within bounds.
-        if (j<nbcols) { // If so, two cases.
+        if (j < nbcols) { // If so, two cases.
           const auto d = dist(i, j);
-          if (j==next_start) { // Case 1: Advancing next start: only diag.
-            cost = buffers[p+j-1]+d;
-            buffers[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; }
+          if (j == next_start) { // Case 1: Advancing next start: only diag.
+            cost = buffers[p + j - 1] + d;
+            buffers[c + j] = cost;
+            if (cost <= ub) { curr_pp = j + 1; }
             else {
               // Special case if we are on the last alignment: return the actual cost if we are <= cutoff
-              if (i==nblines-1 && j==nbcols-1 && cost<=cutoff) { return cost; }
+              if (i == nblines - 1 && j == nbcols - 1 && cost <= cutoff) { return cost; }
               else { return PINF; }
             }
           } else { // Case 2: Not advancing next start: possible path in previous cells: left and diag.
-            cost = std::min(cost, buffers[p+j-1])+d;
-            buffers[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; }
+            cost = std::min(cost, buffers[p + j - 1]) + d;
+            buffers[c + j] = cost;
+            if (cost <= ub) { curr_pp = j + 1; }
           }
           ++j;
         } else { // Previous pruning point is out of bound: exit if we extended next start up to here.
-          if (j==next_start) {
+          if (j == next_start) {
             // But only if we are above the original UB
             // Else set the next starting point to the last valid column
-            if (cost>cutoff) { return PINF; }
-            else { next_start = nbcols-1; }
+            if (cost > cutoff) { return PINF; }
+            else { next_start = nbcols - 1; }
           }
         }
         // --- --- --- Stage 4: After the previous pruning point: only prev.
         // Go on while we advance the curr_pp; if it did not advance, the rest of the line is guaranteed to be > ub.
-        for (; j==curr_pp && j<nbcols; ++j) {
+        for (; j == curr_pp && j < nbcols; ++j) {
           const auto d = dist(i, j);
-          cost = cost+d;
-          buffers[c+j] = cost;
-          if (cost<=ub) { ++curr_pp; }
+          cost = cost + d;
+          buffers[c + j] = cost;
+          if (cost <= ub) { ++curr_pp; }
         }
         // --- --- ---
         prev_pp = curr_pp;
@@ -183,7 +183,7 @@ namespace libtempo::distance {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Finalisation
       // Check for last alignment (i==nblines implied, Stage 4 implies j<=nbcols). Cost must be <= original bound.
-      if (j==nbcols && cost<=cutoff) { return cost; } else { return PINF; }
+      if (j == nbcols && cost <= cutoff) { return cost; } else { return PINF; }
     }
 
   } // End of namespace internal
@@ -206,12 +206,12 @@ namespace libtempo::distance {
    * @return DTW between the two series
    */
   template<Float F>
-  [[nodiscard]] F _wdtw(
+  [[nodiscard]] F wdtw(
     const size_t nblines,
     const size_t nbcols,
     CFun<F> auto dist,
     F ub,
-    std::vector<F>& buffer_v
+    std::vector<F> &buffer_v
   ) {
     constexpr F INF = utils::PINF<F>;
     if (nblines == 0 && nbcols == 0) { return 0; }
@@ -241,67 +241,66 @@ namespace libtempo::distance {
   template<Float F>
   [[nodiscard]] inline F wdtw(size_t nblines, size_t nbcols, CFun<F> auto dist, F ub) {
     std::vector<F> v;
-    return _wdtw(nblines, nbcols, dist, ub, v);
+    return wdtw(nblines, nbcols, dist, ub, v);
   }
-
 
   /// CFunWDTWBuilder: Function creating a CFunW based on 2 series (line, column) and an array of weights.
   template<typename T, typename D, typename F>
   concept CFunWDTWBuilder = Float<F>
-  && requires(T builder, const D& lines, const D& cols, const std::vector<F> weights){
-    builder(lines, cols, weights);
-  };
+    && requires(T builder, const D &lines, const D &cols, const std::vector<F> weights){
+      builder(lines, cols, weights);
+    };
 
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
-  wdtw(const T& lines, const T& cols, const std::vector<F>& weights, CFunWDTWBuilder<T, F> auto mkdist, F ub = utils::PINF<F>) {
+  wdtw(const T &lines, const T &cols, const std::vector<F> &weights, CFunWDTWBuilder<T, F> auto mkdist, F ub = utils::PINF<F>) {
     const auto ls = lines.length();
     const auto cs = cols.length();
     const CFun<F> auto dist = mkdist(lines, cols, weights);
     std::vector<F> v;
-    return _wdtw<F>(ls, cs, dist, ub, v);
+    return wdtw<F>(ls, cs, dist, ub, v);
   }
 
   namespace univariate {
 
-    /// Default ADTW using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F wdtw(const T& lines, const T& cols, F omega, F ub = utils::PINF<F>) {
-      return wdtw(lines, cols, omega, ad2<F, T>, ub);
-    }
-
     /// Default TWE warping step cost function, using univariate ad2
     template<Float F, Subscriptable D>
-    [[nodiscard]] inline auto wdtw_ad2(const D& li, const D& co, const std::vector<F>& weights) {
-    return [&](size_t i, size_t j) {
-      const auto d = li[i]-co[j];
-      return (d*d)*weights[utils::absdiff(i, j)];
-    };
-  }
+    [[nodiscard]] inline auto wdtw_ad2(const D &li, const D &co, const std::vector<F> &weights) {
+      return [&](size_t i, size_t j) {
+        const auto d = li[i] - co[j];
+        return (d * d) * weights[utils::absdiff(i, j)];
+      };
+    }
 
-  /// Specific overload for univariate vector
-  template<Float F>
-  [[nodiscard]] inline F wdtw(
-    const std::vector<F>& lines, const std::vector<F>& cols, const std::vector<F>& weights,
-    CFunWDTWBuilder<std::vector<F>, F> auto mkdist, F ub = utils::PINF<F>) {
+    /// Specific overload for univariate vector
+    template<Float F>
+    [[nodiscard]] inline F wdtw(
+      const std::vector<F> &lines, const std::vector<F> &cols, const std::vector<F> &weights,
+      CFunWDTWBuilder<std::vector<F>, F> auto mkdist, F ub = utils::PINF<F>) {
       const auto ls = lines.size();
       const auto cs = cols.size();
       const CFun<F> auto dist = mkdist(lines, cols, weights);
       return libtempo::distance::wdtw<F>(ls, cs, dist, ub);
-  }
+    }
 
     /// Specific overload for univariate vector
     template<Float F>
     [[nodiscard]] inline F
-    wdtw(const std::vector<F>& lines, const std::vector<F>& cols, const std::vector<F>& weights, F ub = utils::PINF<F>) {
+    wdtw(const std::vector<F> &lines, const std::vector<F> &cols, const std::vector<F> &weights, F ub = utils::PINF<F>) {
       return wdtw<F>(lines, cols, weights, wdtw_ad2<F, std::vector<F>>, ub);
     }
 
   }
 
+  namespace multivariate {
 
+    template<Float F, Subscriptable D, Subscriptable W>
+    [[nodiscard]] inline auto wdtw_ad2(const D &lines, const D &cols, size_t ndim, const W &weights) {
+      auto dist = ad2N<F>(lines, cols, ndim);
+      return [&, dist, ndim](size_t i, size_t j) -> F { return dist(i, j) * weights[utils::absdiff(i, j)]; };
+    }
 
-
+  }
 
 } // End of namespace libtempo::distance

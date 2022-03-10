@@ -28,7 +28,7 @@ target_sources(libtempo-distance-test INTERFACE
     test/multivariate_dep/m_direct.cpp
     test/multivariate_dep/m_dtw.cpp
     test/multivariate_dep/m_erp.cpp
-    #test/multivariate_dep/m_lcss.cpp
+    test/multivariate_dep/m_lcss.cpp
     #test/multivariate_dep/m_msm.cpp
     #test/multivariate_dep/m_twe.cpp
     #test/multivariate_dep/m_wdtw.cpp

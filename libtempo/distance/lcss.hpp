@@ -78,7 +78,7 @@ namespace libtempo::distance {
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // WITH EA
         ub = std::max<F>(0, ub);
-        const size_t to_reach = std::ceil((1-ub)*nbcols);
+        const size_t to_reach = std::ceil((1-ub)*m); // min value here
         size_t current_max = 0;
         for (size_t i{0}; i<nblines; ++i) {
           // --- --- --- Stop if not enough remaining lines to reach the target (by taking the diagonal)
@@ -107,25 +107,27 @@ namespace libtempo::distance {
     }
   }
 
-  /// Helper for TSLike, with a similarity function based on epsilon (dist(a,b)<e)
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  lcss(const T& lines, const T& cols, const size_t w, const F e,
-    CFunBuilder<T> auto mkdist,
-    F ub = utils::PINF<F>) {
-    const auto ls = lines.length();
-    const auto cs = cols.length();
-    const CFun<F> auto dist = mkdist(lines, cols);
-    CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
-    return lcss<F>(ls, cs, w, w, sim, ub);
-  }
+
 
   namespace univariate {
+
+    /// Helper for TSLike, with a similarity function based on epsilon (dist(a,b)<e)
+    template<Float F, TSLike T>
+    [[nodiscard]] inline F
+    lcss(const T& lines, const T& cols, const size_t w, const F e,
+      CFunSim auto mkdist,
+      F ub = utils::PINF<F>) {
+      const auto ls = lines.length();
+      const auto cs = cols.length();
+      const CFun<F> auto dist = mkdist(lines, cols);
+      CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
+      return lcss<F>(ls, cs, w, sim, ub);
+    }
 
     /// Default LCSS using |a-b|<e
     template<Float F, TSLike T>
     [[nodiscard]] inline F lcss(const T& lines, const T& cols, const size_t w, const F e, F ub = utils::PINF<F>) {
-      return libtempo::distance::lcss(lines, cols, w, e, ad1<F, T>, ub);
+      return lcss(lines, cols, w, e, ad1<F, T>, ub);
     }
 
     /// Specific overload for univariate vector with dist(a,b)<e
@@ -150,6 +152,14 @@ namespace libtempo::distance {
   }
 
 
+  namespace multivariate {
+
+      template<Float F, Subscriptable D>
+      [[nodiscard]] inline auto simN(const D& lines, const D& cols, size_t ndim, F e){
+        return [&, ndim, e](size_t i, size_t j) { return ad2N<F>(lines, cols, ndim)(i, j) < e; };
+      }
+
+    }
 
 
 

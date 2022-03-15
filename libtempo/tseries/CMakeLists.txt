@@ -6,6 +6,7 @@ find_package(Eigen3 3.4 REQUIRED NO_MODULE PATHS ${CMAKE_CURRENT_LIST_FILE}/thir
 
 add_library(libtempo-tseries INTERFACE
         tseries.hpp
+        dataset.hpp
         )
 
 target_include_directories(libtempo-tseries INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../..)

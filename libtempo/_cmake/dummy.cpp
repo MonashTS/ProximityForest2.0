@@ -1,5 +1,6 @@
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
+#include <libtempo/classifier/proximity_forest/pftree.hpp>
 
 
 #include <vector>
@@ -57,6 +58,11 @@ int main(int argc, char** argv){
     cout << tsdata.problem_name.value_or("no problem name specified") << endl;
     cout << "Has missing value: " << tsdata.missing.value() << endl;
   }
+
+
+  // --- --- --- PF
+  libtempo::classifier::pf::PFNode<double, string> NODE;
+
 
   return 0;
 }

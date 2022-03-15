@@ -12,6 +12,7 @@ project(libtempo
 # Load our components
 # Note: use EXCLUDE_FROM_ALL as we do not want to generate targets for subcomponents
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+add_subdirectory(classifier EXCLUDE_FROM_ALL)
 add_subdirectory(distance EXCLUDE_FROM_ALL)
 add_subdirectory(tseries EXCLUDE_FROM_ALL)
 add_subdirectory(reader EXCLUDE_FROM_ALL)
@@ -22,6 +23,7 @@ add_subdirectory(utils EXCLUDE_FROM_ALL)
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 add_library(libtempo)
 target_sources(libtempo INTERFACE concepts.hpp)
+target_link_libraries(libtempo INTERFACE libtempo::classifier)
 target_link_libraries(libtempo INTERFACE libtempo::distance)
 target_link_libraries(libtempo INTERFACE libtempo::tseries)
 target_link_libraries(libtempo PUBLIC libtempo::reader)

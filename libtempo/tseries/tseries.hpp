@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libtempo/utils/capsule.hpp>
+#include <libtempo/concepts.hpp>
 
 #include <Eigen/Dense>
 
@@ -17,13 +18,10 @@ namespace libtempo {
     namespace lu = libtempo::utils;
   }
 
-  template<typename FloatType, typename LabelType>
+  template<Float F, Label L>
   class TSeries {
-    static_assert(std::is_floating_point_v<FloatType>);
-    static_assert(std::is_copy_constructible_v<LabelType>);
-
-    using EArrayCM = Eigen::Array<FloatType, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
-    using EArrayRM = Eigen::Array<FloatType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    using EArrayCM = Eigen::Array<F, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
+    using EArrayRM = Eigen::Array<F, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
     // --- --- --- Shape
 
@@ -40,7 +38,7 @@ namespace libtempo {
     bool _missing{false};
 
     /// Optional label
-    std::optional<LabelType> _olabel{};
+    std::optional<L> _olabel{};
 
     // --- --- --- We use the Eigen library to represent the data.
 
@@ -67,12 +65,12 @@ namespace libtempo {
 
     // Row major
     lu::Capsule _c_RM{};
-    FloatType const* _p_RM{nullptr};
+    F const* _p_RM{nullptr};
     Eigen::Map<const EArrayRM> _m_RM{nullptr, 0, 0};
 
     // Column major
     lu::Capsule _c_CM{};
-    FloatType const* _p_CM{nullptr};
+    F const* _p_CM{nullptr};
     Eigen::Map<const EArrayCM> _m_CM{nullptr, 0, 0};
 
   private:
@@ -80,17 +78,17 @@ namespace libtempo {
     TSeries(
       // Row major data
       lu::Capsule&& crm,
-      FloatType const* prm,
+      F const* prm,
       Eigen::Map<const EArrayRM>&& mrm,
       // Column major data
       lu::Capsule&& ccm,
-      FloatType const* pcm,
+      F const* pcm,
       Eigen::Map<const EArrayCM>&& mcm,
       // Dimensions
       size_t nbvar,
       size_t length,
       // Other
-      std::optional<LabelType> olabel,
+      std::optional<L> olabel,
       bool has_missing
     )
       :
@@ -108,7 +106,6 @@ namespace libtempo {
       _p_CM(std::move(pcm)),
       _m_CM(std::move(mcm)) { }
 
-
   public:
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -118,10 +115,16 @@ namespace libtempo {
     /** Default constructor: create en univariate empty time series */
     TSeries() = default;
 
-    static TSeries mk_rowmajor(
-      std::vector<FloatType>&& v,
+    /** Default move constructor */
+    TSeries(TSeries&&)  noexcept = default;
+
+    /** Disable copy (we have to move instead: do not duplicate data) */
+    TSeries(const TSeries&) = delete;
+
+    [[nodiscard]] static TSeries mk_rowmajor(
+      std::vector<F>&& v,
       size_t nbvar,
-      std::optional<LabelType> olabel,
+      std::optional<L> olabel,
       std::optional<bool> omissing) {
 
       using namespace std;
@@ -136,14 +139,14 @@ namespace libtempo {
       // --- Build data
 
       // Row major- - take ownership of the incoming vector
-      auto crm = lu::make_capsule<vector<FloatType>>(move(v));
-      FloatType const* prm = lu::get_capsule_ptr<vector<FloatType>>(crm)->data();
+      auto crm = lu::make_capsule<vector<F>>(move(v));
+      F const* prm = lu::get_capsule_ptr<vector<F>>(crm)->data();
       Eigen::Map<const EArrayRM> mrm(prm, nbvar, length);
 
       // Column major - allocate our own
       EArrayCM acm = mrm;   // Create column major array
       auto ccm = lu::make_capsule<EArrayCM>(move(acm));
-      FloatType const* pcm = lu::get_capsule_ptr<EArrayCM>(ccm)->data();
+      F const* pcm = lu::get_capsule_ptr<EArrayCM>(ccm)->data();
       Eigen::Map<const EArrayCM> mcm(pcm, nbvar, length);
 
       // Check missing values
@@ -164,6 +167,14 @@ namespace libtempo {
       );
     }
 
+    /** Copy data from other, except for the actual data. Allow to easily do transforms. No checking done. */
+    [[nodiscard]] static TSeries mk_rowmajor(
+      const TSeries& other,
+      std::vector<F>&& v
+    ) {
+      return mk_rowmajor(std::move(v), other.nvar(), other.label(), {other.missing()});
+    }
+
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Basic access
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -181,20 +192,20 @@ namespace libtempo {
     [[nodiscard]] inline bool missing() const { return _missing; }
 
     /// Get the label (perform a copy)
-    [[nodiscard]] inline std::optional<LabelType> label() const { return _olabel; }
+    [[nodiscard]] inline std::optional<L> label() const { return _olabel; }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Data access
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// RM - Row Major access to the raw data
-    [[nodiscard]] inline FloatType const* rm_data() const { return _p_RM; }
+    [[nodiscard]] inline F const* rm_data() const { return _p_RM; }
 
     /// RM - Row Major access to the Eigen Map
     [[nodiscard]] inline Eigen::Map<const EArrayRM> rm_emap() const { return _m_RM; }
 
     /// CM - Column Major access to the raw data
-    [[nodiscard]] inline FloatType const* cm_data() const { return _p_CM; }
+    [[nodiscard]] inline F const* cm_data() const { return _p_CM; }
 
     /// CM - Column Major access to the Eigen Map
     [[nodiscard]] inline Eigen::Map<const EArrayCM> cm_emap() const { return _m_CM; }

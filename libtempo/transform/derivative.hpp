@@ -42,10 +42,25 @@ namespace libtempo::transform {
         const size_t l = ts.length();
         std::vector<F> d(l);
         derivative<F>(ts.rm_data(), l, d.data());
-        series.template emplace_back(std::move(TSeries<F,L>::mk_rowmajor(ts, std::move(d))));
+        series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
       }
 
-      result.template emplace_back(input, "derivative", std::move(series));
+      result.emplace_back(input, "derivative", std::move(series), std::optional(tempo::json::JSONValue(1)));
+    }
+
+    // Following derivative
+    for(size_t deg=2; deg<=degree; ++deg){
+
+      std::vector<TSeries<F, L>> series;
+      for (size_t i = 0; i<input.size(); ++i) {
+        const auto& ts = result.back()[i];
+        const size_t l = ts.length();
+        std::vector<F> d(l);
+        derivative<F>(ts.rm_data(), l, d.data());
+        series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
+      }
+
+      result.emplace_back(input, "derivative", std::move(series), std::optional(tempo::json::JSONValue(deg)));
     }
 
     return result;

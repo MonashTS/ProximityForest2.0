@@ -2,6 +2,7 @@
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/tseries/dataset.hpp>
+#include <libtempo/transform/derivative.hpp>
 
 #include <vector>
 #include <cmath>
@@ -12,6 +13,18 @@
 namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
+
+void derivative(const double* series, size_t length, double* out) {
+  if (length>2) {
+    for (size_t i{1}; i<length-1; ++i) {
+      out[i] = ((series[i]-series[i-1])+((series[i+1]-series[i-1])/2.0))/2.0;
+    }
+    out[0] = out[1];
+    out[length-1] = out[length-2];
+  } else {
+    std::copy(series, series+length, out);
+  }
+}
 
 int main(int argc, char** argv) {
 
@@ -60,12 +73,49 @@ int main(int argc, char** argv) {
     cout << dataset.name() << endl;
     cout << "Has missing value: " << dataset.has_missing_value() << endl;
 
+    auto derives = transform::derive(dataset, 3);
+    auto d1 = std::move(derives[0]);
+    auto d2 = std::move(derives[1]);
+    auto d3 = std::move(derives[2]);
+    cout << d1.name() << endl;
+    cout << d2.name() << endl;
+    cout << d3.name() << endl;
+
+    for (size_t i = 0; i<dataset.size(); ++i) {
+
+      const auto& ts = dataset.data()[i];
+      const auto& tsd1 = d1.data()[i].rm_data();
+      const auto& tsd2 = d2.data()[i].rm_data();
+      const auto& tsd3 = d3.data()[i].rm_data();
+
+      std::vector<double> v1(ts.size());
+      std::vector<double> v2(ts.size());
+      std::vector<double> v3(ts.size());
+
+      derivative(ts.rm_data(), ts.size(), v1.data());
+      derivative(v1.data(), ts.size(), v2.data());
+      derivative(v2.data(), ts.size(), v3.data());
+
+      for (size_t j = 0; j<ts.size(); ++j) {
+        if(tsd1[j] != v1[j]){
+          std::cerr << "ERROR D1 (i,j) = (" << i << ", " << j << ")" << std::endl;
+          std::cerr << "TS size = " << ts.size() << std::endl;
+          exit(5);
+        }
+        if(tsd2[j] != v2[j]){
+          std::cerr << "ERROR D2 (i,j) = (" << i << ", " << j << ")" << std::endl;
+          std::cerr << "TS size = " << ts.size() << std::endl;
+          exit(5);
+        }
+        if(tsd3[j] != v3[j]){
+          std::cerr << "ERROR D3 (i,j) = (" << i << ", " << j << ")" << std::endl;
+          std::cerr << "TS size = " << ts.size() << std::endl;
+          exit(5);
+        }
+      }
+    }
+
   }
-
-
-  // --- --- --- PF
-  //libtempo::classifier::pf::PFNode<double, string> NODE;
-
 
   return 0;
 }

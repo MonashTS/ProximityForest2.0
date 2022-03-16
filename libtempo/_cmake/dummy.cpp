@@ -3,7 +3,6 @@
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/tseries/dataset.hpp>
 
-
 #include <vector>
 #include <cmath>
 #include <iostream>
@@ -14,7 +13,7 @@ namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
 
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
 
   vector<double> a{0.1, 0.2, 0.3, 0.1, 0.2, 0.3};
   vector<double> b{1, NAN, 3, 4, 5, 6};
@@ -46,18 +45,21 @@ int main(int argc, char** argv){
   }
 
   // --- --- --- Reading of a time series
-  if(argc>1) {
+  if (argc>1) {
     std::string strpath(argv[1]);
     fs::path adiac_train(strpath);
     std::ifstream istream(adiac_train);
+
     auto res = libtempo::reader::TSReader::read(istream);
     if (res.index()==0) {
       cerr << "reading error: " << get<0>(res) << endl;
       return 1;
     }
-    auto tsdata = std::move(get<1>(res));
-    cout << tsdata.problem_name.value_or("no problem name specified") << endl;
-    cout << "Has missing value: " << tsdata.missing.value() << endl;
+
+    auto dataset = std::move(get<1>(res));
+    cout << dataset.name() << endl;
+    cout << "Has missing value: " << dataset.has_missing_value() << endl;
+
   }
 
 

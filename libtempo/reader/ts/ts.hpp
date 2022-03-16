@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libtempo/tseries/tseries.hpp>
+#include <libtempo/tseries/dataset.hpp>
 #include <libtempo/utils/uncopyable.hpp>
 
 #include <variant>
@@ -80,7 +81,10 @@ namespace libtempo::reader {
      *  * either an error-string if an error occured
      *  * or the data on success
      */
-    static std::variant<std::string, TSData> read(std::istream& input);
+    static std::variant<
+      std::string,
+      Dataset<std::string, TSeries<double, std::string>>
+    > read(std::istream& input);
 
   private:
     // --- --- --- Private constructor

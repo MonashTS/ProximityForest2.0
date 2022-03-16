@@ -371,9 +371,36 @@ namespace libtempo::reader {
   } // End of read_data
 
 
-  std::variant<std::string, TSData> TSReader::read(std::istream& input) {
+  /** Static function */
+  std::variant<
+    std::string,
+    Dataset<std::string, TSeries<double, std::string>>
+  > TSReader::read(std::istream& input) {
     TSReader reader(input);
-    return reader.read();
+    auto result = reader.read();
+    if (result.index()==1) {
+      TSData tsdata = std::move(std::get<1>(result));
+
+      // 1) Build a core dataset
+      // 1.a) Build the labels vector
+      std::vector<std::optional<std::string>> labels;
+      for (const auto& ts: tsdata.series) { labels.emplace_back(ts.label()); }
+      // 1.b) Build the core dataset behind a shared pointer
+      auto cd = std::make_shared<CoreDataset<std::string>>(
+        tsdata.problem_name.value(),
+        tsdata.shortest_length,
+        tsdata.longest_length,
+        tsdata.nb_dimensions,
+        std::move(labels),
+        std::move(tsdata.series_with_missing_values)
+      );
+
+      // 2) Build a Dataset
+      return {Dataset<std::string, TSeries<double, std::string>>(std::move(cd), "default", std::move(tsdata.series))};
+
+    } else {
+      return {std::get<0>(result)};
+    }
   }
 
 } // End of namespace libtempo::reader

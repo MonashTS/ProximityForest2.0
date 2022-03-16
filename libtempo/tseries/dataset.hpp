@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libtempo/concepts.hpp>
+#include <libtempo/utils/jsonvalue.hpp>
 
 #include <cassert>
 #include <map>
@@ -30,8 +31,8 @@ namespace libtempo {
   [[nodiscard]] inline ByClassMap<L> pick_one_by_class(const ByClassMap<L>& bcm, PRNG& prng) {
     ByClassMap<L> result;
     for (const auto&[c, v]: bcm) {
-      if (v.size()>0) {
-        std::uniform_int_distribution<size_t> dist(0, v.size()-1);
+      if (v._size()>0) {
+        std::uniform_int_distribution<size_t> dist(0, v._size()-1);
         result[c].push_back(v[dist(prng)]);
       }
     }
@@ -42,7 +43,7 @@ namespace libtempo {
   template<typename L>
   [[nodiscard]] inline size_t size(const ByClassMap<L>& bcm) {
     size_t s = 0;
-    for (const auto&[_, v]: bcm) { s += v.size(); }
+    for (const auto&[_, v]: bcm) { s += v._size(); }
     return s;
   }
 
@@ -62,14 +63,12 @@ namespace libtempo {
       double total_size = size(bcm);
       double sum{0};
       for (const auto&[cl, val]: bcm) {
-        double p = val.size()/total_size;
+        double p = val._size()/total_size;
         sum += p*p;
       }
       return 1-sum;
     }
   }
-
-
 
   /** Index Set */
   class IndexSet {
@@ -156,25 +155,28 @@ namespace libtempo {
   class CoreDataset {
 
     /// Identifier for the core dataset - usually the actual dataset name.
-    std::string dataset_name;
+    std::string _dataset_name;
 
     /// Size of the dataset in number of instances. Instances are indexed in [0, size[
-    size_t size;
+    size_t _size;
 
     /// Smallest series length
-    size_t length_min;
+    size_t _length_min;
 
     /// Longest series length
-    size_t length_max;
+    size_t _length_max;
 
     /// Original dimensions of the dataset
-    size_t nb_dimensions;
+    size_t _nb_dimensions;
 
-    /// Get the label from the index
-    std::vector<std::optional<L>> labels;
+    /// Series with missing data
+    std::vector<size_t> _instances_with_missing;
+
+    /// Mapping between index and label
+    std::vector<std::optional<L>> _labels;
 
     /// Set of labels for the dataset
-    std::set<L> label_set;
+    std::set<L> _label_set;
 
   public:
 
@@ -184,23 +186,27 @@ namespace libtempo {
      * @param lmax          Maximum length of the series
      * @param dimensions    Number of dimensions
      * @param labels        Label per instance, instances being indexed in [0, labels.size()[
+     * @param instances_with_missing Indices of instances with missing data. Empty = no missing data.
      */
     CoreDataset(
       std::string dataset_name,
       size_t lmin,
       size_t lmax,
       size_t dimensions,
-      std::vector<std::optional<L>>&& labels)
-      :dataset_name(std::move(dataset_name)),
-       size(labels.size()),
-       length_min(lmin),
-       length_max(lmax),
-       nb_dimensions(dimensions),
-       labels(std::move(labels)) {
+      std::vector<std::optional<L>>&& labels,
+      std::vector<size_t>&& instances_with_missing
+    )
+      :_dataset_name(std::move(dataset_name)),
+       _size(labels.size()),
+       _length_min(lmin),
+       _length_max(lmax),
+       _nb_dimensions(dimensions),
+       _instances_with_missing(std::move(instances_with_missing)),
+       _labels(std::move(labels)) {
       /// Construct set of labels from the input vector
       std::set<L> lset;
       for (const auto& ol: labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
-      label_set = lset;
+      _label_set = lset;
     }
 
     /// Get indexes by label, return a tuple (BCM, vec),
@@ -212,7 +218,7 @@ namespace libtempo {
       auto end = is.end();
       while (it!=end) {
         const auto idx = *it;
-        const auto& olabel = labels[idx];
+        const auto& olabel = _labels[idx];
         if (olabel.has_value()) {
           m[olabel.value()].push_back(idx); // Note: default construction of the vector of first access
         } else {
@@ -222,55 +228,92 @@ namespace libtempo {
       }
       return {m, v};
     }
+
+    [[nodiscard]] inline const std::string& dataset_name() const { return _dataset_name; }
+
+    [[nodiscard]] inline size_t size() const { return _size; }
+
+    [[nodiscard]] inline size_t length_min() const { return _length_min; }
+
+    [[nodiscard]] inline size_t length_max() const { return _length_max; }
+
+    [[nodiscard]] inline size_t nb_dimensions() const { return _nb_dimensions; }
+
+    [[nodiscard]] inline const std::vector<size_t>& instances_with_missing() const {
+      return _instances_with_missing;
+    }
+
+    [[nodiscard]] inline const std::vector<std::optional<L>>& labels() const { return _labels; }
+
+    [[nodiscard]] inline const std::set<L>& label_set() const { return _label_set; }
+
   };
-
-
 
   /** A dataset is a collection of data D, referring to a core dataset */
   template<Label L, typename D>
   class Dataset {
 
     /// Reference to the core dataset. A datum indexed here must have a corresponding index in the core dataset.
-    const CoreDataset<L>& core_dataset;
+    std::shared_ptr<CoreDataset<L>> _core_dataset;
 
-    /// Identifier for this dataset. Can be used to record transformation, such as "d1" for derivative.
-    std::string identifier;
+    /// Identifier for this dataset. Can be used to record transformation, such as "derivative".
+    std::string _identifier;
 
     /// Actual collection
-    std::vector<D> data_;
+    std::vector<D> _data;
+
+    /// Optional parameter of the transform, as a JSONValue
+    std::optional<tempo::json::JSONValue> _parameters;
 
   public:
 
     /// Constructor: all data must be pre-constructed
-    Dataset(const CoreDataset<L>& core, std::string id, std::vector<D>&& data)
-      :core_dataset(core), identifier(std::move(id)), data_(std::move(data)) {
-      assert(data_.size()==core_dataset.size);
+    Dataset(
+      std::shared_ptr<CoreDataset<L>> core,
+      std::string id,
+      std::vector<D>&& data,
+      std::optional<tempo::json::JSONValue> parameters = {}
+    )
+      :_core_dataset(core), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
+      assert(_data.size()==_core_dataset->size());
     }
 
+    /// Create json info
+
+
     /// Access to the vector of data
-    [[nodiscard]] const std::vector<D>& data() const { return data_; }
+    [[nodiscard]] const std::vector<D>& data() const { return _data; }
 
     /// Access to the core dataset
-    [[nodiscard]] const CoreDataset<L>& core() const { return core_dataset; }
+    [[nodiscard]] const CoreDataset<L>& core() const { return *_core_dataset; }
 
     /// Access to the identifier
-    [[nodiscard]] const std::string& id() const { return identifier; }
+    [[nodiscard]] const std::string& id() const { return _identifier; }
 
-    /// Get the full name, made of the identifier and the name of the core dataset
-    /// "core:id"
-    [[nodiscard]] std::string name() const { return core_dataset.dataset_name+":"+identifier; }
+    /// Get the full name, made of the name of the core dataset, the identifier, and the parameters
+    /// "core:id<JSONVALUE>"
+    [[nodiscard]] std::string name() const {
+      std::string result = _core_dataset->dataset_name()+":"+_identifier;
+      if(_parameters.has_value()){
+        result+=to_string_inline(_parameters.value());
+      }
+      return result;
+    }
 
     /// Shorthand size
-    [[nodiscard]] inline size_t size() const { return data_.size(); }
+    [[nodiscard]] inline size_t size() const { return _data.size(); }
 
     /// Shorthand []
-    [[nodiscard]] inline const D& operator[](size_t idx) const { return data_[idx]; }
+    [[nodiscard]] inline const D& operator[](size_t idx) const { return _data[idx]; }
 
     /// Shorthand begin
-    [[nodiscard]] inline auto begin() const { return data_.begin(); }
+    [[nodiscard]] inline auto begin() const { return _data.begin(); }
 
     /// Shorthand end
-    [[nodiscard]] inline auto end() const { return data_.end(); }
+    [[nodiscard]] inline auto end() const { return _data.end(); }
+
+    /// Shorthand missing value
+    [[nodiscard]] inline bool has_missing_value() const { return !_core_dataset->instances_with_missing().empty(); }
 
 
   };

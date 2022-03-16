@@ -24,9 +24,9 @@ namespace reference {
   /// Naive Univariate Squared euclidean distance. Reference code.
   template<typename V>
   double directa_uni(const V& s1, const V& s2) {
-    if (s1.size()!=s2.size()) { return libtempo::utils::PINF<double>; }
+    if (s1._size()!=s2._size()) { return libtempo::utils::PINF<double>; }
     double cost = 0;
-    for (size_t i = 0; i<s1.size(); ++i) {
+    for (size_t i = 0; i<s1._size(); ++i) {
       const auto d = s1[i]-s2[i];
       cost += d*d;
     }

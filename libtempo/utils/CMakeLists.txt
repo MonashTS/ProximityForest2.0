@@ -4,6 +4,7 @@
 
 add_library(libtempo-utils INTERFACE
         capsule.hpp
+        jsonvalue.hpp
         uncopyable.hpp
         utils.hpp
         )

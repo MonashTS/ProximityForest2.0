@@ -31,7 +31,7 @@ namespace libtempo::classifier::pf {
     bool is_pure_node;
 
     /// Pure xor Inner node
-    std::variant<PureNode<L>, std::variant<InnerNode<F,L>> node;
+    std::variant<PureNode<L>, InnerNode<F,L>> node;
 
   };
 

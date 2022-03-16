@@ -1,6 +1,7 @@
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
+#include <libtempo/tseries/dataset.hpp>
 
 
 #include <vector>
@@ -61,7 +62,7 @@ int main(int argc, char** argv){
 
 
   // --- --- --- PF
-  libtempo::classifier::pf::PFNode<double, string> NODE;
+  //libtempo::classifier::pf::PFNode<double, string> NODE;
 
 
   return 0;

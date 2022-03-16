@@ -69,6 +69,8 @@ namespace libtempo {
     }
   }
 
+
+
   /** Index Set */
   class IndexSet {
 
@@ -153,7 +155,7 @@ namespace libtempo {
   template<Label L>
   class CoreDataset {
 
-    /// Identifier for the dataset
+    /// Identifier for the core dataset - usually the actual dataset name.
     std::string dataset_name;
 
     /// Size of the dataset in number of instances. Instances are indexed in [0, size[
@@ -183,8 +185,8 @@ namespace libtempo {
      * @param dimensions    Number of dimensions
      * @param labels        Label per instance, instances being indexed in [0, labels.size()[
      */
-    CoreDataset(std::string dataset_name,
-      size_t size,
+    CoreDataset(
+      std::string dataset_name,
       size_t lmin,
       size_t lmax,
       size_t dimensions,
@@ -203,7 +205,7 @@ namespace libtempo {
 
     /// Get indexes by label, return a tuple (BCM, vec),
     /// where 'BCM' gives a list of indices per label ("class"), and 'vec' gives the indices associated to no label.
-    [[nodiscard]] inline std::tuple<ByClassMap<L>, std::vector<size_t>> get_BCM(const IndexSet& is) {
+    [[nodiscard]] inline std::tuple<ByClassMap<L>, std::vector<size_t>> get_BCM(const IndexSet& is) const {
       ByClassMap<L> m;        // For index with label
       std::vector<size_t> v;  // For index without label
       auto it = is.begin();
@@ -220,6 +222,55 @@ namespace libtempo {
       }
       return {m, v};
     }
+  };
+
+
+
+  /** A dataset is a collection of data D, referring to a core dataset */
+  template<Label L, typename D>
+  class Dataset {
+
+    /// Reference to the core dataset. A datum indexed here must have a corresponding index in the core dataset.
+    const CoreDataset<L>& core_dataset;
+
+    /// Identifier for this dataset. Can be used to record transformation, such as "d1" for derivative.
+    std::string identifier;
+
+    /// Actual collection
+    std::vector<D> data_;
+
+  public:
+
+    /// Constructor: all data must be pre-constructed
+    Dataset(const CoreDataset<L>& core, std::string id, std::vector<D>&& data)
+      :core_dataset(core), identifier(std::move(id)), data_(std::move(data)) {
+      assert(data_.size()==core_dataset.size);
+    }
+
+    /// Access to the vector of data
+    [[nodiscard]] const std::vector<D>& data() const { return data_; }
+
+    /// Access to the core dataset
+    [[nodiscard]] const CoreDataset<L>& core() const { return core_dataset; }
+
+    /// Access to the identifier
+    [[nodiscard]] const std::string& id() const { return identifier; }
+
+    /// Get the full name, made of the identifier and the name of the core dataset
+    /// "core:id"
+    [[nodiscard]] std::string name() const { return core_dataset.dataset_name+":"+identifier; }
+
+    /// Shorthand size
+    [[nodiscard]] inline size_t size() const { return data_.size(); }
+
+    /// Shorthand []
+    [[nodiscard]] inline const D& operator[](size_t idx) const { return data_[idx]; }
+
+    /// Shorthand begin
+    [[nodiscard]] inline auto begin() const { return data_.begin(); }
+
+    /// Shorthand end
+    [[nodiscard]] inline auto end() const { return data_.end(); }
 
 
   };

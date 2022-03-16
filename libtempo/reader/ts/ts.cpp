@@ -285,7 +285,7 @@ namespace libtempo::reader {
           // Ok if end of line/end of file
           if (c=='\n' || c==EOF) {
             // Construct the series
-            dataset.push_back(TSData::TS::mk_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
+            dataset.emplace_back(TSData::TS::mk_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
             // Update min/max length
             data.shortest_length = std::min(data.shortest_length, length);
             data.longest_length = std::max(data.longest_length, length);

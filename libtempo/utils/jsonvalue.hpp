@@ -63,6 +63,9 @@ namespace tempo::json {
     JSONValue(long n)
       :index{Index::number}, datum{.number = (double) n} { }
 
+    JSONValue(int n)
+      :index{Index::number}, datum{.number = (double) n} { }
+
     JSONValue(JSONArray&& vec)
       :index{Index::array}, datum{.array = new JSONArray(std::forward<JSONArray>(vec))} { }
 

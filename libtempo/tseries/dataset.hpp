@@ -278,6 +278,17 @@ namespace libtempo {
       assert(_data.size()==_core_dataset->size());
     }
 
+    /// Constructor: using an existing dataset to get the core dataset.
+    Dataset(
+      const Dataset& other,
+      std::string id,
+      std::vector<D>&& data,
+      std::optional<tempo::json::JSONValue> parameters = {}
+    )
+      :_core_dataset(other._core_dataset), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
+      assert(_data.size()==_core_dataset->size());
+    }
+
     /// Create json info
 
 
@@ -317,6 +328,9 @@ namespace libtempo {
 
 
   };
+
+  template<Float F, Label L>
+  using DTS = Dataset<L, TSeries<F, L>>;
 
 
 }

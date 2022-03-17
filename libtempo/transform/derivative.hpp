@@ -14,7 +14,7 @@ namespace libtempo::transform {
    * Warning: series and out should not overlap (i.e. not in place derivation)
    */
   template<Float F, std::random_access_iterator Input, std::output_iterator<F> Output>
-  void derivative(const Input& series, size_t length, Output out) {
+  void derive(const Input& series, size_t length, Output out) {
     if (length>2) {
       for (size_t i{1}; i<length-1; ++i) {
         out[i] = ((series[i]-series[i-1])+((series[i+1]-series[i-1])/2.0))/2.0;
@@ -26,6 +26,15 @@ namespace libtempo::transform {
     }
   }
 
+  /** Derive all the series in the 'input' dataset, up to 'degree'.
+   *  Returns a vector of 'degree" datasets, where the first one correspond to the 1st derivative,
+   *  the 2nd one to the second derivative, etc...
+   *
+   * @tparam F Floating point type
+   * @tparam L Label type
+   * @param input Input dataset - must be univariate
+   * @param degree maximum desired derivative >= 1
+   */
   template<Float F, Label L>
   [[nodiscard]] inline std::vector<DTS<F, L>>
   derive(const DTS<F, L>& input, size_t degree) {
@@ -41,7 +50,7 @@ namespace libtempo::transform {
         const auto& ts = input[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
-        derivative<F>(ts.rm_data(), l, d.data());
+        derive<F>(ts.rm_data(), l, d.data());
         series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
       }
 
@@ -56,7 +65,7 @@ namespace libtempo::transform {
         const auto& ts = result.back()[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
-        derivative<F>(ts.rm_data(), l, d.data());
+        derive<F>(ts.rm_data(), l, d.data());
         series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
       }
 

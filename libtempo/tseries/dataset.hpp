@@ -43,7 +43,7 @@ namespace libtempo {
   template<typename L>
   [[nodiscard]] inline size_t size(const ByClassMap<L>& bcm) {
     size_t s = 0;
-    for (const auto&[_, v]: bcm) { s += v._size(); }
+    for (const auto&[_, v]: bcm) { s += v.size(); }
     return s;
   }
 
@@ -63,7 +63,7 @@ namespace libtempo {
       double total_size = size(bcm);
       double sum{0};
       for (const auto&[cl, val]: bcm) {
-        double p = val._size()/total_size;
+        double p = val.size()/total_size;
         sum += p*p;
       }
       return 1-sum;

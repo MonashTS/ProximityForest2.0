@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
   std::random_device rd;
   PRNG prng(rd());
 
-  auto tree = libtempo::classifier::pf::PFNode<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
+  auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
 
   std::cout << tree->is_pure_node << std::endl;
 

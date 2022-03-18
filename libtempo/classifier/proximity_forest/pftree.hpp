@@ -62,7 +62,7 @@ namespace libtempo::classifier::pf {
   };
 
   template<Label L, State<L> S, typename PRNG>
-  struct PFNode {
+  struct PFTree {
 
     /** Type of a splitter pointer in this code */
     using Splitter_ptr = Splitter_uptr<L, S, PRNG>;
@@ -71,7 +71,7 @@ namespace libtempo::classifier::pf {
     using SplitRatios = std::vector<std::tuple<L, double>>;
 
     /** Mapping between a class (label) to a branch (subnode) */
-    using Branches = std::unordered_map<L, std::unique_ptr<PFNode>>;
+    using Branches = std::unordered_map<L, std::unique_ptr<PFTree>>;
 
     /** Pure node: only contains a label. It is a leaf node. */
     struct Leaf { L label; };
@@ -149,7 +149,7 @@ namespace libtempo::classifier::pf {
     }
 
     /** Recursively build a tree */
-    static std::unique_ptr<PFNode> make_tree(
+    static std::unique_ptr<PFTree> make_tree(
       std::shared_ptr<S> state,
       const IndexSet& is,
       const ByClassMap<L>& bcm,
@@ -163,7 +163,7 @@ namespace libtempo::classifier::pf {
 
       // --- --- --- CASE 1 - leaf case: only one class in bcm
       if (bcm.size()==1) {
-        return unique_ptr<PFNode>(new PFNode{
+        return unique_ptr<PFTree>(new PFTree{
           .is_pure_node=true,
           .node=Leaf{bcm.begin()->first}
         });
@@ -189,7 +189,7 @@ namespace libtempo::classifier::pf {
       // Now, we have our best candidate. Recursively create the sub trees and then create the node itself.
       // Note: iterate using the incoming 'by_class' map and not the computed 'split' as the split may not contains
       // all incoming classes (i.e. never selected by the splitter)
-      unordered_map<L, unique_ptr<PFNode>> sub_trees;
+      unordered_map<L, unique_ptr<PFTree>> sub_trees;
       std::vector<std::tuple<L, double>> split_ratios;
       auto size = (double) is.size();
       for (const auto&[label, _]: bcm) {
@@ -199,7 +199,7 @@ namespace libtempo::classifier::pf {
           sub_trees[label] = make_tree(state, IndexSet(std::move(indexes)), bcm, nbcandidates, sg, prng);
         } else {
           // Label not showing up at all in the split (never selected by the splitter). Create a leaf.
-          sub_trees[label] = unique_ptr<PFNode>(new PFNode{.is_pure_node=true, .node=Leaf{label}});
+          sub_trees[label] = unique_ptr<PFTree>(new PFTree{.is_pure_node=true, .node=Leaf{label}});
           split_ratios.push_back({label, 0});
         }
       }
@@ -208,7 +208,7 @@ namespace libtempo::classifier::pf {
         return get<1>(a)>get<1>(b);
       });
 
-      return unique_ptr<PFNode>(new PFNode{.is_pure_node=false, .node={
+      return unique_ptr<PFTree>(new PFTree{.is_pure_node=false, .node={
         Node{.splitter=std::move(best_splitter),
              .branches=std::move(sub_trees),
              .train_split_ratios=std::move(split_ratios)}

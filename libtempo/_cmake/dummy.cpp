@@ -119,14 +119,19 @@ int main(int argc, char** argv) {
 
   }
 
+  using namespace libtempo::classifier::pf;
+
   struct State {
+
     std::optional<std::string> get_label(size_t i) {
       std::string l = std::to_string(i%2);
       return {l};
     }
+
+    decltype(&weighted_gini_impurity<std::string>) split_evaluator = weighted_gini_impurity;
+
   };
 
-  using namespace libtempo::classifier::pf;
 
   // Make "fake data" for the tree
   std::shared_ptr<State> st = std::make_shared<State>();
@@ -139,51 +144,39 @@ int main(int argc, char** argv) {
 
   SplitterGenerator<std::string, State, PRNG>
     generator{
-
     .generate = [](std::shared_ptr<State> state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
-
       Splitter_uptr<std::string, State, PRNG> res;
-
       const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
       if (idx<=is.size()/4) {
         // Generate a "good" splitter
         res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
-
           .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
             std::cout << "train good" << std::endl;
           },
-
           .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
             return state->get_label(index).value();
           },
-
           .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
             return state->get_label(index).value();
           }
         });
-
       } else {
         // Generate a "bad" classifier
         res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
           .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
             std::cout << "train bad" << std::endl;
           },
-
           .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return std::to_string(std::uniform_int_distribution<>(0,1)(prng));
+            return std::to_string(std::uniform_int_distribution<>(0, 1)(prng));
           },
-
           .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return std::to_string(std::uniform_int_distribution<>(0,1)(prng));
+            return std::to_string(std::uniform_int_distribution<>(0, 1)(prng));
           }
         });
-
       }
 
       return res;
     }
-
-
   };
 
   std::random_device rd;
@@ -193,7 +186,7 @@ int main(int argc, char** argv) {
 
   std::cout << tree->is_pure_node << std::endl;
   auto treecl = tree->get_classifier(prng);
-  for(int i=0; i<20; ++i){
+  for (int i = 0; i<20; ++i) {
     std::cout << "Classify " << i << " as " << treecl.classify(st, i) << std::endl;
   }
 

@@ -11,11 +11,53 @@
 
 namespace libtempo::classifier::pf {
 
-  /// Concept describing the minimum function required on a State
-  template<typename S, typename L>
-  concept State = Label<L> && requires(S state, size_t i, size_t j){
-    { state.get_label(i) }->std::same_as<std::optional<L>>;
+  /** Type of a split.
+   *  A mapping    predicted label (i.e. the branch) ->  (map true label-> series index, series index)
+   *  Keeping the map true label -> series index allows for easier computation of the gini impurity.
+   */
+  template<Label L>
+  using Split = std::unordered_map<L, std::tuple<ByClassMap<L>, std::vector<size_t>>>;
+
+  /** Split evaluator - lower score represent a more precise split.
+   * When comparing splits, the split with the lowest score will be chosen.
+   * If several splits have the same lowest score, then the first encountered one is picked.
+   * */
+  template<typename Fun, typename L>
+  concept SplitEvaluator = Label<L> && requires(Fun&& fun, Split<L>&& split){
+    { // fun(split)->double
+    std::invoke(std::forward<Fun>(fun), std::forward<Split<L>>(split))
+    } -> std::convertible_to<double>;
   };
+
+  /** Concept describing the minimum function required on a State */
+  template<typename S, typename L>
+  concept State = Label<L> && requires(S&& state, size_t i){
+    // state.get_label(i)->std::optional<L>
+    { std::invoke(&S::get_label, std::forward<S>(state), i) }->std::same_as<std::optional<L>>;
+    //state.split_evaluator is a SplitEvaluator
+    { std::forward<S>(state).split_evaluator }->SplitEvaluator<L>;
+  };
+
+  /** Split evaluator: compute the weighted (ratio of series per branch) gini impurity of a split. */
+  template<Label L>
+  [[nodiscard]] static double weighted_gini_impurity(const Split<L>& split) {
+    double wgini{0};
+    double split_size{0};  // Accumulator, total number of series received at this node.
+    // For each branch (i.e. assigned class c), get the actual mapping class->series (bcm)
+    // and compute the gini impurity of the branch
+    for (const auto&[c, bcm_vec]: split) {
+      const auto[bcm, vec] = bcm_vec;
+      double g = gini_impurity(bcm);
+      // Weighted part: the total number of item in this branch is the lenght of the vector of index
+      // Accumulate the total number of item in the split (sum the branches),
+      // and weight current impurity by size of the branch
+      const double bcm_size = vec.size();
+      split_size += bcm_size;
+      wgini += bcm_size*g;
+    }
+    // Finish weighted computation by scaling to [0, 1]
+    return wgini/split_size;
+  }
 
   /** Splitter
    * A Splitter is analogous to a classifier than can be trained on a dataset.
@@ -37,6 +79,7 @@ namespace libtempo::classifier::pf {
     std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_test;
   };
 
+  /// Shorthand for unique pointer on a splitter
   template<Label L, State<L> S, typename PRNG>
   using Splitter_uptr = std::unique_ptr<Splitter<L, S, PRNG>>;
 
@@ -45,9 +88,9 @@ namespace libtempo::classifier::pf {
    * Note that splitter generator are shared between multiple threads. If they update some internal state (closure),
    * they must do so in a thread-safe way.
    * The 'state' can be updated without synchronisation (one per thread/tree).
-   * @tparam L
-   * @tparam S
-   * @tparam PRNG
+   * @tparam L      Label type
+   * @tparam S      State type - must be the same type at train and test time
+   * @tparam PRNG   Pseudo Random Number Generator type
    */
   template<Label L, State<L> S, typename PRNG>
   struct SplitterGenerator {
@@ -61,6 +104,13 @@ namespace libtempo::classifier::pf {
 
   };
 
+  /** A Proximity Forest Tree
+   * Such a tree is made of nodes, either leaf (pure node) or inner node.
+   * The top node represents the full tree.
+   * @tparam L      Label type
+   * @tparam S      State type - must be the same type at train and test time
+   * @tparam PRNG   Pseudo Random Number Generator type
+   */
   template<Label L, State<L> S, typename PRNG>
   struct PFTree {
 
@@ -95,34 +145,8 @@ namespace libtempo::classifier::pf {
     /** Pure xor Inner node */
     std::variant<Leaf, Node> node;
 
-    /** Type of a split.
-     *  A mapping    predicted label (i.e. the branch) ->  (map true label-> series index, series index)
-     *  Keeping the map true label -> series index allows for easier computation of the gini impurity.
-     */
-    using Split = std::unordered_map<L, std::tuple<ByClassMap<L>, std::vector<size_t>>>;
-
-    /** Compute the weighted (ratio of series per branch) gini impurity of a split. */
-    [[nodiscard]] static double weighted_gini_impurity(const Split& split) {
-      double wgini{0};
-      double split_size{0};  // Accumulator, total number of series received at this node.
-      // For each branch (i.e. assigned class c), get the actual mapping class->series (bcm)
-      // and compute the gini impurity of the branch
-      for (const auto&[c, bcm_vec]: split) {
-        const auto[bcm, vec] = bcm_vec;
-        double g = gini_impurity(bcm);
-        // Weighted part: the total number of item in this branch is the lenght of the vector of index
-        // Accumulate the total number of item in the split (sum the branches),
-        // and weight current impurity by size of the branch
-        const double bcm_size = vec.size();
-        split_size += bcm_size;
-        wgini += bcm_size*g;
-      }
-      // Finish weighted computation by scaling to [0, 1]
-      return wgini/split_size;
-    }
-
     /** Make a split, evaluate it, return it with its gini impurity */
-    [[nodiscard]] static std::tuple<Splitter_ptr, Split, double> mk_split(
+    [[nodiscard]] static std::tuple<Splitter_ptr, Split<L>> mk_split(
       std::shared_ptr<S>& state,
       const IndexSet& is,
       const ByClassMap<L>& bcm,
@@ -132,7 +156,7 @@ namespace libtempo::classifier::pf {
       // Generate a splitter and train it.
       Splitter_ptr splitter = sg.generate(state, is, bcm, prng);
       splitter->train(state, is, bcm, prng);
-      Split split;
+      Split<L> split;
       // "train classify" each index in the 'is' subset
       for (const auto& query_idx: is) {
         // Predict the label, and get the actual label
@@ -143,9 +167,7 @@ namespace libtempo::classifier::pf {
         branch_bcm[actual_label].push_back(query_idx);
         branch_vec.push_back(query_idx);
       }
-      // Compute the weighted gini of the splitter
-      double wg = weighted_gini_impurity(split);
-      return {std::move(splitter), std::move(split), wg};
+      return {std::move(splitter), std::move(split)};
     }
 
     /** Recursively build a tree */
@@ -171,16 +193,18 @@ namespace libtempo::classifier::pf {
 
       // --- --- --- CASE 2 - internal node case
       // Best variables: gini, associated splitter and split (for each branch, the by class map)
-      double best_gini = utils::PINF<double>;
+      double best_score = utils::PINF<double>;
       Splitter_ptr best_splitter;
-      Split best_split;
+      Split<L> best_split;
 
       // Generate and evaluate the candidate splitters by computing their weighted gini.
       // Save the best (less impure).
       for (size_t n = 0; n<nbcandidates; ++n) {
-        auto[splitter, split, gini] = mk_split(state, is, bcm, sg, prng);
-        if (gini<best_gini) {
-          best_gini = gini;
+        auto[splitter, split] = mk_split(state, is, bcm, sg, prng);
+        // Compute the weighted gini of the splitter
+        double score = state->split_evaluator(split);
+        if (score<best_score) {
+          best_score = score;
           best_splitter = move(splitter);
           best_split = move(split);
         }

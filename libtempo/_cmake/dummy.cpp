@@ -13,6 +13,7 @@
 namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
+using PRNG = std::mt19937_64;
 
 void derivative(const double* series, size_t length, double* out) {
   if (length>2) {
@@ -97,17 +98,17 @@ int main(int argc, char** argv) {
       derivative(v2.data(), ts.size(), v3.data());
 
       for (size_t j = 0; j<ts.size(); ++j) {
-        if(tsd1[j] != v1[j]){
+        if (tsd1[j]!=v1[j]) {
           std::cerr << "ERROR D1 (i,j) = (" << i << ", " << j << ")" << std::endl;
           std::cerr << "TS size = " << ts.size() << std::endl;
           exit(5);
         }
-        if(tsd2[j] != v2[j]){
+        if (tsd2[j]!=v2[j]) {
           std::cerr << "ERROR D2 (i,j) = (" << i << ", " << j << ")" << std::endl;
           std::cerr << "TS size = " << ts.size() << std::endl;
           exit(5);
         }
-        if(tsd3[j] != v3[j]){
+        if (tsd3[j]!=v3[j]) {
           std::cerr << "ERROR D3 (i,j) = (" << i << ", " << j << ")" << std::endl;
           std::cerr << "TS size = " << ts.size() << std::endl;
           exit(5);
@@ -116,6 +117,64 @@ int main(int argc, char** argv) {
     }
 
   }
+
+  struct State {
+    std::optional<std::string> get_label(size_t i) {
+      return {std::to_string(i%2)};
+    }
+  };
+
+  using namespace libtempo::classifier::pf;
+
+  // Make "fake data" for the tree
+  std::shared_ptr<State> st = std::make_shared<State>();
+  IndexSet is(20);
+  ByClassMap<std::string> bcm;
+  for (const auto i: is) {
+    const auto label = st->get_label(i).value();
+    bcm[label].push_back(i);
+  }
+
+  SplitterGenerator<std::string, State, PRNG>
+    generator{
+
+    .generate = [](std::shared_ptr<State> state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
+
+      Splitter_uptr<std::string, State, PRNG> res;
+
+      const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
+
+      if (idx<=is.size()/4) {
+        // Generate a "good" classifier
+
+        // std::function<void(std::shared_ptr<S>& state, const IndexSet& is, const ByClassMap<L>& bcm, PRNG& prng)> train;
+        // std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_train;
+        // std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_test;
+
+        res = std::unique_ptr<Splitter<std::string, State, PRNG>>(new Splitter<std::string, State, PRNG>{
+          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng){},
+          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng){
+            return state->get_label(index).value();
+            },
+          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng){
+            return state->get_label(index).value();
+          }
+        });
+
+      } else {
+        // Generate a "bad" classifier
+
+      }
+
+      return res;
+    }
+
+
+  };
+
+  PRNG prng(0);
+
+  libtempo::classifier::pf::PFNode<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
 
   return 0;
 }

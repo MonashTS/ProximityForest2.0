@@ -121,7 +121,8 @@ int main(int argc, char** argv) {
 
   struct State {
     std::optional<std::string> get_label(size_t i) {
-      return {std::to_string(i%2)};
+      std::string l = std::to_string(i%2);
+      return {l};
     }
   };
 
@@ -144,7 +145,6 @@ int main(int argc, char** argv) {
       Splitter_uptr<std::string, State, PRNG> res;
 
       const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
-
       if (idx<=is.size()/4) {
         // Generate a "good" splitter
         res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
@@ -170,11 +170,11 @@ int main(int argc, char** argv) {
           },
 
           .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return "0";
+            return std::to_string(std::uniform_int_distribution<>(0,1)(prng));
           },
 
           .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return "1";
+            return std::to_string(std::uniform_int_distribution<>(0,1)(prng));
           }
         });
 
@@ -192,6 +192,10 @@ int main(int argc, char** argv) {
   auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
 
   std::cout << tree->is_pure_node << std::endl;
+  auto treecl = tree->get_classifier(prng);
+  for(int i=0; i<20; ++i){
+    std::cout << "Classify " << i << " as " << treecl.classify(st, i) << std::endl;
+  }
 
   return 0;
 }

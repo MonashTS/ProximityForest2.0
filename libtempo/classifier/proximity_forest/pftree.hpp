@@ -136,7 +136,7 @@ namespace libtempo::classifier::pf {
       // "train classify" each index in the 'is' subset
       for (const auto& query_idx: is) {
         // Predict the label, and get the actual label
-      const L predicted_label = splitter->classify_train(state, query_idx, prng);
+        const L predicted_label = splitter->classify_train(state, query_idx, prng);
         L actual_label = state->get_label(query_idx).value();  // Here, crash if no values...
         // Update the branch of the predicted label, but writing in the actual label (will show us the disagreements)
         auto&[branch_bcm, branch_vec] = split[predicted_label];
@@ -149,8 +149,8 @@ namespace libtempo::classifier::pf {
     }
 
     /** Recursively build a tree */
-    static std::unique_ptr<PFTree> make_tree(
-      std::shared_ptr<S> state,
+    [[nodiscard]] static std::unique_ptr<PFTree> make_tree(
+      std::shared_ptr<S>& state,
       const IndexSet& is,
       const ByClassMap<L>& bcm,
       size_t nbcandidates,
@@ -210,11 +210,49 @@ namespace libtempo::classifier::pf {
 
       return unique_ptr<PFTree>(new PFTree{.is_pure_node=false, .node={
         Node{.splitter=std::move(best_splitter),
-             .branches=std::move(sub_trees),
-             .train_split_ratios=std::move(split_ratios)}
+          .branches=std::move(sub_trees),
+          .train_split_ratios=std::move(split_ratios)}
       }});
 
     }
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // --- Classifier interface
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /** Classifier interface */
+    struct Classifier {
+    private:
+      // Fields
+      const PFTree& pt;
+      PRNG& prng;
+
+      // Main classification function (stateless)
+      [[nodiscard]] static L classify(const PFTree& pt, std::shared_ptr<S>& state, size_t idx, PRNG& prng) {
+        if (pt.is_pure_node) {
+          // Leaf: returns the label
+          return std::get<0>(pt.node).label;
+        } else {
+          const Node& n = std::get<1>(pt.node);
+          L res = n.splitter->classify_test(state, idx, prng);
+          const auto& sub = n.branches.at(res);    // Use at (is const, when [ ] is not)
+          return classify(*sub, state, idx, prng);
+        }
+      }
+
+    public:
+
+      Classifier(const PFTree& pt, PRNG& prng)
+        :pt(pt), prng(prng) { }
+
+      [[nodiscard]] L classify(std::shared_ptr<S>& state, size_t index) {
+        return classify(pt, state, index, prng);
+      }
+    };// End of Classifier
+
+    Classifier get_classifier(PRNG& prng) { return Classifier(*this, prng); }
+
 
   };
 

@@ -1,3 +1,4 @@
+#include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
@@ -145,24 +146,37 @@ int main(int argc, char** argv) {
       const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
 
       if (idx<=is.size()/4) {
-        // Generate a "good" classifier
+        // Generate a "good" splitter
+        res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
 
-        // std::function<void(std::shared_ptr<S>& state, const IndexSet& is, const ByClassMap<L>& bcm, PRNG& prng)> train;
-        // std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_train;
-        // std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_test;
+          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
+            std::cout << "train good" << std::endl;
+          },
 
-        res = std::unique_ptr<Splitter<std::string, State, PRNG>>(new Splitter<std::string, State, PRNG>{
-          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng){},
-          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng){
+          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
             return state->get_label(index).value();
-            },
-          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng){
+          },
+
+          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
             return state->get_label(index).value();
           }
         });
 
       } else {
         // Generate a "bad" classifier
+        res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
+          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
+            std::cout << "train bad" << std::endl;
+          },
+
+          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
+            return "0";
+          },
+
+          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
+            return "1";
+          }
+        });
 
       }
 
@@ -172,9 +186,12 @@ int main(int argc, char** argv) {
 
   };
 
-  PRNG prng(0);
+  std::random_device rd;
+  PRNG prng(rd());
 
-  libtempo::classifier::pf::PFNode<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
+  auto tree = libtempo::classifier::pf::PFNode<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
+
+  std::cout << tree->is_pure_node << std::endl;
 
   return 0;
 }

@@ -1,15 +1,17 @@
-#include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
+#include <libtempo/classifier/proximity_forest/splitters.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 
-#include <vector>
+
 #include <cmath>
 #include <iostream>
 #include <filesystem>
 #include <fstream>
+#include <memory>
+#include <vector>
 
 namespace fs = std::filesystem;
 using namespace std;

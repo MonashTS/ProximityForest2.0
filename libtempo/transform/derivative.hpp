@@ -36,10 +36,9 @@ namespace libtempo::transform {
    * @param degree maximum desired derivative >= 1
    */
   template<Float F, Label L>
-  [[nodiscard]] inline std::vector<DTS<F, L>>
-  derive(const DTS<F, L>& input, size_t degree) {
+  [[nodiscard]] inline std::vector<DTS<F, L>> derive(const DTS<F, L>& input, size_t degree) {
     assert(degree>0);
-    assert(input.core().nb_dimensions() == 1);
+    assert(input.get_header().nb_dimensions() == 1);
 
     std::vector<DTS<F, L>> result;
 

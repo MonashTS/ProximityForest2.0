@@ -144,7 +144,7 @@ namespace libtempo {
     [[nodiscard]] inline auto end() const { return vset->end(); }
   };
 
-  /** The Core Dataset is independent from the actual data -
+  /** The Dataset header is independent from the actual data -
    * it only records general information and the labels per instance.
    * An instance is represented by its index within [0, size[
    * where 'size' it the size of the dataset, i.e. the number of instances.
@@ -152,7 +152,7 @@ namespace libtempo {
    */
 
   template<Label L>
-  class CoreDataset {
+  class DatasetHeader {
 
     /// Identifier for the core dataset - usually the actual dataset name.
     std::string _dataset_name;
@@ -188,7 +188,7 @@ namespace libtempo {
      * @param labels        Label per instance, instances being indexed in [0, labels.size()[
      * @param instances_with_missing Indices of instances with missing data. Empty = no missing data.
      */
-    CoreDataset(
+    DatasetHeader(
       std::string dataset_name,
       size_t lmin,
       size_t lmax,
@@ -254,7 +254,7 @@ namespace libtempo {
   class Dataset {
 
     /// Reference to the core dataset. A datum indexed here must have a corresponding index in the core dataset.
-    std::shared_ptr<CoreDataset<L>> _core_dataset;
+    std::shared_ptr<DatasetHeader<L>> _dataset_header;
 
     /// Identifier for this dataset. Can be used to record transformation, such as "derivative".
     std::string _identifier;
@@ -269,44 +269,47 @@ namespace libtempo {
 
     /// Constructor: all data must be pre-constructed
     Dataset(
-      std::shared_ptr<CoreDataset<L>> core,
+      std::shared_ptr<DatasetHeader<L>> core,
       std::string id,
       std::vector<D>&& data,
       std::optional<tempo::json::JSONValue> parameters = {}
     )
-      :_core_dataset(core), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
-      assert(_data.size()==_core_dataset->size());
+      : _dataset_header(core), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
+      assert(_data.size()==_dataset_header->size());
     }
 
-    /// Constructor: using an existing dataset to get the core dataset.
+    /// Constructor: using an existing dataset to get the dataset header.
     Dataset(
       const Dataset& other,
       std::string id,
       std::vector<D>&& data,
-      std::optional<tempo::json::JSONValue> parameters = {}
+      std::optional<tempo::json::JSONValue> parameters = {} // TODO
     )
-      :_core_dataset(other._core_dataset), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
-      assert(_data.size()==_core_dataset->size());
+      : _dataset_header(other._dataset_header),
+        _identifier(std::move(id)),
+        _data(std::move(data)),
+        _parameters(std::move(parameters)) {
+      assert(_data.size()==_dataset_header->size());
     }
 
-    /// Create json info
+    /// Create json info TODO
 
 
     /// Access to the vector of data
     [[nodiscard]] const std::vector<D>& data() const { return _data; }
 
     /// Access to the core dataset
-    [[nodiscard]] const CoreDataset<L>& core() const { return *_core_dataset; }
+    [[nodiscard]] const DatasetHeader<L>& get_header() const { return *_dataset_header; }
 
     /// Access to the identifier
     [[nodiscard]] const std::string& id() const { return _identifier; }
 
-    /// Get the full name, made of the name of the core dataset, the identifier, and the parameters
-    /// "core:id<JSONVALUE>"
+    /// Get the full name, made of the name of the ore dataset header, the identifier, and the parameters
+    /// "name_in_header:id<JSONVALUE>"
     [[nodiscard]] std::string name() const {
-      std::string result = _core_dataset->dataset_name()+":"+_identifier;
-      if(_parameters.has_value()){
-        result+=to_string_inline(_parameters.value());
+      std::string result = _dataset_header->dataset_name()+":"+_identifier;
+      if (_parameters.has_value()) {
+        result += to_string_inline(_parameters.value());
       }
       return result;
     }
@@ -324,13 +327,10 @@ namespace libtempo {
     [[nodiscard]] inline auto end() const { return _data.end(); }
 
     /// Shorthand missing value
-    [[nodiscard]] inline bool has_missing_value() const { return !_core_dataset->instances_with_missing().empty(); }
-
-
+    [[nodiscard]] inline bool has_missing_value() const { return !_dataset_header->instances_with_missing().empty(); }
   };
 
   template<Float F, Label L>
   using DTS = Dataset<L, TSeries<F, L>>;
-
 
 }

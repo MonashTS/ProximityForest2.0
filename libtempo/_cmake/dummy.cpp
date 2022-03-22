@@ -151,14 +151,16 @@ int main(int argc, char** argv) {
       const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
       if (idx<=is.size()/4) {
         // Generate a "good" splitter
+        auto my_state = std::make_shared<size_t>(idx);
         res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
-          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
+          .train=[my_state](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
             std::cout << "train good" << std::endl;
           },
-          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
+          .classify_train=[my_state](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
+            std::cout << "train with: " << *my_state << std::endl;
             return state->get_label(index).value();
           },
-          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
+          .classify_test=[my_state](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
             return state->get_label(index).value();
           }
         });

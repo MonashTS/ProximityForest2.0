@@ -138,11 +138,17 @@ int main(int argc, char** argv) {
   // Make "fake data" for the tree
   std::shared_ptr<State> st = std::make_shared<State>();
   IndexSet is(20);
-  ByClassMap<std::string> bcm;
+  ByClassMap<std::string>::BCMvec_t bcm_v;
   for (const auto i: is) {
     const auto label = st->get_label(i).value();
-    bcm[label].push_back(i);
+    bcm_v[label].push_back(i);
   }
+  ByClassMap<std::string> bcm(std::move(bcm_v));
+
+
+
+
+  /*
 
   SplitterGenerator<std::string, State, PRNG>
     generator{
@@ -193,6 +199,8 @@ int main(int argc, char** argv) {
   for (int i = 0; i<20; ++i) {
     std::cout << "Classify " << i << " as " << treecl.classify(st, i) << std::endl;
   }
+
+  */
 
   return 0;
 }

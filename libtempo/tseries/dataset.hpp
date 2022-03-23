@@ -9,6 +9,7 @@
 #include <numeric>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -17,64 +18,11 @@
 
 namespace libtempo {
 
-  /** ByClassMap (BCM): a tyype gathering indexes in a dataset by class
-   *  Note: if an instance does not have a label (class), it cannot be part of a BCM.*/
-  template<Label L>
-  using ByClassMap = std::unordered_map<L, std::vector<size_t>>;
-
-  /** Given a BCM, randomly pick one index per class
-   *  The random number generator is provided as an argument,
-   *  and used with modification (it updates its internal state: cannot be const; do not copy it!).
-   *  If a BCM has a mapping between a label and an empty list of index, it will be removed from the result.
-   */
-  template<Label L, typename PRNG>
-  [[nodiscard]] inline ByClassMap<L> pick_one_by_class(const ByClassMap<L>& bcm, PRNG& prng) {
-    ByClassMap<L> result;
-    for (const auto&[c, v]: bcm) {
-      if (v._size()>0) {
-        std::uniform_int_distribution<size_t> dist(0, v._size()-1);
-        result[c].push_back(v[dist(prng)]);
-      }
-    }
-    return result;
-  }
-
-  /** Compute the size of a BCM in number of indexes it contains */
-  template<typename L>
-  [[nodiscard]] inline size_t size(const ByClassMap<L>& bcm) {
-    size_t s = 0;
-    for (const auto&[_, v]: bcm) { s += v.size(); }
-    return s;
-  }
-
-  /** Gini impurity of a BCM.
-   *  Maximum purity is the minimum value of 0 (only one class)
-   *  Minimum purity depends on the number of classes:
-   *    * 1-1/2=0.5 with 2 classes
-   *    * 1-1/3=0.6666..6 with 3 classes
-   *    * etc...
-   */
-  template<typename L>
-  [[nodiscard]] inline double gini_impurity(const ByClassMap<L>& bcm) {
-    assert(!bcm.empty());
-    // Ensure that we never encounter a "floating point near 0" issue.
-    if (bcm.size()==1) { return 0; }
-    else {
-      double total_size = size(bcm);
-      double sum{0};
-      for (const auto&[cl, val]: bcm) {
-        double p = val.size()/total_size;
-        sum += p*p;
-      }
-      return 1-sum;
-    }
-  }
-
-  /** Index Set */
+  /** Index Set:
+   * Manages a set of indexes, used to represent series from a Dataset (see below). */
   class IndexSet {
 
   public:
-
     /** Subset by selection of indexes */
     using VSet = std::shared_ptr<std::vector<size_t>>;
 
@@ -85,6 +33,9 @@ namespace libtempo {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Constructors
+
+    /** Default constructor, building an empty set */
+    IndexSet() : IndexSet(0) {}
 
     /** Create an index set |0, top[ (top excluded) */
     explicit IndexSet(size_t top) {
@@ -99,16 +50,6 @@ namespace libtempo {
       vset = std::make_shared<std::vector<size_t>>(std::move(collection));
     }
 
-    /** Create an IndexSet over a ByClassMap */
-    template<Label L>
-    explicit IndexSet(const ByClassMap<L>& bcm) {
-      using std::begin, std::end;
-      std::shared_ptr<std::vector<size_t>> idx = std::make_shared<std::vector<size_t>>();
-      for (const auto&[c, v]: bcm) { (*idx).insert(end(*idx), begin(v), end(v)); }
-      std::sort(idx->begin(), idx->end());
-      vset = std::move(idx);
-    }
-
     /** Create a new dataset from another dataset and a selection of indexes
     * @param other             Other dataset
     * @param indexes_in_other  Vector of indexes i, indexing in other 0 <= i < other.size(). Must be sorted
@@ -121,7 +62,7 @@ namespace libtempo {
       const VSet& ov = other.vset;
       std::vector<size_t> nv;
       nv.reserve(ov->size());
-      for (auto i: indexes_in_other) { nv.push_back(ov->at(i)); }
+      for (auto i : indexes_in_other) { nv.push_back(ov->at(i)); }
       vset = std::make_shared<std::vector<size_t>>(std::move(nv));
     }
 
@@ -129,20 +70,156 @@ namespace libtempo {
     // Accesses
 
     /** Index into the indexSet, returning a "real index" usable in a dataset. */
-    [[nodiscard]] inline size_t get(size_t index) const { return vset->operator[](index); }
+    [[nodiscard]]
+    size_t get(size_t index) const { return vset->operator [](index); }
 
     /** Const Bracket operator aliasing 'get' */
-    [[nodiscard]] inline size_t operator[](size_t index) const { return get(index); }
+    [[nodiscard]]
+    size_t operator [](size_t index) const { return get(index); }
 
     /** Size of the set */
-    [[nodiscard]] inline size_t size() const { return vset->size(); }
+    [[nodiscard]]
+    size_t size() const { return vset->size(); }
+
+    /** Number of indexes contained */
+    [[nodiscard]]
+    bool empty() const { return vset->empty(); }
 
     /** Random Access Iterator begin */
-    [[nodiscard]] inline auto begin() const { return vset->begin(); }
+    [[nodiscard]]
+    auto begin() const { return vset->begin(); }
 
     /** Random Access Iterator end */
-    [[nodiscard]] inline auto end() const { return vset->end(); }
+    [[nodiscard]]
+    auto end() const { return vset->end(); }
+
   };
+
+  /** ByClassMap (BCM): a tyype gathering indexes in a dataset by class
+   *  Note: if an instance does not have a label (class), it cannot be part of a BCM.*/
+  template<Label L>
+  class ByClassMap {
+  public:
+    /// Type of the map
+    using BCM_t = std::unordered_map<L, IndexSet>;
+
+    /// Type of the map with a modifiable vector. Used in helper constructor.
+    using BCMvec_t = std::unordered_map<L, std::vector<size_t>>;
+
+  private:
+    BCM_t _bcm;
+    IndexSet _indexes;
+
+    /// Populate _indexes from _bcm
+    void populate_indexes() {
+      // Reserve size for our vector
+      // Then, copy from BCM, sort, and build a new IndexSet
+      size_t s = 0;
+      for (const auto&[_, is] : _bcm) { s += is.size(); }
+      std::vector<size_t> v;
+      v.reserve(s);
+      for (const auto&[_, is] : _bcm) { v.insert(v.end(), is.begin(), is.end()); }
+      std::sort(v.begin(), v.end());
+      _indexes = IndexSet(std::move(v));
+    }
+
+  public:
+
+    // --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---
+
+    explicit ByClassMap(BCM_t&& bcm) : _bcm(std::move(bcm)) {
+      populate_indexes();
+    }
+
+    explicit ByClassMap(BCMvec_t&& bcm) {
+      for (auto[l, v] : bcm) { _bcm[l] = IndexSet(std::move(v)); }
+      populate_indexes();
+    }
+
+    // --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---
+    // Access
+
+    /// Access the underlying map
+    [[nodiscard]]
+    const BCM_t& operator *() const { return _bcm; }
+
+    /// Bracket operator on the underlying map
+    [[nodiscard]]
+    const auto& operator [](L l) const { return _bcm[l]; }
+
+    /// Access the IndexSet containing all the indexes in this object
+    [[nodiscard]]
+    const IndexSet& get_IndexSet() const { return _indexes; }
+
+    /// Constant begin iterator on the underlying map - gives access on the label L and the associated IndexSet.
+    [[nodiscard]]
+    auto begin() const { return _bcm.begin(); }
+
+    /// Constant end iterator on the underlying map
+    [[nodiscard]]
+    auto end() const { return _bcm.end(); }
+
+    /// Constant begin iterator on the set of all indexes
+    [[nodiscard]]
+    auto begin_is() const { return _indexes.begin(); }
+
+    /// Constant end iterator on the set of all indexes
+    [[nodiscard]]
+    auto end_is() const { return _indexes.end(); }
+
+
+    // --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---
+    // Tooling
+
+    /** Number of indexes contained */
+    [[nodiscard]]
+    size_t size() const { return _indexes.size(); }
+
+    /** Number of indexes contained */
+    [[nodiscard]]
+    bool empty() const { return _indexes.empty(); }
+
+    /** Randomly pick one index per class - returns a BCM_t, which is the same type as the underlying map. */
+    template<typename PRNG>
+    [[nodiscard]]
+    BCM_t pick_one_by_class(PRNG& prng) {
+      BCM_t result;
+      for (const auto&[label, is] : _bcm) {
+        if (is.size()>0) {
+          std::uniform_int_distribution<size_t> dist(0, is.size() - 1);
+          result[label] = IndexSet(std::vector<size_t>{is[dist(prng)]});
+        }
+      }
+      return result;
+    }
+
+    /** Gini impurity of a BCM.
+     *  Maximum purity is the minimum value of 0
+     *  Minimum purity, i.e. maximum possible value, depends on the number of classes:
+     *    * 1-1/2=0.5 with 2 classes
+     *    * 1-1/3=0.6666..6 with 3 classes
+     *    * etc...
+     */
+    [[nodiscard]]
+    double gini_impurity() {
+      assert(!empty());
+      // Ensure that we never encounter a "floating point near 0" issue.
+      if (size()==1) { return 0; }
+      else {
+        double total_size = size();
+        double sum{0};
+        for (const auto&[cl, val] : _bcm) {
+          double p = val.size()/total_size;
+          sum += p*p;
+        }
+        return 1 - sum;
+      }
+    }
+
+  };
+
+
+
 
   /** The Dataset header is independent from the actual data -
    * it only records general information and the labels per instance.
@@ -150,7 +227,6 @@ namespace libtempo {
    * where 'size' it the size of the dataset, i.e. the number of instances.
    * @tparam L  Type of the label
    */
-
   template<Label L>
   class DatasetHeader {
 
@@ -196,16 +272,16 @@ namespace libtempo {
       std::vector<std::optional<L>>&& labels,
       std::vector<size_t>&& instances_with_missing
     )
-      :_dataset_name(std::move(dataset_name)),
-       _size(labels.size()),
-       _length_min(lmin),
-       _length_max(lmax),
-       _nb_dimensions(dimensions),
-       _instances_with_missing(std::move(instances_with_missing)),
-       _labels(std::move(labels)) {
+      : _dataset_name(std::move(dataset_name)),
+        _size(labels.size()),
+        _length_min(lmin),
+        _length_max(lmax),
+        _nb_dimensions(dimensions),
+        _instances_with_missing(std::move(instances_with_missing)),
+        _labels(std::move(labels)) {
       /// Construct set of labels from the input vector
       std::set<L> lset;
-      for (const auto& ol: labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
+      for (const auto& ol : labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
       _label_set = lset;
     }
 
@@ -274,7 +350,8 @@ namespace libtempo {
       std::vector<D>&& data,
       std::optional<tempo::json::JSONValue> parameters = {}
     )
-      : _dataset_header(core), _identifier(std::move(id)), _data(std::move(data)), _parameters(std::move(parameters)) {
+      : _dataset_header(core), _identifier(std::move(id)), _data(std::move(data)),
+        _parameters(std::move(parameters)) {
       assert(_data.size()==_dataset_header->size());
     }
 
@@ -307,7 +384,7 @@ namespace libtempo {
     /// Get the full name, made of the name of the ore dataset header, the identifier, and the parameters
     /// "name_in_header:id<JSONVALUE>"
     [[nodiscard]] std::string name() const {
-      std::string result = _dataset_header->dataset_name()+":"+_identifier;
+      std::string result = _dataset_header->dataset_name() + ":" + _identifier;
       if (_parameters.has_value()) {
         result += to_string_inline(_parameters.value());
       }
@@ -318,7 +395,7 @@ namespace libtempo {
     [[nodiscard]] inline size_t size() const { return _data.size(); }
 
     /// Shorthand []
-    [[nodiscard]] inline const D& operator[](size_t idx) const { return _data[idx]; }
+    [[nodiscard]] inline const D& operator [](size_t idx) const { return _data[idx]; }
 
     /// Shorthand begin
     [[nodiscard]] inline auto begin() const { return _data.begin(); }

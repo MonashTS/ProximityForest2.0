@@ -333,6 +333,8 @@ namespace libtempo {
 
     [[nodiscard]] inline size_t length_max() const { return _length_max; }
 
+    [[nodiscard]] inline bool variable_length() const { return _length_max != _length_min; }
+
     [[nodiscard]] inline size_t nb_dimensions() const { return _nb_dimensions; }
 
     /// Index of instances with missing data

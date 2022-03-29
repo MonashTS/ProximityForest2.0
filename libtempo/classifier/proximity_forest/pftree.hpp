@@ -30,9 +30,7 @@ namespace libtempo::classifier::pf {
       /// Selected splitter at this node
       std::unique_ptr<ISplitter<L, Stest>> splitter;
 
-      /** Branches at this node
-       *  The splitters must return a branch index [0, nb_branches[ per instance
-       */
+      /** Branches at this node. The splitters must return a branch index [0, nb_branches[ per instance */
       std::vector<std::unique_ptr<PFTree>> branches;
     };
 
@@ -65,17 +63,17 @@ namespace libtempo::classifier::pf {
       auto result = sg.generate(state, bcm);
       std::vector<std::unique_ptr<PFTree<L, Stest>>> subbranches;
 
-      for(size_t i=0; i<result->branch_splits.size(); ++i){
+      for (size_t i = 0; i<result->branch_splits.size(); ++i) {
         ByClassMap<L> branch_bcm = std::move(result->branch_splits[i]);
         subbranches.push_back(make_tree(state, branch_bcm, sg));
       }
 
       return std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{
-                                            .node={Node{
-                                              .splitter=std::move(result->splitter),
-                                              .branches=std::move(subbranches)
-                                            }}
-                                          }
+                                                 .node={Node{
+                                                   .splitter=std::move(result->splitter),
+                                                   .branches=std::move(subbranches)
+                                                 }}
+                                               }
       );
     } // End of make_tree
 

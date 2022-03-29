@@ -430,6 +430,7 @@ namespace libtempo {
 
   };
 
+  /// Helper for Dataset of time series.
   template<Float F, Label L>
   using DTS = Dataset<L, TSeries<F, L>>;
 

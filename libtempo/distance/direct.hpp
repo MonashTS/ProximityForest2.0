@@ -115,7 +115,7 @@ namespace libtempo::distance {
     /// Default, using univariate ad2
     template<Float F, TSLike T>
     [[nodiscard]] inline F directa(const T& lines, const T& cols, F ub = utils::PINF<F>) {
-      return directa(lines, cols, ad2<F, T>, ub);
+      return libtempo::distance::directa(lines, cols, ad2<F, T>, ub);
     }
 
     /// Specific overload for univariate vector

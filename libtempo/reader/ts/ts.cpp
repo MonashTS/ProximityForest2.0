@@ -386,7 +386,7 @@ namespace libtempo::reader {
       std::vector<std::optional<std::string>> labels;
       for (const auto& ts: tsdata.series) { labels.emplace_back(ts.label()); }
       // 1.b) Build the core dataset behind a shared pointer
-      auto cd = std::make_shared<DatasetHeader<std::string>>(
+      std::shared_ptr<DatasetHeader<std::string>> cd = std::make_shared<DatasetHeader<std::string>>(
         tsdata.problem_name.value(),
         tsdata.shortest_length,
         tsdata.longest_length,

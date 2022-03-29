@@ -2,9 +2,9 @@
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/classifier/proximity_forest/splitters.hpp>
+#include <libtempo/classifier/proximity_forest/isplitters.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
-
 
 #include <cmath>
 #include <iostream>
@@ -18,19 +18,19 @@ using namespace std;
 using namespace libtempo;
 using PRNG = std::mt19937_64;
 
-void derivative(const double* series, size_t length, double* out) {
+void derivative(const double *series, size_t length, double *out) {
   if (length>2) {
-    for (size_t i{1}; i<length-1; ++i) {
-      out[i] = ((series[i]-series[i-1])+((series[i+1]-series[i-1])/2.0))/2.0;
+    for (size_t i{1}; i<length - 1; ++i) {
+      out[i] = ((series[i] - series[i - 1]) + ((series[i + 1] - series[i - 1])/2.0))/2.0;
     }
     out[0] = out[1];
-    out[length-1] = out[length-2];
+    out[length - 1] = out[length - 2];
   } else {
-    std::copy(series, series+length, out);
+    std::copy(series, series + length, out);
   }
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
 
   vector<double> a{0.1, 0.2, 0.3, 0.1, 0.2, 0.3};
   vector<double> b{1, NAN, 3, 4, 5, 6};
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
   const auto& t2cmm = t2.cm_emap();
   for (auto r = 0; r<t2cmm.rows(); ++r) {
     const auto& row = t2cmm.row(r);
-    for (const auto& i: row) {
+    for (const auto& i : row) {
       cout << i << " ";
     }
     cout << endl;
@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
 
     auto dataset = std::move(get<1>(res));
     cout << dataset.name() << endl;
-    cout << "Has missing value: " << dataset.has_missing_value() << endl;
+    cout << "Has missing value: " << dataset.header().has_missing_value() << endl;
 
     auto derives = transform::derive(dataset, 3);
     auto d1 = std::move(derives[0]);
@@ -119,78 +119,49 @@ int main(int argc, char** argv) {
       }
     }
 
+
+
+    // --------------------------------------------------------------------------------------------------------------
+    namespace pf = libtempo::classifier::pf;
+
+    struct PFState :
+      public pf::State::PRNG_mt64,
+      public pf::State::DatasetTS<double, std::string> {
+
+      PFState(size_t seed, DatasetTS<double, std::string>::MAP_sptr_t transformations) :
+        PRNG_mt64(seed),
+        DatasetTS<double, std::string>(std::move(transformations)) {}
+    };
+
+    std::random_device rd;
+    size_t seed = rd();
+    auto transformations = std::make_shared<pf::State::DatasetTS<double, std::string>::MAP_t>();
+    transformations->insert(
+      {
+        "default",
+        std::move(
+          dataset
+        )
+      }
+    );
+
+    ByClassMap<std::string> train_bcm = std::get<0>(transformations->at("default").header().get_BCM());
+
+    PFState train_state = PFState(seed, transformations);
+
+    std::unique_ptr<pf::ISplitterGenerator<std::string, PFState, PFState>>
+      sg = std::make_unique<pf::SG_1NN1DA<double, std::string, PFState, PFState>>();
+
+    auto tree = pf::PFTree<std::string, PFState>::make_tree<PFState>(train_state, train_bcm, *sg);
+
   }
 
-  using namespace libtempo::classifier::pf;
-
-  struct State {
-
-    std::optional<std::string> get_label(size_t i) {
-      std::string l = std::to_string(i%2);
-      return {l};
-    }
-
-    decltype(&weighted_gini_impurity<std::string>) split_evaluator = weighted_gini_impurity;
-
-  };
-
-
-  // Make "fake data" for the tree
-  std::shared_ptr<State> st = std::make_shared<State>();
-  IndexSet is(20);
-  ByClassMap<std::string>::BCMvec_t bcm_v;
-  for (const auto i: is) {
-    const auto label = st->get_label(i).value();
-    bcm_v[label].push_back(i);
-  }
-  ByClassMap<std::string> bcm(std::move(bcm_v));
 
 
 
 
   /*
 
-  SplitterGenerator<std::string, State, PRNG>
-    generator{
-    .generate = [](std::shared_ptr<State> state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
-      Splitter_uptr<std::string, State, PRNG> res;
-      const auto idx = std::uniform_int_distribution<size_t>(0, is.size()-1)(prng);
-      if (idx<=is.size()/4) {
-        // Generate a "good" splitter
-        auto my_state = std::make_shared<size_t>(idx);
-        res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
-          .train=[my_state](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
-            std::cout << "train good" << std::endl;
-          },
-          .classify_train=[my_state](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            std::cout << "train with: " << *my_state << std::endl;
-            return state->get_label(index).value();
-          },
-          .classify_test=[my_state](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return state->get_label(index).value();
-          }
-        });
-      } else {
-        // Generate a "bad" classifier
-        res = std::make_unique<Splitter<std::string, State, PRNG>>(Splitter<std::string, State, PRNG>{
-          .train=[](std::shared_ptr<State>& state, const IndexSet& is, const ByClassMap<std::string>& bcm, PRNG& prng) {
-            std::cout << "train bad" << std::endl;
-          },
-          .classify_train=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return std::to_string(std::uniform_int_distribution<>(0, 1)(prng));
-          },
-          .classify_test=[](std::shared_ptr<State>& state, size_t index, PRNG& prng) {
-            return std::to_string(std::uniform_int_distribution<>(0, 1)(prng));
-          }
-        });
-      }
-
-      return res;
-    }
-  };
-
-  std::random_device rd;
-  PRNG prng(rd());
 
   auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
 

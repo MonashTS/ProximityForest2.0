@@ -198,6 +198,9 @@ namespace libtempo {
     // Data access
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+    /// Row Major access over all the point AND dimension -- shorthand for access using rm_data()
+    [[nodiscard]] inline F operator[](size_t idx) const { return _p_RM[idx]; }
+
     /// RM - Row Major access to the raw data
     [[nodiscard]] inline F const* rm_data() const { return _p_RM; }
 

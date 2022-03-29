@@ -9,6 +9,7 @@ target_include_directories(libtempo-classifier INTERFACE ${CMAKE_CURRENT_SOURCE_
 target_sources(libtempo-classifier
         INTERFACE
         proximity_forest/pftree.hpp
+        proximity_forest/isplitters.hpp
         proximity_forest/splitters.hpp
         )
 

@@ -7,6 +7,20 @@
 
 namespace libtempo::utils {
 
+  /** Pick a random item from a vector. */
+  template<typename T, typename PRNG>
+  [[nodiscard]] auto pick_one(const std::vector<T>& v, PRNG& prng) {
+    if (v.size()==1) {
+      return v.back();
+    } else if (v.size()>1) {
+      auto distribution = std::uniform_int_distribution<int>(0, v.size() - 1);
+      return v[distribution(prng)];
+    } else {
+      throw std::invalid_argument("Picking from an empty vector");
+    }
+  }
+
+
   // --- --- --- --- --- ---
   // --- Constants
   // --- --- --- --- --- ---
@@ -28,7 +42,7 @@ namespace libtempo::utils {
 
   /// Lower Bound inital value, use to deal with numerical instability
   template<typename FloatType>
-  FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10-1))};
+  FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
 
 
 
@@ -63,7 +77,7 @@ namespace libtempo::utils {
   /** Unsigned arithmetic:
    * Given an 'index' and a 'window', get the start index corresponding to std::max(0, index-window) */
   [[nodiscard]] inline size_t cap_start_index_to_window(size_t index, size_t window) {
-    if (index>window) { return index-window; } else { return 0; }
+    if (index>window) { return index - window; } else { return 0; }
   }
 
   /** Unsigned arithmetic:
@@ -73,23 +87,23 @@ namespace libtempo::utils {
   [[nodiscard]] inline size_t
   cap_stop_index_to_window_or_end(size_t index, size_t window, size_t end) {
     // end-window is valid when window<end
-    if (window<end && index+1<end-window) { return index+window+1; } else { return end; }
+    if (window<end&&index + 1<end - window) { return index + window + 1; } else { return end; }
   }
 
   /** Absolute value for any comparable and subtractive type, without overflowing risk for unsigned types.
    *  Also work for signed type. */
   template<typename T>
-  [[nodiscard]] inline T absdiff(T a, T b) { return (a>b) ? a-b : b-a; }
+  [[nodiscard]] inline T absdiff(T a, T b) { return (a>b) ? a - b : b - a; }
 
   /** From unsigned to signed for integral types*/
   template<typename UIType>
   [[nodiscard]] inline typename std::make_signed_t<UIType> to_signed(UIType ui) {
     static_assert(std::is_unsigned_v<UIType>, "Template parameter must be an unsigned type");
     using SIType = std::make_signed_t<UIType>;
-    if (ui>(UIType) (std::numeric_limits<SIType>::max())) {
+    if (ui>(UIType)(std::numeric_limits<SIType>::max())) {
       throw std::overflow_error("Cannot store unsigned type in signed type.");
     }
-    return (SIType) ui;
+    return (SIType)ui;
   }
 
 
@@ -98,16 +112,14 @@ namespace libtempo::utils {
   // --- --- --- --- --- ---
 
   namespace initBlock_detail {
-    struct tag { };
+    struct tag {};
 
     template<class F>
-    decltype(auto) operator+(tag, F&& f) {
+    decltype(auto) operator +(tag, F&& f) {
       return std::forward<F>(f)();
     }
   }
 
 #define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
-
-
 
 } // end of namespace libtempo::utils

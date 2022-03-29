@@ -38,7 +38,7 @@ namespace libtempo::transform {
   template<Float F, Label L>
   [[nodiscard]] inline std::vector<DTS<F, L>> derive(const DTS<F, L>& input, size_t degree) {
     assert(degree>0);
-    assert(input.get_header().nb_dimensions() == 1);
+    assert(input.header().nb_dimensions() == 1);
 
     std::vector<DTS<F, L>> result;
 

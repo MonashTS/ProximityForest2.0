@@ -3,7 +3,7 @@
 #include <libtempo/concepts.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/utils/utils.hpp>
-#include <libtempo/classifier/proximity_forest/isplitters.hpp>
+#include <libtempo/classifier/proximity_forest/ipf.hpp>
 
 #include <functional>
 #include <map>
@@ -53,28 +53,41 @@ namespace libtempo::classifier::pf {
       // Ensure that we have at least one class reaching this node!
       assert(!bcm.empty());
 
-      // --- --- --- CASE 1 - leaf case: only one class in bcm
+      // Enter make tree
+      auto& state_ = static_cast<IStrain<L>&>(state);
+      state_.on_make_tree(bcm);
+
+      std::unique_ptr<PFTree<L, Stest>> ret;
+
       if (bcm.nb_classes()==1) {
-        return std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=Leaf{bcm.begin()->first}});
+        // --- --- --- CASE 1 - leaf case: only one class in bcm
+        L label = bcm.begin()->first;
+        state_.on_make_leaf(label);
+        ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=Leaf{label}});
+      } else {
+        // --- --- --- CASE 2 - internal node case
+        // Generate the splitter
+        auto result = sg.generate(state, bcm);
+        std::vector<std::unique_ptr<PFTree<L, Stest>>> subbranches;
+        // Recursively create the subtrees.
+        for (size_t i = 0; i<result->branch_splits.size(); ++i) {
+          ByClassMap<L> branch_bcm = std::move(result->branch_splits[i]);
+          subbranches.push_back(make_tree(state, branch_bcm, sg));
+        }
+        // Create the node itself.
+        ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{
+                                                  .node={Node{
+                                                    .splitter=std::move(result->splitter),
+                                                    .branches=std::move(subbranches)
+                                                  }}
+                                                }
+        );
       }
 
-      // --- --- --- CASE 2 - internal node case
-      // Generate the splitter, then recursively create the subtrees. Finally, create the node itself.
-      auto result = sg.generate(state, bcm);
-      std::vector<std::unique_ptr<PFTree<L, Stest>>> subbranches;
+      // Exit make tree - always executed
+      state.exit_make_tree();
+      return ret;
 
-      for (size_t i = 0; i<result->branch_splits.size(); ++i) {
-        ByClassMap<L> branch_bcm = std::move(result->branch_splits[i]);
-        subbranches.push_back(make_tree(state, branch_bcm, sg));
-      }
-
-      return std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{
-                                                 .node={Node{
-                                                   .splitter=std::move(result->splitter),
-                                                   .branches=std::move(subbranches)
-                                                 }}
-                                               }
-      );
     } // End of make_tree
 
 

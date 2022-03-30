@@ -8,6 +8,15 @@
 
 namespace libtempo::classifier::pf {
 
+  /** Interface with functions to be override for the train state */
+  template<Label L>
+  struct IStrain {
+
+
+    virtual ~IStrain() = default;
+
+  };
+
   /** Interface for splitters at test time
    * @tparam L      Label type
    * @tparam Stest  State type at test time - note that this is a mutable reference

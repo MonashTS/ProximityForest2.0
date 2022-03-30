@@ -2,7 +2,7 @@
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/classifier/proximity_forest/splitters.hpp>
-#include <libtempo/classifier/proximity_forest/isplitters.hpp>
+#include <libtempo/classifier/proximity_forest/ipf.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 

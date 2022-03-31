@@ -225,7 +225,7 @@ namespace libtempo::distance {
     /// Default DTW using univariate ad2
     template<Float F, TSLike T>
     [[nodiscard]] inline F dtw(const T& lines, const T& cols, F ub = utils::PINF<F>) {
-      return dtw(lines, cols, ad2<F, T>, ub);
+      return libtempo::distance::dtw(lines, cols, ad2<F, T>, ub);
     }
 
     /// Specific overload for univariate vector

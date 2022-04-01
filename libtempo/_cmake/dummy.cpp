@@ -7,11 +7,11 @@
 #include <libtempo/transform/derivative.hpp>
 
 #include <cmath>
-#include <iostream>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <vector>
+#include <iostream>
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -29,6 +29,25 @@ void derivative(const double *series, size_t length, double *out) {
     std::copy(series, series + length, out);
   }
 }
+
+
+auto load_dataset(const fs::path& path){
+
+  std::ifstream istream_(path);
+
+  auto _res = libtempo::reader::TSReader::read(istream_);
+  if (_res.index()==0) {
+    cerr << "reading error: " << get<0>(_res) << endl;
+    exit(1);
+  }
+
+  auto _dataset = std::move(get<1>(_res));
+  cout << _dataset.name() << endl;
+  cout << "Has missing value: " << _dataset.header().has_missing_value() << endl;
+
+  return _dataset;
+}
+
 
 int main(int argc, char **argv) {
 
@@ -62,22 +81,20 @@ int main(int argc, char **argv) {
   }
 
   // --- --- --- Reading of a time series
-  if (argc>1) {
+  if (argc>2) {
     std::string strpath(argv[1]);
-    fs::path adiac_train(strpath);
-    std::ifstream istream(adiac_train);
+    std::string name(argv[2]);
+    fs::path  dirpath(strpath+"/"+name);
 
-    auto res = libtempo::reader::TSReader::read(istream);
-    if (res.index()==0) {
-      cerr << "reading error: " << get<0>(res) << endl;
-      return 1;
-    }
+    fs::path adiac_train = dirpath / (name+"_TRAIN.ts");
+    auto train_dataset = load_dataset(adiac_train);
 
-    auto dataset = std::move(get<1>(res));
-    cout << dataset.name() << endl;
-    cout << "Has missing value: " << dataset.header().has_missing_value() << endl;
+    fs::path adiac_test = dirpath / (name+"_TEST.ts");
+    auto test_dataset = load_dataset(adiac_test);
 
-    auto derives = transform::derive(dataset, 3);
+
+    /*
+    auto derives = transform::derive(train_dataset, 3);
     auto d1 = std::move(derives[0]);
     auto d2 = std::move(derives[1]);
     auto d3 = std::move(derives[2]);
@@ -85,9 +102,9 @@ int main(int argc, char **argv) {
     cout << d2.name() << endl;
     cout << d3.name() << endl;
 
-    for (size_t i = 0; i<dataset.size(); ++i) {
+    for (size_t i = 0; i<train_dataset.size(); ++i) {
 
-      const auto& ts = dataset.data()[i];
+      const auto& ts = train_dataset.data()[i];
       const auto& tsd1 = d1.data()[i].rm_data();
       const auto& tsd2 = d2.data()[i].rm_data();
       const auto& tsd3 = d3.data()[i].rm_data();
@@ -118,6 +135,7 @@ int main(int argc, char **argv) {
         }
       }
     }
+     */
 
 
 
@@ -125,12 +143,18 @@ int main(int argc, char **argv) {
     namespace pf = libtempo::classifier::pf;
 
     struct PFState :
+      public pf::IStrain<std::string, PFState, PFState>,
       public pf::State::PRNG_mt64,
       public pf::State::DatasetTS<double, std::string> {
 
       PFState(size_t seed, DatasetTS<double, std::string>::MAP_sptr_t transformations) :
         PRNG_mt64(seed),
         DatasetTS<double, std::string>(std::move(transformations)) {}
+
+      PFState clone(size_t /* bidx */) override { return *this; }
+
+      void merge(PFState&& /* substate */) override {}
+
     };
 
     std::random_device rd;
@@ -140,7 +164,7 @@ int main(int argc, char **argv) {
       {
         "default",
         std::move(
-          dataset
+          train_dataset
         )
       }
     );
@@ -152,25 +176,49 @@ int main(int argc, char **argv) {
     std::unique_ptr<pf::ISplitterGenerator<std::string, PFState, PFState>>
       sg = std::make_unique<pf::SG_1NN1DA<double, std::string, PFState, PFState>>();
 
-    auto tree = pf::PFTree<std::string, PFState>::make_tree<PFState>(train_state, train_bcm, *sg);
+    auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, *sg);
+    auto classifier = tree->get_classifier();
+
+    // --- --- ---
+    auto test_transformations = std::make_shared<pf::State::DatasetTS<double, std::string>::MAP_t>();
+    test_transformations->insert(
+      {
+        "default",
+        std::move(
+          test_dataset
+        )
+      }
+    );
+
+    size_t test_seed = rd();
+    PFState test_state = PFState(test_seed, test_transformations);
+
+    const auto& test_set = transformations->at("default");
+    const size_t test_top = transformations->at("default").header().size();
+    size_t correct = 0;
+    for(size_t i=0; i < test_top; ++i){
+      std::cout << i << std::endl;
+      std::string predicted_l = classifier.classify(test_state, i);
+      if(predicted_l==test_set.header().labels()[i].value()){
+        correct++;
+      }
+      else {
+        std::cout << "i predicted =" << predicted_l << " vs " << test_set.header().labels()[i].value() << std::endl;
+      }
+    }
+    std::cout << "Correct = " << correct << "/" << test_top << std::endl;
+
 
   }
 
 
-
-
-
   /*
-
-
-  auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_tree(st, is, bcm, 1, generator, prng);
-
+  auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_node(st, is, bcm, 1, generator, prng);
   std::cout << tree->is_pure_node << std::endl;
   auto treecl = tree->get_classifier(prng);
   for (int i = 0; i<20; ++i) {
     std::cout << "Classify " << i << " as " << treecl.classify(st, i) << std::endl;
   }
-
   */
 
   return 0;

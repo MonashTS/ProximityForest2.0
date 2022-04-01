@@ -4,6 +4,7 @@
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/concepts.hpp>
 #include <libtempo/distance/direct.hpp>
+#include <libtempo/distance/dtw.hpp>
 
 #include <random>
 #include <utility>
@@ -122,7 +123,7 @@ namespace libtempo::classifier::pf {
       // get list of labels for NN
       for (size_t exemplar_idx : train_exemplar_is) {
         const auto& exemplar = (*train_dataset)[exemplar_idx];
-        auto dist = distance::univariate::directa(exemplar, query, bsf);
+        auto dist = distance::univariate::dtw(exemplar, query, bsf);
         if (dist<bsf) {
           labels.clear();
           labels.template emplace_back(exemplar.label().value());
@@ -169,7 +170,7 @@ namespace libtempo::classifier::pf {
         const auto& query = dataset[query_idx];
         for (size_t exemplar_idx : is) {
           const auto& exemplar = dataset[exemplar_idx];
-          auto dist = distance::univariate::directa<F, TSeries<F, L>>(exemplar, query, bsf);
+          auto dist = distance::univariate::dtw<F, TSeries<F, L>>(exemplar, query, bsf);
           if (dist<bsf) {
             labels.clear();
             labels.template emplace_back(exemplar.label().value());

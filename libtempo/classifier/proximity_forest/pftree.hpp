@@ -45,7 +45,7 @@ namespace libtempo::classifier::pf {
      * @return
      */
     template<typename Strain>
-    [[nodiscard]] static std::unique_ptr<PFTree<L, Stest>> make_tree(
+    [[nodiscard]] static std::unique_ptr<PFTree<L, Stest>> make_node(
       Strain& state,
       const ByClassMap<L>& bcm,
       const ISplitterGenerator<L, Strain, Stest>& sg
@@ -54,7 +54,7 @@ namespace libtempo::classifier::pf {
       assert(!bcm.empty());
 
       // Enter make tree
-      auto& state_ = static_cast<IStrain<L>&>(state);
+      auto& state_ = static_cast<IStrain<L, Strain, Stest>&>(state);
       state_.on_make_tree(bcm);
 
       std::unique_ptr<PFTree<L, Stest>> ret;
@@ -65,14 +65,18 @@ namespace libtempo::classifier::pf {
         state_.on_make_leaf(label);
         ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=Leaf{label}});
       } else {
-        // --- --- --- CASE 2 - internal node case
+        // --- --- --- CASE 2 - branch node case
         // Generate the splitter
         auto result = sg.generate(state, bcm);
-        std::vector<std::unique_ptr<PFTree<L, Stest>>> subbranches;
+        state_.on_make_branches(*result);
         // Recursively create the subtrees.
-        for (size_t i = 0; i<result->branch_splits.size(); ++i) {
-          ByClassMap<L> branch_bcm = std::move(result->branch_splits[i]);
-          subbranches.push_back(make_tree(state, branch_bcm, sg));
+        std::vector<std::unique_ptr<PFTree<L, Stest>>> subbranches;
+        const size_t nbbranches = result->branch_splits.size();
+        for (size_t idx = 0; idx<nbbranches; ++idx) {
+          Strain sub_state = state_.clone(idx);
+          ByClassMap<L> branch_bcm = std::move(result->branch_splits[idx]);
+          subbranches.push_back(make_node(state, branch_bcm, sg));
+          state_.merge(std::move(sub_state));
         }
         // Create the node itself.
         ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{
@@ -85,10 +89,10 @@ namespace libtempo::classifier::pf {
       }
 
       // Exit make tree - always executed
-      state.exit_make_tree();
+      state_.on_exit_make_node();
       return ret;
 
-    } // End of make_tree
+    } // End of make_node
 
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -110,29 +114,43 @@ namespace libtempo::classifier::pf {
       const PFTree& pt;
 
       // Main classification function (stateless)
-      [[nodiscard]] static L classify(const PFTree& pt, Stest& state, size_t idx) {
+      [[nodiscard]] static L classify(const PFTree& pt, Stest& state, size_t query_idx) {
         switch (pt.node.index()) {
         case 0: { return std::get<0>(pt.node).label; }
         case 1: {
           const Node& n = std::get<1>(pt.node);
-          L res = n.splitter->classify(state, idx);
-          const auto& sub = n.branches.at(res);    // Use at because it is 'const', when [ ] is not
-          return classify(*sub, state, idx);
+          size_t branch_idx = n.splitter->classify(state, query_idx);
+          const auto& sub = n.branches.at(branch_idx);    // Use at because it is 'const', when [ ] is not
+          return classify(*sub, state, query_idx);
         }
         default: utils::should_not_happen();
         }
       }
 
-      explicit Classifier(const PFTree& pt) : pt(pt) {}
-
     public:
 
-      [[nodiscard]] L classify(std::shared_ptr<Stest>& state, size_t index) { return classify(pt, state, index); }
+      explicit Classifier(const PFTree& pt) : pt(pt) {}
+
+      [[nodiscard]] L classify(Stest& state, size_t index) { return classify(pt, state, index); }
 
     };// End of Classifier
 
     [[nodiscard]]
     Classifier get_classifier() { return Classifier(*this); }
   };
+
+
+
+  template<Label L, typename Stest>
+  struct PForest {
+
+    using PTree = PFTree<L, Stest>;
+
+    std::vector<std::unique_ptr<PTree>> forest;
+
+
+
+  };
+
 
 }

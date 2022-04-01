@@ -8,15 +8,6 @@
 
 namespace libtempo::classifier::pf {
 
-  /** Interface with functions to be override for the train state */
-  template<Label L>
-  struct IStrain {
-
-
-    virtual ~IStrain() = default;
-
-  };
-
   /** Interface for splitters at test time
    * @tparam L      Label type
    * @tparam Stest  State type at test time - note that this is a mutable reference
@@ -61,6 +52,46 @@ namespace libtempo::classifier::pf {
     virtual std::unique_ptr<Result> generate(Strain& state, const ByClassMap <L>& bcm) const = 0;
 
     virtual ~ISplitterGenerator() = default;
+  };
+
+  /** Interface with callbacks for the train state */
+  template<
+    template<typename, typename> typename State,
+    typename L,
+    typename Stest
+  >
+  concept TrainState = requires(State<L, Stest>& state){
+
+    /// Callback when entering the function creating a new node (leaf or branching node). Always called.
+    requires requires(const ByClassMap <L> bcm){
+      { state.on_make_node(bcm) }->std::same_as<void>;
+    };
+
+    ///
+    requires requires(const L& l){
+      { state.on_make_node(l) }->std::same_as<void>;
+    };
+
+  };
+
+  struct IStrain {
+
+    /// Callback when making a leaf - XOR with on_make_node
+    virtual void on_make_leaf(const L& /* l */) {}
+
+    /// Callback when making a node with the result from a splitter generator - XOR with on_make_leaf
+    virtual void on_make_branches(const typename ISplitterGenerator<L, Strain, Stest>::Result& /* res */) {}
+
+    /// Callback just before returning from make_node. Always called.
+    virtual void on_exit_make_node() {}
+
+    /// Clone the state for subbranch with index "bidx", leading to a "sub state"
+    virtual Strain clone(size_t /* bidx */) = 0;
+
+    /// Merge in "this" the "substate".
+    virtual void merge(Strain&& /* substate */) = 0;
+
+    virtual ~IStrain() = default;
   };
 
 }

@@ -43,9 +43,9 @@ namespace libtempo::classifier::pf {
     [[nodiscard]] static std::unique_ptr<PFTree<L, Stest>> make_node(
       Strain& strain,
       std::vector<ByClassMap<L>> bcmvec,
-      const IPF_NodeGenerator<L, Strain, Stest>& sg
+      const IPF_TopGenerator<L, Strain, Stest>& sg
     ) {
-      using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
+      using Result = typename IPF_TopGenerator<L, Strain, Stest>::Result;
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
@@ -69,10 +69,10 @@ namespace libtempo::classifier::pf {
         strain.on_make_branches(inner_node);
         // Build subbranches, then we'll build the current node
         Branches subbranches;
-        const size_t nbbranches = inner_node.branch_splits.split.size();
+        const size_t nbbranches = inner_node.branch_splits.size();
         for (size_t idx = 0; idx<nbbranches; ++idx) {
           // Clone state, push bcm
-          bcmvec.template emplace_back(std::move(inner_node.branch_splits.split[idx]));
+          bcmvec.template emplace_back(std::move(inner_node.branch_splits[idx]));
           Strain sub_state = strain.clone(idx);
           // Sub branch
           subbranches.push_back(make_node(sub_state, bcmvec, sg));
@@ -105,14 +105,14 @@ namespace libtempo::classifier::pf {
       const PFTree& pt;
 
       // Main classification function (stateless)
-      [[nodiscard]] static std::vector<double> classify(const PFTree& pt, Stest& state, size_t query_idx) {
+      [[nodiscard]] static std::vector<double> predict_proba(const PFTree& pt, Stest& state, size_t query_idx) {
         switch (pt.node.index()) {
         case 0: { return std::get<0>(pt.node)->predict_proba(state, query_idx); }
         case 1: {
           const InnerNode& n = std::get<1>(pt.node);
           size_t branch_idx = n.splitter->get_branch_index(state, query_idx);
           const auto& sub = n.branches.at(branch_idx);    // Use at because it is 'const', when [ ] is not
-          return classify(*sub, state, query_idx);
+          return predict_proba(*sub, state, query_idx);
         }
         default: utils::should_not_happen();
         }
@@ -122,7 +122,9 @@ namespace libtempo::classifier::pf {
 
       explicit Classifier(const PFTree& pt) : pt(pt) {}
 
-      [[nodiscard]] std::vector<double> classify(Stest& state, size_t index) { return classify(pt, state, index); }
+      [[nodiscard]] std::vector<double> predict_proba(Stest& state, size_t index) {
+        return predict_proba(pt, state, index);
+      }
 
     };// End of Classifier
 

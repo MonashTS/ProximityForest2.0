@@ -29,6 +29,24 @@ namespace libtempo::classifier::pf {
     std::unique_ptr<IPF_LeafSplitter<L, Stest>> splitter;
   };
 
+  /** Train time interface: a leaf generator.
+   * @tparam L          Label type
+   * @tparam Strain     Train time state type
+   * @tparam Stest      Test time state type
+   */
+  template<Label L, typename Strain, typename Stest>
+  struct IPF_LeafGenerator {
+    using Result = std::optional<ResLeaf<L, Stest>>;
+
+    /** Generate a leaf from a training state and the ByClassMap at the node.
+     *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
+    & bcm) const = 0;
+
+    virtual ~IPF_LeafGenerator() = default;
+  };
+
+
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- Internal node
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -43,50 +61,67 @@ namespace libtempo::classifier::pf {
     virtual ~IPF_NodeSplitter() = default;
   };
 
-  /** Train time internal node split */
-  template<Label L>
-  struct PF_NodeSplit {
-    /// The actual split: the size of the vector tells us the number of branches
-    /// Note: a ByClassMap can contain no indexes, but cannot contain no label.
-    ///       if a branch is required, but no train actually data reaches it,
-    ///       the map contains labels (at least one) mapping to empty IndexSet
-    std::vector<ByClassMap<L>> split;
-  };
-
   /** Result type when generating an internal node */
   template<Label L, typename Stest>
   struct ResNode {
 
-    /// Train time split, with an entry per sub-branch
-    PF_NodeSplit<L> branch_splits;
+    /// The actual split: the size of the vector tells us the number of branches
+    /// Note: a ByClassMap can contain no indexes, but cannot contain no label.
+    ///       if a branch is required, but no train actually data reaches it,
+    ///       the map contains labels (at least one) mapping to empty IndexSet
+    std::vector<ByClassMap<L>> branch_splits;
 
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_NodeSplitter<L, Stest>> splitter;
   };
 
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // --- Generator
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  /** Train time interface: a node generator.
-   * @tparam L          Label type
-   * @tparam Strain     Train time state type
-   * @tparam Stest      Test time state type
-   */
+  /** Train time interface: a node generator. */
   template<Label L, typename Strain, typename Stest>
   struct IPF_NodeGenerator {
-    /// Shorthand for result type: either a leaf or an internal node
+    using Result = ResNode<L, Stest>;
+
+    /** Generate a new splitter from a training state and the ByClassMap at the node. */
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
+    & bcm) const = 0;
+
+    virtual ~IPF_NodeGenerator() = default;
+  };
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // --- Main node generator class
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /** Train time node generator. */
+  template<Label L, typename Strain, typename Stest>
+  struct IPF_TopGenerator {
+    // Shorthand for result type
     using Result = std::variant<ResLeaf<L, Stest>, ResNode<L, Stest>>;
+    using LeafResult = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
+    using NodeResult = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
+
+    std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator;
+    std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator;
+
+    IPF_TopGenerator(
+      std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator,
+      std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator
+    ) : leaf_generator(leaf_generator), node_generator(node_generator) {}
 
     /** Generate a new splitter from a training state and the ByClassMap at the node.
     * @param state  Training state - mutable reference!
     * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
     * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
     */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcm) const = 0;
-
-    virtual ~IPF_NodeGenerator() = default;
+    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const {
+      LeafResult oleaf = leaf_generator->generate(state, bcmvec);
+      if (oleaf.has_value()) {
+        return Result{std::move(oleaf.value())};
+      } else {
+        return Result{node_generator->generate(state, bcmvec)};
+      }
+    }
   };
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- State
@@ -97,7 +132,7 @@ namespace libtempo::classifier::pf {
   struct IStrain {
 
     /// Callback when making a leaf - XOR with on_make_branches
-    virtual void on_make_leaf(const ResLeaf<L, Stest>& /* leaf */){}
+    virtual void on_make_leaf(const ResLeaf<L, Stest>& /* leaf */) {}
 
     /// Callback when making a node with the result from a splitter generator - XOR with on_make_leaf
     virtual void on_make_branches(const ResNode<L, Stest>& /* inode */) {}

@@ -31,8 +31,7 @@ void derivative(const double *series, size_t length, double *out) {
   }
 }
 
-
-auto load_dataset(const fs::path& path){
+auto load_dataset(const fs::path& path) {
 
   std::ifstream istream_(path);
 
@@ -48,7 +47,6 @@ auto load_dataset(const fs::path& path){
 
   return _dataset;
 }
-
 
 int main(int argc, char **argv) {
 
@@ -82,7 +80,7 @@ int main(int argc, char **argv) {
   }
 
   IndexSet is;
-  for(auto i:is){
+  for (auto i : is) {
     std::cout << "is = " << i << std::endl;
   }
 
@@ -90,12 +88,12 @@ int main(int argc, char **argv) {
   if (argc>2) {
     std::string strpath(argv[1]);
     std::string name(argv[2]);
-    fs::path  dirpath(strpath+"/"+name);
+    fs::path dirpath(strpath + "/" + name);
 
-    fs::path adiac_train = dirpath / (name+"_TRAIN.ts");
+    fs::path adiac_train = dirpath/(name + "_TRAIN.ts");
     auto train_dataset = load_dataset(adiac_train);
 
-    fs::path adiac_test = dirpath / (name+"_TEST.ts");
+    fs::path adiac_test = dirpath/(name + "_TEST.ts");
     auto test_dataset = load_dataset(adiac_test);
 
 
@@ -155,8 +153,7 @@ int main(int argc, char **argv) {
       public pf::IStrain<L, PFState, PFState>,
       public pfs::PRNG_mt64,
       public pfs::TimeSeriesDataset<F, L>,
-      public pfs::TimeSeriesDatasetHeader<PFState, F, L>
-      {
+      public pfs::TimeSeriesDatasetHeader<PFState, F, L> {
 
       int depth{0};
 
@@ -166,7 +163,7 @@ int main(int argc, char **argv) {
 
       PFState clone(size_t /* bidx */) override {
         auto other = *this;
-        other.depth +=1;
+        other.depth += 1;
         std::cout << "CLONE DEPTH = " << other.depth << std::endl;
         return other;
       }
@@ -179,8 +176,8 @@ int main(int argc, char **argv) {
 
     std::random_device rd;
     size_t seed = rd();
-    auto transformations = pfs::TimeSeriesDataset<F,L>::MAP_t();
-    transformations.insert( { "default", train_dataset } );
+    auto transformations = pfs::TimeSeriesDataset<F, L>::MAP_t();
+    transformations.insert({"default", train_dataset});
 
     std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
 
@@ -189,33 +186,39 @@ int main(int argc, char **argv) {
     //std::unique_ptr<pf::IPF_NodeGenerator<std::string, PFState, PFState>>
     //sg = std::make_unique<pf::SG_1NN_DA<F,L,Strain,Stest>>("default", 1);
 
-    pf::SG_1NN_DA<F,L,Strain,Stest> sg_1nn_dae1("default", 1);
-    pf::SG_PureNode<F,L,Strain,Stest> sg_top(sg_1nn_dae1);
+    auto sg_1nn_da_e1 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 1);
+    auto sg_1nn_da_e2 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 2);
+    auto sg_1nn_dtwf_e1 = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", 1);
+    auto sg_1nn_dtwf_e2 = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", 2);
 
+    auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
+      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da_e1, sg_1nn_da_e2, sg_1nn_dtwf_e1, sg_1nn_dtwf_e2 },
+      3 );
 
+    auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
 
+    pf::IPF_TopGenerator<L,Strain,Stest> sg_top(sgleaf_purenode, sg_chooser);
 
     auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, sg_top);
     auto classifier = tree->get_classifier();
 
     // --- --- ---
-    auto test_transformations = pfs::TimeSeriesDataset<F,L>::MAP_t();
-    test_transformations.insert( { "default", test_dataset } );
+    auto test_transformations = pfs::TimeSeriesDataset<F, L>::MAP_t();
+    test_transformations.insert({"default", test_dataset});
 
     size_t test_seed = rd();
     PFState test_state = PFState(test_seed, test_transformations);
 
     const size_t test_top = test_dataset.header().size();
     size_t correct = 0;
-    for(size_t i=0; i < test_top; ++i){
+    for (size_t i = 0; i<test_top; ++i) {
       std::cout << i << std::endl;
-      auto vec = classifier.classify(test_state, i);
+      auto vec = classifier.predict_proba(test_state, i);
       size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
       std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-      if(predicted_l==test_dataset.header().labels()[i].value()){
+      if (predicted_l==test_dataset.header().labels()[i].value()) {
         correct++;
-      }
-      else {
+      } else {
         std::cout << "i predicted =" << predicted_l << " vs " << test_dataset.header().labels()[i].value() << std::endl;
       }
     }

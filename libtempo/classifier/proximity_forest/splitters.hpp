@@ -159,7 +159,7 @@ namespace libtempo::classifier::pf {
       }
       // Build the splitter
       return Result{ResNode<L, Stest>{
-        .branch_splits = PF_NodeSplit<L>{std::move(v_bcm)},
+        .branch_splits = std::move(v_bcm),
         .splitter=std::make_unique<Sp_1NN<F, L, Stest>>(
           train_dataset, train_indexset, labels_to_index, transformation_name, distance
         )
@@ -197,8 +197,6 @@ namespace libtempo::classifier::pf {
 
   };
 
-
-
   /** 1NN DTW with full window Splitter Generator */
   template<Float F, Label L, typename Strain, typename Stest>
   struct SG_1NN_DTWFull : public IPF_NodeGenerator<L, Strain, Stest> {
@@ -229,18 +227,69 @@ namespace libtempo::classifier::pf {
 
   };
 
-
-
-
-
-
-
-  /** Top level generator, stopping at pure node */
-  template<Float F, Label L, typename Strain, typename Stest>
-  struct SG_PureNode : public IPF_NodeGenerator<L, Strain, Stest> {
-    // Type shorthands
+  template<Label L, typename Strain, typename Stest>
+  struct SG_chooser : public IPF_NodeGenerator<L, Strain, Stest> {
     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-    using distance_t = typename Sp_1NN<F, L, Stest>::distance_t;
+
+    using SGVec_t = std::vector<std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>>>;
+
+    SGVec_t sgvec;
+    size_t nb_candidates;
+
+    SG_chooser(SGVec_t&& sgvec, size_t nb_candidates) :
+      sgvec(std::move(sgvec)),
+      nb_candidates(nb_candidates) {}
+
+    /** Implementation fo the generate function
+     * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
+     */
+    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+      // Access the pseudo random number generator: state must inherit from PRNG_mt64
+      auto& prng = *static_cast<State::PRNG_mt64&>(state).prng;
+      Result best_result{};
+      double best_score = utils::PINF<double>;
+      for (size_t i = 0; i<nb_candidates; ++i) {
+        const auto idx = std::uniform_int_distribution<size_t>(0, sgvec.size() - 1)(prng);
+        Result result = sgvec[idx]->generate(state, bcmvec);
+        double score = weighted_gini_impurity(result);
+        if (score<best_score) {
+          best_score = score;
+          best_result = std::move(result);
+        }
+      }
+
+      std::cout << "best gini =  " << best_score << std::endl;
+
+      return best_result;
+    }
+
+  private:
+
+    //// Compute the weighted (ratio of series per branch) gini impurity of a split.
+    [[nodiscard]]
+    static double weighted_gini_impurity(const Result& split) {
+      double wgini{0};
+      double total_size{0};
+      for (const auto& bcm : split.branch_splits) {
+        double g = bcm.gini_impurity();
+        // Weighted part: multiply gini score by the total number of item in this branch
+        const double bcm_size = bcm.size();
+        wgini += bcm_size*g;
+        // Accumulate total size for final division
+        total_size += bcm_size;
+      }
+      // Finish weighted computation by scaling to [0, 1]
+      assert(total_size!=0);
+      return wgini/total_size;
+    }
+  };
+
+
+  /** Leaf generator, stopping at pure node */
+  template<Float F, Label L, typename Strain, typename Stest>
+  struct SGLeaf_PureNode : public IPF_LeafGenerator<L, Strain, Stest> {
+    // Type shorthands
+    using Result = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
 
     /// leaf splitter
     struct PureNode : public IPF_LeafSplitter<L, Stest> {
@@ -255,12 +304,6 @@ namespace libtempo::classifier::pf {
       }
     };
 
-    /// Sub generator to call if we do not generate a leaf
-    const IPF_NodeGenerator <L, Strain, Stest>& node_generator;
-
-    SG_PureNode(const IPF_NodeGenerator <L, Strain, Stest>& node_generator) :
-      node_generator(node_generator) {}
-
     /// Override interface ISplitterGenerator
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
       const auto& bcm = bcmvec.back();
@@ -268,77 +311,12 @@ namespace libtempo::classifier::pf {
       if (bcm.nb_classes()==1) {
         const auto& header = state.get_header();
         std::string label = bcm.begin()->first;
-        return Result{ResLeaf<L, Stest>{.splitter = std::make_unique<PureNode>(header.label_to_index(), label)}};
+        return { Result{ResLeaf<L, Stest>{.splitter = std::make_unique<PureNode>(header.label_to_index(), label)}} };
       }
-        // Else, call the generator
-      else { return node_generator.generate(state, bcmvec); }
-    }
-
-  };
-
-  template<Label L, typename Strain, typename Stest>
-  struct SG_chooser : public IPF_NodeGenerator<L, Strain, Stest> {
-    using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-
-    using SGVec_t = std::vector<std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>>>;
-
-    SGVec_t sgvec;
-    size_t nb_candidates;
-
-    SG_chooser(SGVec_t sgvev, size_t nb_candidates) :
-      sgvec(std::move(sgvec)),
-      nb_candidates(nb_candidates) {}
-
-    /** Implementation fo the generate function
-     * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
-     */
-    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-      // Access the pseudo random number generator: state must inherit from PRNG_mt64
-      auto& prng = static_cast<State::PRNG_mt64&>(state).prng;
-      std::unique_ptr<Result> best_candidate{};
-      double best_score = utils::PINF<double>;
-      for (size_t i = 0; i<nb_candidates; ++i) {
-        const auto idx = std::uniform_int_distribution<size_t>(0, sgvec.size() - 1)(prng);
-        std::unique_ptr<Result> candidate = sgvec[idx]->generate(state, bcmvec);
-        double score = weighted_gini_impurity(*candidate);
-        if (score<best_score) {
-          best_score = score;
-          best_candidate = candidate;
-        }
-      }
-
-      assert((bool)best_candidate); // Convert to bool: true if "has" a pointer, else false
-
-      return best_candidate;
-    }
-
-  private:
-
-    //// Compute the weighted (ratio of series per branch) gini impurity of a split.
-    [[nodiscard]]
-    static double weighted_gini_impurity(const Result& split) {
-      double wgini{0};
-      double total_size{0};
-      for (const auto& variant : split.branch_splits) {
-        switch (variant.index()) {
-        case 0: {
-          const ByClassMap<L>& bcm = std::get<0>(variant);
-          double g = bcm.gini_impurity();
-          // Weighted part: multiply gini score by the total number of item in this branch
-          const double bcm_size = bcm.size();
-          wgini += bcm_size*g;
-          // Accumulate total size for final division
-          total_size += bcm_size;
-          break;
-        }
-        case 1: { /* Do nothing: contribute 0 to gini */ break; }
-        default:libtempo::utils::should_not_happen();
-        }
-      }
-      // Finish weighted computation by scaling to [0, 1]
-      assert(total_size!=0);
-      return wgini/total_size;
+        // Else, return the empty option
+      else { return {}; }
     }
   };
+
 
 }

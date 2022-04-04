@@ -1,3 +1,4 @@
+#include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
@@ -80,6 +81,11 @@ int main(int argc, char **argv) {
     cout << endl;
   }
 
+  IndexSet is;
+  for(auto i:is){
+    std::cout << "is = " << i << std::endl;
+  }
+
   // --- --- --- Reading of a time series
   if (argc>2) {
     std::string strpath(argv[1]);
@@ -141,85 +147,80 @@ int main(int argc, char **argv) {
 
     // --------------------------------------------------------------------------------------------------------------
     namespace pf = libtempo::classifier::pf;
+    namespace pfs = pf::State;
+    using F = double;
+    using L = std::string;
 
     struct PFState :
-      public pf::IStrain<std::string, PFState, PFState>,
-      public pf::State::PRNG_mt64,
-      public pf::State::DatasetTS<double, std::string> {
+      public pf::IStrain<L, PFState, PFState>,
+      public pfs::PRNG_mt64,
+      public pfs::TimeSeriesDataset<F, L>,
+      public pfs::TimeSeriesDatasetHeader<PFState, F, L>
+      {
 
-      PFState(size_t seed, DatasetTS<double, std::string>::MAP_sptr_t transformations) :
+      int depth{0};
+
+      PFState(size_t seed, const pfs::TimeSeriesDataset<F, L>::MAP_t& transformations) :
         PRNG_mt64(seed),
-        DatasetTS<double, std::string>(std::move(transformations)) {}
+        pfs::TimeSeriesDataset<double, std::string>(transformations) {}
 
-      PFState clone(size_t /* bidx */) override { return *this; }
+      PFState clone(size_t /* bidx */) override {
+        auto other = *this;
+        other.depth +=1;
+        std::cout << "CLONE DEPTH = " << other.depth << std::endl;
+        return other;
+      }
 
       void merge(PFState&& /* substate */) override {}
-
     };
+
+    using Strain = PFState;
+    using Stest = PFState;
 
     std::random_device rd;
     size_t seed = rd();
-    auto transformations = std::make_shared<pf::State::DatasetTS<double, std::string>::MAP_t>();
-    transformations->insert(
-      {
-        "default",
-        std::move(
-          train_dataset
-        )
-      }
-    );
+    auto transformations = pfs::TimeSeriesDataset<F,L>::MAP_t();
+    transformations.insert( { "default", train_dataset } );
 
-    ByClassMap<std::string> train_bcm = std::get<0>(transformations->at("default").header().get_BCM());
+    std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
 
     PFState train_state = PFState(seed, transformations);
 
-    std::unique_ptr<pf::ISplitterGenerator<std::string, PFState, PFState>>
-      sg = std::make_unique<pf::SG_1NN1DA<double, std::string, PFState, PFState>>();
+    //std::unique_ptr<pf::IPF_NodeGenerator<std::string, PFState, PFState>>
+    //sg = std::make_unique<pf::SG_1NN_DA<F,L,Strain,Stest>>("default", 1);
 
-    auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, *sg);
+    pf::SG_1NN_DA<F,L,Strain,Stest> sg_1nn_dae1("default", 1);
+    pf::SG_PureNode<F,L,Strain,Stest> sg_top(sg_1nn_dae1);
+
+
+
+
+    auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, sg_top);
     auto classifier = tree->get_classifier();
 
     // --- --- ---
-    auto test_transformations = std::make_shared<pf::State::DatasetTS<double, std::string>::MAP_t>();
-    test_transformations->insert(
-      {
-        "default",
-        std::move(
-          test_dataset
-        )
-      }
-    );
+    auto test_transformations = pfs::TimeSeriesDataset<F,L>::MAP_t();
+    test_transformations.insert( { "default", test_dataset } );
 
     size_t test_seed = rd();
     PFState test_state = PFState(test_seed, test_transformations);
 
-    const auto& test_set = transformations->at("default");
-    const size_t test_top = transformations->at("default").header().size();
+    const size_t test_top = test_dataset.header().size();
     size_t correct = 0;
     for(size_t i=0; i < test_top; ++i){
       std::cout << i << std::endl;
-      std::string predicted_l = classifier.classify(test_state, i);
-      if(predicted_l==test_set.header().labels()[i].value()){
+      auto vec = classifier.classify(test_state, i);
+      size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
+      std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
+      if(predicted_l==test_dataset.header().labels()[i].value()){
         correct++;
       }
       else {
-        std::cout << "i predicted =" << predicted_l << " vs " << test_set.header().labels()[i].value() << std::endl;
+        std::cout << "i predicted =" << predicted_l << " vs " << test_dataset.header().labels()[i].value() << std::endl;
       }
     }
     std::cout << "Correct = " << correct << "/" << test_top << std::endl;
-
-
   }
-
-
-  /*
-  auto tree = libtempo::classifier::pf::PFTree<std::string, State, PRNG>::make_node(st, is, bcm, 1, generator, prng);
-  std::cout << tree->is_pure_node << std::endl;
-  auto treecl = tree->get_classifier(prng);
-  for (int i = 0; i<20; ++i) {
-    std::cout << "Classify " << i << " as " << treecl.classify(st, i) << std::endl;
-  }
-  */
 
   return 0;
 }

@@ -16,6 +16,7 @@
 #include <map>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 namespace libtempo {
 
@@ -153,7 +154,7 @@ namespace libtempo {
     }
 
     explicit ByClassMap(BCMvec_t&& bcm) {
-      for (auto[l, v] : bcm) { _bcm[l] = IndexSet(std::move(v)); }
+      for (auto[l, v] : bcm) { _bcm.template emplace(l, IndexSet(std::move(v))); }
       populate_indexes();
     }
 
@@ -269,8 +270,11 @@ namespace libtempo {
     /// Mapping between index and label
     std::vector<std::optional<L>> _labels;
 
-    /// Set of labels for the dataset
-    std::set<L> _label_set;
+    /// Set of labels for the dataset, with index encoding
+    std::map<L, size_t> _label_to_index;
+
+    /// Reverse mapping index top label
+    std::map<size_t, L> _index_to_label;
 
   public:
 
@@ -297,10 +301,16 @@ namespace libtempo {
         _nb_dimensions(dimensions),
         _instances_with_missing(std::move(instances_with_missing)),
         _labels(std::move(labels)) {
-      /// Construct set of labels from the input vector
+      // Set of labels from input vector: guarantee uniqueness
       std::set<L> lset;
-      for (const auto& ol : labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
-      _label_set = lset;
+      for (const auto& ol : _labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
+      // Set to map (Label, Index)
+      size_t idx = 0;
+      for (auto k : lset) {
+        _label_to_index[k] = idx;
+        _index_to_label[idx] = k;
+        ++idx;
+      }
     }
 
     /**   Given a set of index 'is', compute a tuple (BCM, vec) where:
@@ -320,35 +330,53 @@ namespace libtempo {
     }
 
     /// Helper for the above, using all the index
-    [[nodiscard]] inline std::tuple<ByClassMap<L>, std::vector<size_t>> get_BCM() const {
+    [[nodiscard]]
+    inline std::tuple<ByClassMap<L>, std::vector<size_t>> get_BCM() const {
       return get_BCM(IndexSet(_size));
     }
 
     /// Base name of the dataset
-    [[nodiscard]] inline const std::string& name() const { return _name; }
+    [[nodiscard]]
+    inline const std::string& name() const { return _name; }
 
-    [[nodiscard]] inline size_t size() const { return _size; }
+    /// The size of the dataset, i.e. the number of exemplars
+    [[nodiscard]]
+    inline size_t size() const { return _size; }
 
-    [[nodiscard]] inline size_t length_min() const { return _length_min; }
+    /// The length of the shortest series in the dataset
+    [[nodiscard]]
+    inline size_t length_min() const { return _length_min; }
 
-    [[nodiscard]] inline size_t length_max() const { return _length_max; }
+    /// The length of the longest series in the dataset
+    [[nodiscard]]
+    inline size_t length_max() const { return _length_max; }
 
-    [[nodiscard]] inline bool variable_length() const { return _length_max != _length_min; }
+    /// Check if all series have varying length (return true), or all have the same length (return false)
+    [[nodiscard]]
+    inline bool variable_length() const { return _length_max!=_length_min; }
 
-    [[nodiscard]] inline size_t nb_dimensions() const { return _nb_dimensions; }
+    [[nodiscard]]
+    inline size_t nb_dimensions() const { return _nb_dimensions; }
 
     /// Index of instances with missing data
-    [[nodiscard]] inline const std::vector<size_t>& instances_with_missing() const {
-      return _instances_with_missing;
-    }
+    [[nodiscard]]
+    inline const std::vector<size_t>& instances_with_missing() const { return _instances_with_missing; }
 
-    [[nodiscard]] inline bool has_missing_value() const { return !(_instances_with_missing.empty()); }
+    /// Check if any exemplar contains a missing value (encoded with "NaN")
+    [[nodiscard]]
+    inline bool has_missing_value() const { return !(_instances_with_missing.empty()); }
 
     /// Label per instance. An instance may not have a label, hence we use optional
-    [[nodiscard]] inline const std::vector<std::optional<L>>& labels() const { return _labels; }
+    [[nodiscard]]
+    inline const std::vector<std::optional<L>>& labels() const { return _labels; }
 
-    /// Set of labels present in the dataset
-    [[nodiscard]] inline const std::set<L>& label_set() const { return _label_set; }
+    /// Labels to indexes encoding (reverse from index_to_label)
+    [[nodiscard]]
+    inline const std::map<L, size_t>& label_to_index() const { return _label_to_index; }
+
+    /// Indexes to labels encoding (reverse from label_to_index)
+    [[nodiscard]]
+    inline const std::map<size_t, L>& index_to_label() const { return _index_to_label; }
 
   };
 

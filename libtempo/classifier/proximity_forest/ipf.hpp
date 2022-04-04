@@ -8,84 +8,101 @@
 
 namespace libtempo::classifier::pf {
 
-  /** Interface for splitters at test time
-   * @tparam L      Label type
-   * @tparam Stest  State type at test time - note that this is a mutable reference
-   */
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // --- Leaf
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /** Test Time Interface: trained leaf node - classifier */
   template<Label L, typename Stest>
-  struct ISplitter {
+  struct IPF_LeafSplitter {
 
-    virtual size_t classify(Stest& state, size_t index) = 0;
+    /// Predict the probability of a classes at the leaf. Order must respect label_to_index from DatasetHeader.
+    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) = 0;
 
-    virtual ~ISplitter() = default;
+    virtual ~IPF_LeafSplitter() = default;
   };
 
-  /** Splitter generator
-   * Returns a SplitterGenerator::Result
-   * A Splitter Generator must return a splitter for the node, and the split of the train data reaching that node.
-   * To do so, it is provided with the train state, the ByClasMap at the node.
-   * All the logic about splitters generation/selection goes into the generator.
-   * Any source of randomness should come from the states
-   * @tparam L       Label type
-   * @tparam Strain  State type at train time
-   * @tparam Stest   State type at test time
+  /** Train time result type when generating a leaf */
+  template<Label L, typename Stest>
+  struct ResLeaf {
+    /// Resulting splitter to use at test time
+    std::unique_ptr<IPF_LeafSplitter<L, Stest>> splitter;
+  };
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // --- Internal node
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /** Test Time Interface: trained internal node - split between branches */
+  template<Label L, typename Stest>
+  struct IPF_NodeSplitter {
+
+    /// Get the branch index
+    virtual size_t get_branch_index(Stest& state, size_t test_index) = 0;
+
+    virtual ~IPF_NodeSplitter() = default;
+  };
+
+  /** Train time internal node split */
+  template<Label L>
+  struct PF_NodeSplit {
+    /// The actual split: the size of the vector tells us the number of branches
+    /// Note: a ByClassMap can contain no indexes, but cannot contain no label.
+    ///       if a branch is required, but no train actually data reaches it,
+    ///       the map contains labels (at least one) mapping to empty IndexSet
+    std::vector<ByClassMap<L>> split;
+  };
+
+  /** Result type when generating an internal node */
+  template<Label L, typename Stest>
+  struct ResNode {
+
+    /// Train time split, with an entry per sub-branch
+    PF_NodeSplit<L> branch_splits;
+
+    /// Resulting splitter to use at test time
+    std::unique_ptr<IPF_NodeSplitter<L, Stest>> splitter;
+  };
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // --- Generator
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /** Train time interface: a node generator.
+   * @tparam L          Label type
+   * @tparam Strain     Train time state type
+   * @tparam Stest      Test time state type
    */
   template<Label L, typename Strain, typename Stest>
-  struct ISplitterGenerator {
-
-    /// Result of a splitter generator
-    struct Result {
-
-      /// The actual split: the size of the vector tells us the number of branches
-      /// Note: if a branch is required, but no data reaches it, this branch will become a pure node.
-      std::vector<ByClassMap<L>> branch_splits;
-
-      /// Actual splitter to use
-      std::unique_ptr<ISplitter<L, Stest>> splitter;
-    };
+  struct IPF_NodeGenerator {
+    /// Shorthand for result type: either a leaf or an internal node
+    using Result = std::variant<ResLeaf<L, Stest>, ResNode<L, Stest>>;
 
     /** Generate a new splitter from a training state and the ByClassMap at the node.
-     * @param state  Training state - mutable reference!
-     * @param bcm    BCM at the node
-     * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
-     */
-    virtual std::unique_ptr<Result> generate(Strain& state, const ByClassMap <L>& bcm) const = 0;
+    * @param state  Training state - mutable reference!
+    * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
+    * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
+    */
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcm) const = 0;
 
-    virtual ~ISplitterGenerator() = default;
+    virtual ~IPF_NodeGenerator() = default;
   };
 
-  /** Interface with callbacks for the train state */
-  template<
-    template<typename, typename> typename State,
-    typename L,
-    typename Stest
-  >
-  concept TrainState = requires(State<L, Stest>& state){
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // --- State
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    /// Callback when entering the function creating a new node (leaf or branching node). Always called.
-    requires requires(const ByClassMap <L> bcm){
-      { state.on_make_node(bcm) }->std::same_as<void>;
-    };
-
-    ///
-    requires requires(const L& l){
-      { state.on_make_node(l) }->std::same_as<void>;
-    };
-
-  };
-
+  /** Interface for the train state */
+  template<Label L, typename Strain, typename Stest>
   struct IStrain {
 
-    /// Callback when making a leaf - XOR with on_make_node
-    virtual void on_make_leaf(const L& /* l */) {}
+    /// Callback when making a leaf - XOR with on_make_branches
+    virtual void on_make_leaf(const ResLeaf<L, Stest>& /* leaf */){}
 
     /// Callback when making a node with the result from a splitter generator - XOR with on_make_leaf
-    virtual void on_make_branches(const typename ISplitterGenerator<L, Strain, Stest>::Result& /* res */) {}
+    virtual void on_make_branches(const ResNode<L, Stest>& /* inode */) {}
 
-    /// Callback just before returning from make_node. Always called.
-    virtual void on_exit_make_node() {}
-
-    /// Clone the state for subbranch with index "bidx", leading to a "sub state"
+    /// Clone the state for sub branch/sub tree with index "bidx", leading to a "sub state"
     virtual Strain clone(size_t /* bidx */) = 0;
 
     /// Merge in "this" the "substate".
@@ -95,84 +112,3 @@ namespace libtempo::classifier::pf {
   };
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//   /** Split evaluator - lower score represent a more precise split.
-//  * When comparing splits, the split with the lowest score will be chosen.
-//  * If several splits have the same lowest score, then the first encountered one is picked.
-//  * */
-// template<typename Fun, typename L>
-// concept SplitEvaluator = Label<L>&&requires(Fun&& fun, Split<L>&& split){
-//   { // fun(split)->double
-//   std::invoke(std::forward<Fun>(fun), std::forward<Split<L>>(split))
-//   } -> std::convertible_to<double>;
-// };
-
-
-
-
-
-
-// /** Split evaluator: compute the weighted (ratio of series per branch) gini impurity of a split. */
-// template<Label L>
-// [[nodiscard]] static double weighted_gini_impurity(const Split<L>& split) {
-//   double wgini{0};
-//   double split_size{0};  // Accumulator, total number of series received at this node.
-//   // For each branch (i.e. assigned class c), get the actual mapping class->series (bcm)
-//   // and compute the gini impurity of the branch
-//   for (const auto&[c, bcm_vec] : split) {
-//     const auto[bcm, vec] = bcm_vec;
-//     double g = bcm.gini_impurity();
-//     // Weighted part: the total number of item in this branch is the lenght of the vector of index
-//     // Accumulate the total number of item in the split (sum the branches),
-//     // and weight current impurity by size of the branch
-//     const double bcm_size = vec.size();
-//     split_size += bcm_size;
-//     wgini += bcm_size*g;
-//   }
-//   // Finish weighted computation by scaling to [0, 1]
-//   return wgini/split_size;
-// }
-
-
-//   /** Splitter
-//    * A Splitter is analogous to a classifier than can be trained on a dataset.
-//    * The splitter must be able to access the "State", which must contains the train data (at train time)
-//    * and the test data (at test time).
-//    * We use two different function for classification, as the process at train time might be different from
-//    * the process at test time.
-//    * If a splitter maintains an internal state,
-//    * it must do so through a share_ptr shared in the closure of the functions.
-//    * The state can be safely updated without synchronisation.
-//    * @tparam L      Label type
-//    * @tparam State  State type
-//    * @tparam PRNG   Pseudo Random Number Generator type
-//    */
-//   template<Label L, State<L> S, typename PRNG>
-//   struct Splitter_ {
-//     std::function<void(std::shared_ptr<S>& state, const IndexSet& is, const ByClassMap<L>& bcm, PRNG& prng)> train;
-//     std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_train;
-//     std::function<L(std::shared_ptr<S>& state, size_t index, PRNG& prng)> classify_test;
-//   };

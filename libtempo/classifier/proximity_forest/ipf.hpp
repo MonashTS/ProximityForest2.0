@@ -40,8 +40,7 @@ namespace libtempo::classifier::pf {
 
     /** Generate a leaf from a training state and the ByClassMap at the node.
      *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
-    & bcm) const = 0;
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -81,8 +80,7 @@ namespace libtempo::classifier::pf {
     using Result = ResNode<L, Stest>;
 
     /** Generate a new splitter from a training state and the ByClassMap at the node. */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
-    & bcm) const = 0;
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcm) const = 0;
 
     virtual ~IPF_NodeGenerator() = default;
   };
@@ -93,7 +91,7 @@ namespace libtempo::classifier::pf {
 
   /** Train time node generator. */
   template<Label L, typename Strain, typename Stest>
-  struct IPF_TopGenerator {
+  struct PF_TopGenerator {
     // Shorthand for result type
     using Result = std::variant<ResLeaf<L, Stest>, ResNode<L, Stest>>;
     using LeafResult = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
@@ -102,7 +100,7 @@ namespace libtempo::classifier::pf {
     std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator;
     std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator;
 
-    IPF_TopGenerator(
+    PF_TopGenerator(
       std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator,
       std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator
     ) : leaf_generator(leaf_generator), node_generator(node_generator) {}

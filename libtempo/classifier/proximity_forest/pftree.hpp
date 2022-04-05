@@ -43,9 +43,9 @@ namespace libtempo::classifier::pf {
     [[nodiscard]] static std::unique_ptr<PFTree<L, Stest>> make_node(
       Strain& strain,
       std::vector<ByClassMap<L>> bcmvec,
-      const IPF_TopGenerator<L, Strain, Stest>& sg
+      const PF_TopGenerator<L, Strain, Stest>& sg
     ) {
-      using Result = typename IPF_TopGenerator<L, Strain, Stest>::Result;
+      using Result = typename PF_TopGenerator<L, Strain, Stest>::Result;
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();

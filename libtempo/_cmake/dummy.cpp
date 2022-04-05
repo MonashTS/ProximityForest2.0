@@ -186,6 +186,8 @@ int main(int argc, char **argv) {
     //std::unique_ptr<pf::IPF_NodeGenerator<std::string, PFState, PFState>>
     //sg = std::make_unique<pf::SG_1NN_DA<F,L,Strain,Stest>>("default", 1);
 
+
+    // --- --- --- Node Generator
     auto sg_1nn_da_e1 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 1);
     auto sg_1nn_da_e2 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 2);
     auto sg_1nn_dtwf_e1 = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", 1);
@@ -195,9 +197,12 @@ int main(int argc, char **argv) {
       pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da_e1, sg_1nn_da_e2, sg_1nn_dtwf_e1, sg_1nn_dtwf_e2 },
       3 );
 
+    // --- --- --- Leaf Generator
     auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
 
-    pf::IPF_TopGenerator<L,Strain,Stest> sg_top(sgleaf_purenode, sg_chooser);
+
+    // --- --- --- Top Generator: made of a leaf generator (pure node) and a node generator (chooser)
+    pf::PF_TopGenerator<L, Strain, Stest> sg_top(sgleaf_purenode, sg_chooser);
 
     auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, sg_top);
     auto classifier = tree->get_classifier();

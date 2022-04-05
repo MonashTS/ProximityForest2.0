@@ -370,6 +370,10 @@ namespace libtempo {
     [[nodiscard]]
     inline const std::vector<std::optional<L>>& labels() const { return _labels; }
 
+    /// Number of labels in the dataset
+    [[nodiscard]]
+    inline size_t nb_labels() const { return _label_to_index.size(); }
+
     /// Labels to indexes encoding (reverse from index_to_label)
     [[nodiscard]]
     inline const std::map<L, size_t>& label_to_index() const { return _label_to_index; }

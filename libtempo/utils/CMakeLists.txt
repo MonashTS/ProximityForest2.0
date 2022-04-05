@@ -7,6 +7,7 @@ add_library(libtempo-utils INTERFACE
         jsonvalue.hpp
         uncopyable.hpp
         utils.hpp
+        stats.hpp
         )
 
 target_include_directories(libtempo-tseries INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../..)

@@ -2,6 +2,7 @@
 
 #include <libtempo/concepts.hpp>
 #include <libtempo/tseries/dataset.hpp>
+#include <libtempo/utils/utils.hpp>
 
 #include <functional>
 #include <variant>
@@ -40,7 +41,8 @@ namespace libtempo::classifier::pf {
 
     /** Generate a leaf from a training state and the ByClassMap at the node.
      *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcm) const = 0;
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
+    & bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -85,45 +87,35 @@ namespace libtempo::classifier::pf {
     virtual ~IPF_NodeGenerator() = default;
   };
 
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // --- Main node generator class
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  /** Train time node generator. */
-  template<Label L, typename Strain, typename Stest>
-  struct PF_TopGenerator {
-    // Shorthand for result type
-    using Result = std::variant<ResLeaf<L, Stest>, ResNode<L, Stest>>;
-    using LeafResult = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
-    using NodeResult = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-
-    std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator;
-    std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator;
-
-    PF_TopGenerator(
-      std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator,
-      std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator
-    ) : leaf_generator(leaf_generator), node_generator(node_generator) {}
-
-    /** Generate a new splitter from a training state and the ByClassMap at the node.
-    * @param state  Training state - mutable reference!
-    * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
-    * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
-    */
-    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const {
-      LeafResult oleaf = leaf_generator->generate(state, bcmvec);
-      if (oleaf.has_value()) {
-        return Result{std::move(oleaf.value())};
-      } else {
-        return Result{node_generator->generate(state, bcmvec)};
-      }
-    }
-  };
-
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- State
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /// Requires a type to have a ".prng" field which is a random number generator
+  template<typename T>
+  concept has_prng = requires {
+    std::uniform_random_bit_generator<decltype(*T::prng)>;
+  };
+
+  /// Description of a dataset map
+  template<Float F, Label L>
+  using DatasetMap_t = std::map<std::string, libtempo::DTS<F, L>>;
+
+  /// Requirement for a shared map
+  template<typename T, typename F, typename L>
+  concept TimeSeriesDataset = requires {
+    std::same_as<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
+  };
+
+  template<typename Base, Float F, Label L>
+  struct TimeSeriesDatasetHeader {
+    const DatasetHeader<L>& get_header() const {
+      const auto& ds = static_cast<const Base&>(*this);
+      const std::map<std::string, libtempo::DTS<F, L>>& map = *ds.dataset_shared_map;
+      return map.begin()->second.header();
+    }
+  };
 
   /** Interface for the train state */
   template<Label L, typename Strain, typename Stest>
@@ -135,11 +127,17 @@ namespace libtempo::classifier::pf {
     /// Callback when making a node with the result from a splitter generator - XOR with on_make_leaf
     virtual void on_make_branches(const ResNode<L, Stest>& /* inode */) {}
 
-    /// Clone the state for sub branch/sub tree with index "bidx", leading to a "sub state"
-    virtual Strain clone(size_t /* bidx */) = 0;
+    /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
+    virtual Strain branch_fork(size_t /* bidx */) = 0;
 
-    /// Merge in "this" the "substate".
-    virtual void merge(Strain&& /* substate */) = 0;
+    /// Merge-move "other" into "this".
+    virtual void branch_merge(Strain&& /* other */) = 0;
+
+    /// Clone at the forest level - clones must be fully independent as they can be used in parallel
+    virtual std::unique_ptr<Strain> forest_clone() = 0;
+
+    /// Merge in this a state that has been produced by forest_clone
+    virtual void forest_merge(std::unique_ptr<Strain> other) = 0;
 
     virtual ~IStrain() = default;
   };

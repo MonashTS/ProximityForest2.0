@@ -5,6 +5,8 @@
 #include <cassert>
 #include <cmath>
 
+#include "stats.hpp"
+
 namespace libtempo::utils {
 
   /** Pick a random item from a vector. */

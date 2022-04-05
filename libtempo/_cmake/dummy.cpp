@@ -1,9 +1,8 @@
 #include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
-#include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/classifier/proximity_forest/splitters.hpp>
-#include <libtempo/classifier/proximity_forest/ipf.hpp>
+#include <libtempo/classifier/proximity_forest/pftree.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 
@@ -11,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <utility>
 #include <vector>
 #include <iostream>
 
@@ -18,6 +18,7 @@ namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
 using PRNG = std::mt19937_64;
+
 
 void derivative(const double *series, size_t length, double *out) {
   if (length>2) {
@@ -145,89 +146,143 @@ int main(int argc, char **argv) {
 
     // --------------------------------------------------------------------------------------------------------------
     namespace pf = libtempo::classifier::pf;
-    namespace pfs = pf::State;
     using F = double;
     using L = std::string;
 
     struct PFState :
       public pf::IStrain<L, PFState, PFState>,
-      public pfs::PRNG_mt64,
-      public pfs::TimeSeriesDataset<F, L>,
-      public pfs::TimeSeriesDatasetHeader<PFState, F, L> {
+      public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
-      int depth{0};
+      size_t depth{0};
 
-      PFState(size_t seed, const pfs::TimeSeriesDataset<F, L>::MAP_t& transformations) :
-        PRNG_mt64(seed),
-        pfs::TimeSeriesDataset<double, std::string>(transformations) {}
+      /// Pseudo random number generator: use a unique pointer (stateful)
+      std::unique_ptr<PRNG> prng;
 
-      PFState clone(size_t /* bidx */) override {
-        auto other = *this;
-        other.depth += 1;
-        std::cout << "CLONE DEPTH = " << other.depth << std::endl;
-        return other;
+      /// Dictionary of name->dataset of time series
+      std::shared_ptr<pf::DatasetMap_t<F,L>> dataset_shared_map;
+
+      PFState(size_t seed, std::shared_ptr<pf::DatasetMap_t<F,L>> dataset_shared_map)
+      :prng(std::make_unique<PRNG>(seed)), dataset_shared_map(std::move(dataset_shared_map))
+      { }
+
+      /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
+      PFState(const PFState&) = delete;
+
+    private:
+
+      /// Cloning Constructor: create a new PRNG
+      PFState(size_t depth, size_t new_seed, std::shared_ptr<pf::DatasetMap_t<F,L>> map):
+      depth(depth), prng(std::make_unique<PRNG>(new_seed)), dataset_shared_map(std::move(map))
+      { }
+
+      /// Forking Constructor: transmit PRNG into the new state
+      PFState(size_t depth, std::unique_ptr<PRNG>&& m_prng, std::shared_ptr<pf::DatasetMap_t<F,L>> map):
+      depth(depth), prng(std::move(m_prng)), dataset_shared_map(std::move(map))
+      { }
+
+    public:
+
+      /// Transmit the prng down the branch
+      PFState branch_fork(size_t /* bidx */) override {
+        return PFState(depth+1, std::move(prng), dataset_shared_map);
       }
 
-      void merge(PFState&& /* substate */) override {}
+      /// Merge "other" into "this". Move the prng into this.
+      void branch_merge(PFState&& other) override {
+        prng = std::move(other.prng);
+      }
+
+
+      /// Clone at the forest level - clones must be fully independent as they can be used in parallel
+      /// Create a new prng
+      std::unique_ptr<PFState> forest_clone() override {
+        size_t new_seed = (*prng)();
+        return std::unique_ptr<PFState>( new PFState(depth, new_seed, dataset_shared_map) );
+      }
+
+      /// Merge in this a state that has been produced by forest_clone
+      void forest_merge(std::unique_ptr<PFState> /* other */ ) override {
+
+      }
+
     };
+
+
+
+
+
+
 
     using Strain = PFState;
     using Stest = PFState;
 
     std::random_device rd;
     size_t seed = rd();
-    auto transformations = pfs::TimeSeriesDataset<F, L>::MAP_t();
-    transformations.insert({"default", train_dataset});
 
-    std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
-
+    auto transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
+    transformations->insert({"default", train_dataset});
+    seed = 15;
     PFState train_state = PFState(seed, transformations);
 
-    //std::unique_ptr<pf::IPF_NodeGenerator<std::string, PFState, PFState>>
-    //sg = std::make_unique<pf::SG_1NN_DA<F,L,Strain,Stest>>("default", 1);
+    auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
+    test_transformations->insert({"default", test_dataset});
+    size_t test_seed = seed+5;
+    PFState test_state = PFState(test_seed, test_transformations);
 
 
     // --- --- --- Node Generator
-    auto sg_1nn_da_e1 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 1);
-    auto sg_1nn_da_e2 = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", 2);
-    auto sg_1nn_dtwf_e1 = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", 1);
-    auto sg_1nn_dtwf_e2 = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", 2);
+    std::vector<double> exponents{0.25, 0.33, 0.5, 1, 2, 3, 4};
+    auto sg_1nn_da = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", exponents);
+    auto sg_1nn_dtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", exponents);
 
     auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
-      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da_e1, sg_1nn_da_e2, sg_1nn_dtwf_e1, sg_1nn_dtwf_e2 },
-      3 );
+      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da, sg_1nn_dtwf },
+      5 );
 
     // --- --- --- Leaf Generator
     auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
 
 
-    // --- --- --- Top Generator: made of a leaf generator (pure node) and a node generator (chooser)
-    pf::PF_TopGenerator<L, Strain, Stest> sg_top(sgleaf_purenode, sg_chooser);
-
-    auto tree = pf::PFTree<std::string, PFState>::make_node<PFState>(train_state, train_bcm, sg_top);
-    auto classifier = tree->get_classifier();
-
-    // --- --- ---
-    auto test_transformations = pfs::TimeSeriesDataset<F, L>::MAP_t();
-    test_transformations.insert({"default", test_dataset});
-
-    size_t test_seed = rd();
-    PFState test_state = PFState(test_seed, test_transformations);
-
-    const size_t test_top = test_dataset.header().size();
-    size_t correct = 0;
-    for (size_t i = 0; i<test_top; ++i) {
-      std::cout << i << std::endl;
-      auto vec = classifier.predict_proba(test_state, i);
-      size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
-      std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-      if (predicted_l==test_dataset.header().labels()[i].value()) {
-        correct++;
-      } else {
-        std::cout << "i predicted =" << predicted_l << " vs " << test_dataset.header().labels()[i].value() << std::endl;
+    // --- --- --- Tree Trainer: made of a leaf generator (pure node) and a node generator (chooser)
+    pf::PFTreeTrainer<L, Strain, Stest> tree_trainer(sgleaf_purenode, sg_chooser);
+    {
+      std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
+      auto tree = tree_trainer.train(train_state, train_bcm);
+      const size_t test_top = test_dataset.header().size();
+      size_t correct = 0;
+      for (size_t i = 0; i<test_top; ++i) {
+        std::cout << i << std::endl;
+        auto vec = tree->predict_proba(test_state, i);
+        size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
+        std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
+        if (predicted_l==test_dataset.header().labels()[i].value()) {
+          correct++;
+        }
       }
+      std::cout << "1 tree: correct = " << correct << "/" << test_top << std::endl;
     }
-    std::cout << "Correct = " << correct << "/" << test_top << std::endl;
+
+    // --- --- --- Forest Trainer
+    pf::PForestTrainer<L, Strain, Stest> forest_trainer(tree_trainer, 5);
+    {
+      std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
+      auto forest = forest_trainer.train(train_state, train_bcm);
+      const size_t test_top = test_dataset.header().size();
+      size_t correct = 0;
+      for (size_t i = 0; i<test_top; ++i) {
+        std::cout << i << std::endl;
+        auto vec = forest->predict_proba(test_state, i);
+        size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
+        std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
+        if (predicted_l==test_dataset.header().labels()[i].value()) {
+          correct++;
+        }
+      }
+      std::cout << "5 trees: correct = " << correct << "/" << test_top << std::endl;
+
+    }
+
+
   }
 
   return 0;

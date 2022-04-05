@@ -14,35 +14,9 @@
 
 namespace libtempo::classifier::pf {
 
-  namespace State {
-
-    struct PRNG_mt64 {
-      std::shared_ptr<std::mt19937_64> prng;
-      explicit PRNG_mt64(size_t seed) :
-        prng(std::make_shared<std::mt19937_64>(seed)) {};
-    };
-
-    template<Float F, Label L>
-    struct TimeSeriesDataset {
-      using MAP_t = std::map<std::string, libtempo::DTS<F, L>>;
-      std::shared_ptr<MAP_t> transformation_map;
-      explicit TimeSeriesDataset(const MAP_t& map) :
-        transformation_map(std::make_shared<MAP_t>(map)) {}
-    };
-
-    template<typename Base_TimeSeriesDataset, Float F, Label L>
-    struct TimeSeriesDatasetHeader {
-      const DatasetHeader<L>& get_header() const {
-        const auto& ds = static_cast<const Base_TimeSeriesDataset&>(*this);
-        const std::map<std::string, libtempo::DTS<F, L>>& map = *ds.transformation_map;
-        return map.begin()->second.header();
-      }
-    };
-
-  }
-
   /** 1NN Test Time Splitter */
   template<Float F, Label L, typename Stest>
+  requires has_prng<Stest> && TimeSeriesDataset<Stest, F, L>
   struct Sp_1NN : public IPF_NodeSplitter<L, Stest> {
     /// Distance function between two series, with a cutoff 'Best So Far' ('bsf') value
     using distance_t = std::function<F(const TSeries<F, L>& train_exemplar, const TSeries<F, L>& test_exemplar, F bsf)>;
@@ -67,10 +41,11 @@ namespace libtempo::classifier::pf {
       distance(std::move(Distance)) {}
 
     /// Splitter Classification
-    size_t get_branch_index(Stest& state, size_t test_idx) override {
-      auto& prng = *static_cast<State::PRNG_mt64&>(state).prng;
-      const auto& test_transformation_map = *static_cast<State::TimeSeriesDataset<F, L>>(state).transformation_map;
-      const auto& test_exemplar = test_transformation_map.at(transformation_name)[test_idx];
+    size_t get_branch_index(Stest& state, size_t test_idx)
+    override {
+      auto& prng = state.prng;
+      const auto& test_dataset_map = *state.dataset_shared_map;
+      const auto& test_exemplar = test_dataset_map.at(transformation_name)[test_idx];
       // NN1 test loop
       F bsf = utils::PINF<F>;
       std::vector<L> labels;
@@ -87,7 +62,7 @@ namespace libtempo::classifier::pf {
           }
         }
       }
-      L predicted_label = utils::pick_one(labels, prng);
+      L predicted_label = utils::pick_one(labels, *prng);
       // Return the branch matching the predicted label
       return labels_to_index[predicted_label];
     }
@@ -95,6 +70,7 @@ namespace libtempo::classifier::pf {
 
   /** 1NN Splitter Generator - Randomly Pick one exemplar per class. */
   template<Float F, Label L, typename Strain, typename Stest>
+  requires has_prng<Strain> && TimeSeriesDataset<Strain, F, L>
   struct SG_1NN : public IPF_NodeGenerator<L, Strain, Stest> {
     /// Use same distance type as the resulting test splitter
     using distance_t = typename Sp_1NN<F, L, Stest>::distance_t;
@@ -112,12 +88,12 @@ namespace libtempo::classifier::pf {
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
       const ByClassMap<L>& bcm = bcmvec.back();
       // Pick on exemplar per class using the pseudo random number generator from the state
-      auto& prng = *static_cast<State::PRNG_mt64&>(state).prng;
-      ByClassMap<L> train_bcm = bcm.template pick_one_by_class(prng);
+      auto& prng = state.prng;
+      ByClassMap<L> train_bcm = bcm.template pick_one_by_class(*prng);
       const IndexSet& train_indexset = IndexSet(train_bcm);
       // Access the dataset
-      const auto& train_transformation_map = *static_cast<State::TimeSeriesDataset<F, L>>(state).transformation_map;
-      const auto& train_dataset = train_transformation_map.at(transformation_name);
+      const auto& train_dataset_map = *state.dataset_shared_map;
+      const auto& train_dataset = train_dataset_map.at(transformation_name);
       // Build return
       auto labels_to_index = bcm.labels_to_index();
       std::vector<std::map<L, std::vector<size_t>>> result_bcmvec(bcm.nb_classes());
@@ -141,7 +117,7 @@ namespace libtempo::classifier::pf {
           }
         }
         // Break ties
-        L predicted_label = utils::pick_one(labels, prng);
+        L predicted_label = utils::pick_one(labels, *prng);
         // Update the branch: select the predicted label, but write the BCM with the real label
         size_t predicted_index = labels_to_index[predicted_label];
         L real_label = query.label().value();
@@ -178,16 +154,18 @@ namespace libtempo::classifier::pf {
     std::string transformation_name;
 
     /// Exponent used in the cost function
-    double exponent;
+    std::vector<double> exponents;
 
-    SG_1NN_DA(std::string transformation_name, double exponent) :
+    SG_1NN_DA(std::string transformation_name, std::vector<double> exponents) :
       transformation_name(std::move(transformation_name)),
-      exponent(exponent) {}
+      exponents(std::move(exponents)) {}
 
     /// Override interface ISplitterGenerator
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
 
-      distance_t distance = [e = this->exponent](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
+      double e = utils::pick_one(exponents, *state.prng);
+
+      distance_t distance = [e](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
         return distance::directa(t1, t2, distance::univariate::ade<F, TSeries<F, L>>(e), bsf);
       };
 
@@ -208,16 +186,18 @@ namespace libtempo::classifier::pf {
     std::string transformation_name;
 
     /// Exponent used in the cost function
-    double exponent;
+    std::vector<double> exponents;
 
-    SG_1NN_DTWFull(std::string transformation_name, double exponent) :
+    SG_1NN_DTWFull(std::string transformation_name, std::vector<double> exponents) :
       transformation_name(std::move(transformation_name)),
-      exponent(exponent) {}
+      exponents(std::move(exponents)) {}
 
     /// Override interface ISplitterGenerator
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
 
-      distance_t distance = [e = this->exponent](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
+      double e = utils::pick_one(exponents, *state.prng);
+
+      distance_t distance = [e](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
         return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L>>(e), bsf);
       };
 
@@ -228,6 +208,7 @@ namespace libtempo::classifier::pf {
   };
 
   template<Label L, typename Strain, typename Stest>
+  requires has_prng<Strain>
   struct SG_chooser : public IPF_NodeGenerator<L, Strain, Stest> {
     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
 
@@ -245,11 +226,11 @@ namespace libtempo::classifier::pf {
      */
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
       // Access the pseudo random number generator: state must inherit from PRNG_mt64
-      auto& prng = *static_cast<State::PRNG_mt64&>(state).prng;
+      auto& prng = state.prng;
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<nb_candidates; ++i) {
-        const auto idx = std::uniform_int_distribution<size_t>(0, sgvec.size() - 1)(prng);
+        const auto idx = std::uniform_int_distribution<size_t>(0, sgvec.size() - 1)(*prng);
         Result result = sgvec[idx]->generate(state, bcmvec);
         double score = weighted_gini_impurity(result);
         if (score<best_score) {
@@ -257,8 +238,6 @@ namespace libtempo::classifier::pf {
           best_result = std::move(result);
         }
       }
-
-      std::cout << "best gini =  " << best_score << std::endl;
 
       return best_result;
     }

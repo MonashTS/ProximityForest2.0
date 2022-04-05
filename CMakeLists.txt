@@ -16,6 +16,7 @@ if(MSVC)
 else()
     add_compile_options(-W -Wall)
     add_compile_options(-fverbose-asm -save-temps)
+    add_compile_options(-fconcepts-diagnostics-depth=2)
 endif()
 
 

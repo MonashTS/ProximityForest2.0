@@ -1,8 +1,9 @@
 #include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
-#include <libtempo/classifier/proximity_forest/splitters.hpp>
 #include <libtempo/classifier/proximity_forest/pftree.hpp>
+#include <libtempo/classifier/proximity_forest/splitters.hpp>
+#include <libtempo/classifier/proximity_forest/splitters/distance_splitters.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 
@@ -230,13 +231,17 @@ int main(int argc, char **argv) {
     PFState test_state = PFState(test_seed, test_transformations);
 
 
+    // --- --- --- Parameters range
+    auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
+    auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
+
     // --- --- --- Node Generator
-    std::vector<double> exponents{0.25, 0.33, 0.5, 1, 2, 3, 4};
-    auto sg_1nn_da = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>("default", exponents);
-    auto sg_1nn_dtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>("default", exponents);
+    auto sg_1nn_da = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(tnames, exponents);
+    auto sg_1nn_dtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(tnames, exponents);
+    auto sg_1nn_dtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(tnames, exponents);
 
     auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
-      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da, sg_1nn_dtwf },
+      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da, sg_1nn_dtwf, sg_1nn_dtw },
       5 );
 
     // --- --- --- Leaf Generator
@@ -244,10 +249,10 @@ int main(int argc, char **argv) {
 
 
     // --- --- --- Tree Trainer: made of a leaf generator (pure node) and a node generator (chooser)
-    pf::PFTreeTrainer<L, Strain, Stest> tree_trainer(sgleaf_purenode, sg_chooser);
+    auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>(sgleaf_purenode, sg_chooser);
     {
       std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
-      auto tree = tree_trainer.train(train_state, train_bcm);
+      auto tree = tree_trainer->train(train_state, train_bcm);
       const size_t test_top = test_dataset.header().size();
       size_t correct = 0;
       for (size_t i = 0; i<test_top; ++i) {

@@ -18,7 +18,7 @@ namespace libtempo::classifier::pf {
   struct IPF_LeafSplitter {
 
     /// Predict the probability of a classes at the leaf. Order must respect label_to_index from DatasetHeader.
-    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) = 0;
+    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) const = 0;
 
     virtual ~IPF_LeafSplitter() = default;
   };
@@ -41,8 +41,7 @@ namespace libtempo::classifier::pf {
 
     /** Generate a leaf from a training state and the ByClassMap at the node.
      *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
-    & bcm) const = 0;
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -57,7 +56,7 @@ namespace libtempo::classifier::pf {
   struct IPF_NodeSplitter {
 
     /// Get the branch index
-    virtual size_t get_branch_index(Stest& state, size_t test_index) = 0;
+    virtual size_t get_branch_index(Stest& state, size_t test_index) const = 0;
 
     virtual ~IPF_NodeSplitter() = default;
   };
@@ -108,6 +107,7 @@ namespace libtempo::classifier::pf {
     std::same_as<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
   };
 
+  /// Dataset Header mixin: provides a get_header() providing an non empty dataset_shared_map
   template<typename Base, Float F, Label L>
   struct TimeSeriesDatasetHeader {
     const DatasetHeader<L>& get_header() const {

@@ -203,11 +203,11 @@ namespace libtempo::classifier::pf {
   struct PForestTrainer {
     using BCMVec = std::vector<ByClassMap<L>>;
 
-    const PFTreeTrainer<L, Strain, Stest>& tree_trainer;
+    std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer;
     size_t nbtrees;
 
-    explicit PForestTrainer(const PFTreeTrainer<L, Strain, Stest>& tree_trainer, size_t nbtrees) :
-      tree_trainer(tree_trainer),
+    explicit PForestTrainer(std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer, size_t nbtrees) :
+      tree_trainer(std::move(tree_trainer)),
       nbtrees(nbtrees) {}
 
     std::unique_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec) {
@@ -217,7 +217,7 @@ namespace libtempo::classifier::pf {
       for (size_t i = 0; i<nbtrees; ++i) {
         auto clone = state.forest_clone();
         BCMVec copy = bcmvec;
-        forest.push_back(tree_trainer.train(*clone, copy));
+        forest.push_back(tree_trainer->train(*clone, copy));
         state.forest_merge(std::move(clone));
       }
 

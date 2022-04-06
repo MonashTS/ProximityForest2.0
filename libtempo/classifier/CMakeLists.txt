@@ -11,6 +11,7 @@ target_sources(libtempo-classifier
         proximity_forest/pftree.hpp
         proximity_forest/ipf.hpp
         proximity_forest/splitters.hpp
+        proximity_forest/splitters/distance_splitters.hpp
         )
 
 target_link_libraries(libtempo-classifier INTERFACE libtempo::tseries)

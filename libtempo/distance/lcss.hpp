@@ -115,19 +115,19 @@ namespace libtempo::distance {
     template<Float F, TSLike T>
     [[nodiscard]] inline F
     lcss(const T& lines, const T& cols, const size_t w, const F e,
-      CFunSim auto mkdist,
+      CFunBuilder<T> auto mkdist,
       F ub = utils::PINF<F>) {
       const auto ls = lines.length();
       const auto cs = cols.length();
       const CFun<F> auto dist = mkdist(lines, cols);
       CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
-      return lcss<F>(ls, cs, w, sim, ub);
+      return libtempo::distance::lcss<F>(ls, cs, w, sim, ub);
     }
 
     /// Default LCSS using |a-b|<e
     template<Float F, TSLike T>
     [[nodiscard]] inline F lcss(const T& lines, const T& cols, const size_t w, const F e, F ub = utils::PINF<F>) {
-      return lcss(lines, cols, w, e, ad1<F, T>, ub);
+      return lcss<F, T>(lines, cols, w, e, ad1<F, T>, ub);
     }
 
     /// Specific overload for univariate vector with dist(a,b)<e

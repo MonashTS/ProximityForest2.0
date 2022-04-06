@@ -239,9 +239,11 @@ int main(int argc, char **argv) {
     auto sg_1nn_da = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(tnames, exponents);
     auto sg_1nn_dtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(tnames, exponents);
     auto sg_1nn_dtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(tnames, exponents);
+    auto sg_1nn_wdtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(tnames, exponents);
+    auto sg_1nn_erp = std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(tnames, exponents);
 
     auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
-      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da, sg_1nn_dtwf, sg_1nn_dtw },
+      pf::SG_chooser<L, Strain, Stest>::SGVec_t { sg_1nn_da, sg_1nn_dtwf, sg_1nn_dtw, sg_1nn_wdtw, sg_1nn_erp },
       5 );
 
     // --- --- --- Leaf Generator

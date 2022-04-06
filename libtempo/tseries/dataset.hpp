@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include "libtempo/utils/stats.hpp"
 
 namespace libtempo {
 
@@ -467,5 +468,19 @@ namespace libtempo {
   /// Helper for Dataset of time series.
   template<Float F, Label L>
   using DTS = Dataset<L, TSeries<F, L>>;
+
+  /// Helper for Dataset of univariate time series: Get standard deviation
+  template<Float F, Label L>
+  F stddev(const DTS<F, L>& dts, const IndexSet& is) {
+    utils::StddevWelford s;
+    for (auto i:is) {
+      const auto& ts = dts[i];
+      assert(ts.nvar() == 1);
+      for (size_t j{0}; j<ts.length(); ++j) {
+        s.update(ts[j]);
+      }
+    }
+    return s.get_stddev_p();
+  }
 
 }

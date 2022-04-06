@@ -17,6 +17,7 @@ else()
     add_compile_options(-W -Wall)
     add_compile_options(-fverbose-asm -save-temps)
     add_compile_options(-fconcepts-diagnostics-depth=2)
+    add_compile_definitions(INTERFACE $<$<CONFIG:DEBUG>:_GLIBCXX_ASSERTIONS>)
 endif()
 
 

@@ -90,7 +90,7 @@ TEST_CASE("Test weights generation", "[wdtw]") {
   }
 }
 
-TEST_CASE("Univariate WWDTW Fixed length", "[wdtw][univariate]") {
+TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_randvec(nbitems);
@@ -182,7 +182,7 @@ TEST_CASE("Univariate WWDTW Fixed length", "[wdtw][univariate]") {
 
 }
 
-TEST_CASE("Univariate WWDTW Variable length", "[wdtw][univariate]") {
+TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_rs_randvec(nbitems);

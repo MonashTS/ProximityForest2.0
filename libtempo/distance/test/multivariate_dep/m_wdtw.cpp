@@ -55,7 +55,9 @@ namespace {
   }
 
   /// Naive Multivariate WDTW. Reference code.
-  double wdtw_matrix(const vector<double> &a, const vector<double> &b, size_t dim, std::vector<double> weights) {
+  double wdtw_matrix(const vector<double> &a, const vector<double> &b, size_t dim, const std::vector<double>& weights) {
+    std::cout << std::endl;
+
     // Length of the series depends on the actual size of the data and the dimension
     const long la = (long) a.size() / (long) dim;
     const long lb = (long) b.size() / (long) dim;
@@ -94,7 +96,7 @@ namespace {
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Testing
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
+TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   mocker._dim = ndim;
@@ -124,13 +126,16 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
       const auto &s2 = fset[i + 1];
 
       for (double g : weight_factors) {
-        auto weights = generate_weights(g, mocker._fixl);
+        // Warning: generate enough weights for the univariate case going over all the data: hence ' *ndim '
+        auto weights = generate_weights(g, mocker._fixl*ndim);
 
         // Check Uni
         {
           const double wdtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
+          INFO("ref v " << wdtw_ref_v);
           const double wdtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
           const auto wdtw_tempo_v = wdtw<double>(l1, l1, weights, ad2N<double>(s1, s2, 1), INF);
+          INFO("Seed " << mocker._seed);
           REQUIRE(wdtw_ref_v == wdtw_ref_uni_v);
           REQUIRE(wdtw_ref_v == wdtw_tempo_v);
         }
@@ -201,7 +206,7 @@ TEST_CASE("Multivariate Dependent WWDTW Fixed length", "[wdtw][multivariate]") {
   }// End section
 }
 
-TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]") {
+TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_rs_randvec(nbitems);
@@ -228,7 +233,8 @@ TEST_CASE("Multivariate Dependent WWDTW Variable length", "[wdtw][multivariate]"
       for (double g : weight_factors) {
         const auto &s1 = fset[i];
         const auto &s2 = fset[i + 1];
-        auto weights = generate_weights(g, (max(s1.size(), s2.size())));
+        // Warning: generate enough data to cover the univariate cases, hence '*ndim'
+        auto weights = generate_weights(g, (max(s1.size(), s2.size()))*ndim);
 
         // Check Uni
         {

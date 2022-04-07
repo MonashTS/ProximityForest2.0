@@ -202,23 +202,55 @@ namespace libtempo::classifier::pf {
   struct PForestTrainer {
     using BCMVec = std::vector<ByClassMap<L>>;
 
-    std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer;
+    std::shared_ptr<const PFTreeTrainer<L, Strain, Stest>> tree_trainer;
     size_t nbtrees;
 
     explicit PForestTrainer(std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer, size_t nbtrees) :
       tree_trainer(std::move(tree_trainer)),
       nbtrees(nbtrees) {}
 
+    /** Train the proximity forest */
     std::unique_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec) {
+
+      std::mutex mutex;
       typename PForest<L, Stest>::TreeVec forest;
       forest.reserve(nbtrees);
 
+      std::vector<std::unique_ptr<Strain>> states_vec;
+      states_vec.reserve(nbtrees);
+
+      auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, this](size_t tree_index) {
+        auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
+        // Start lock: protecting the forest and out printing
+        std::lock_guard lock(mutex);
+        // --- Printing
+        auto cf = std::cout.fill();
+        std::cout << std::setfill('0');
+        std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
+        std::cout.fill(cf);
+        std::cout << std::endl;
+        // --- Add in the forest
+        forest.push_back(std::move(tree));
+      };
+
+      tempo::ParTasks p;
       for (size_t i = 0; i<nbtrees; ++i) {
-        auto clone = state.forest_clone();
-        BCMVec copy = bcmvec;
-        forest.push_back(tree_trainer->train(*clone, copy));
-        state.forest_merge(std::move(clone));
+        states_vec.push_back(state.forest_clone());
+        p.push_task(mk_task, i);
       }
+      p.execute(8);
+
+      for (size_t i = 0; i<nbtrees; ++i) {
+        state.forest_merge(std::move(states_vec[i]));
+      }
+
+
+      // for (size_t i = 0; i<nbtrees; ++i) {
+      //   auto clone = state.forest_clone();
+      //   BCMVec copy = bcmvec;
+      //   forest.push_back(tree_trainer->train(*clone, copy));
+      //   state.forest_merge(std::move(clone));
+      // }
 
       size_t nb_classes = state.get_header().nb_labels();
 

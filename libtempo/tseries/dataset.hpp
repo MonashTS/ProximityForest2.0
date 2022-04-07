@@ -221,9 +221,9 @@ namespace libtempo {
      */
     [[nodiscard]]
     double gini_impurity() const {
-      assert(!empty());
+      assert(nb_classes()>0);
       // Ensure that we never encounter a "floating point near 0" issue.
-      if (size()==1) { return 0; }
+      if (size()<=1) { return 0; }
       else {
         double total_size = size();
         double sum{0};

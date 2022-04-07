@@ -74,16 +74,13 @@ namespace libtempo::distance {
         if (nbcols >= 2) {
           const auto la = min(
             // "Delete_B": over the columns / Prev
-            // dist(cols, nbcols-2, cols, nbcols-1)+nu_lambda,
-            //dist_cols(nbcols-1)+nu_lambda,
+            // dist(cols, nbcols-2, cols, nbcols-1)+nu_lambda --> Capture in dist_cols
             dist_cols(nbcols - 1),
             // Match: Diag. Ok: nblines >= nbcols
             // dist(lines, nblines-1, cols, nbcols-1)+dist(lines, nblines-2, cols, nbcols-2)+nu2d(nblines-nbcols),
-            //dist(nblines-1, nbcols-1)+dist(nblines-2, nbcols-2)+nu2d(nblines,nbcols),
             dist_diag(nblines - 1, nbcols - 1),
             // "Delete_A": over the lines / Top
-            // dist(lines, nblines-2, lines, nblines-1)+nu_lambda
-            // dist_lines(nblines-1)+nu_lambda
+            // dist(lines, nblines-2, lines, nblines-1)+nu_lambda --> Capture in dist_lines
             dist_lines(nblines - 1)
           );
           return F(nextafter(cutoff, PINF) - la);
@@ -145,9 +142,6 @@ namespace libtempo::distance {
       for (; i < nblines; ++i) {
         // --- --- --- Swap and variables init
         std::swap(c, p);
-        //const double distli = dist_lines(i);
-        // dist line(i) + nu+lambda
-        //const double distli = dist_lines(i)+nu_lambda;
         const double distli = dist_lines(i);
         size_t curr_pp = next_start; // Next pruning point init at the start of the line
         j = next_start;
@@ -161,8 +155,8 @@ namespace libtempo::distance {
         // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
         for (; j == next_start && j < prev_pp; ++j) {
           cost = std::min(
-            buffers[p + j - 1] + dist_diag(i, j),    // "Match" / Diag
-            buffers[p + j] + distli           // "Delete_A" / Top
+            buffers[p + j - 1] + dist_diag(i, j),     // "Match" / Diag
+            buffers[p + j] + distli                   // "Delete_A" / Top
           );
           buffers[c + j] = cost;
           if (cost <= ub) { curr_pp = j + 1; } else { ++next_start; }
@@ -170,9 +164,9 @@ namespace libtempo::distance {
         // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
         for (; j < prev_pp; ++j) {
           cost = min(
-            cost + distcol[j],            // "Delete_B": over the columns / Prev
-            buffers[p + j - 1] + dist_diag(i, j),  // Match: Diag
-            buffers[p + j] + distli         // "Delete_A": over the lines / Top
+            cost + distcol[j],                      // "Delete_B": over the columns / Prev
+            buffers[p + j - 1] + dist_diag(i, j),   // Match: Diag
+            buffers[p + j] + distli                 // "Delete_A": over the lines / Top
           );
           buffers[c + j] = cost;
           if (cost <= ub) { curr_pp = j + 1; }
@@ -189,8 +183,8 @@ namespace libtempo::distance {
             }
           } else { // Case 2: Not advancing next start: possible path in previous cells: left and diag.
             cost = std::min(
-              cost + distcol[j],            // "Delete_B": over the columns / Prev
-              buffers[p + j - 1] + dist_diag(i, j)   // Match: Diag
+              cost + distcol[j],                      // "Delete_B": over the columns / Prev
+              buffers[p + j - 1] + dist_diag(i, j)    // Match: Diag
             );
             buffers[c + j] = cost;
             if (cost <= ub) { curr_pp = j + 1; }
@@ -327,7 +321,7 @@ namespace libtempo::distance {
     const CFunTWE<F> auto dist_lines = mkdist_lines(lines, nu, lambda);
     const CFunTWE<F> auto dists_cols = mkdist_cols(cols, nu, lambda);
     const CFun<F> auto dist_base = mkdist_base(lines, cols);
-    return _twe<F>(ls, cs, nu, dist_lines, dists_cols, dist_base, ub);
+    return twe<F>(ls, cs, nu, dist_lines, dists_cols, dist_base, ub);
   }
 
   namespace univariate {
@@ -342,21 +336,10 @@ namespace libtempo::distance {
       };
     }
 
-    /// Default TWE diagonal step cost function, using univariate ad2
-    template<Float F, Subscriptable D>
-    [[nodiscard]] inline auto twe_diag_ad2(const D &lines, const D &cols, const F nu) {
-      const F nu2 = nu * 2;
-      return [&, nu2](size_t i, size_t j) {
-        const auto da = lines[i] - cols[j];
-        const auto db = lines[i - 1] - cols[j - 1];
-        return (da * da) + (db * db) + (nu2 * utils::absdiff(i, j));
-      };
-    }
-
     /// Default TWE using univariate ad2
     template<Float F, TSLike T>
     [[nodiscard]] inline F twe(const T &lines, const T &cols, const F nu, const F lambda, F ub = utils::PINF<F>) {
-      return libtempo::distance::twe(lines, cols, nu, lambda, twe_warp_ad2<F, T>, twe_warp_ad2<F, T>, ad2<F>, ub);
+      return libtempo::distance::twe<F,T>(lines, cols, nu, lambda, twe_warp_ad2<F, T>, twe_warp_ad2<F, T>, ad2<F, T>, ub);
     }
 
     /// Specific overload for univariate vector
@@ -390,41 +373,42 @@ namespace libtempo::distance {
     }
   }
 
-  namespace multivariate {
 
-    /// Default TWE warping step cost function, using univariate ad2
-    template<Float F, Subscriptable D>
-    [[nodiscard]] inline auto twe_warp_ad2(const D &s, size_t ndim, const F nu, const F lambda) {
-      const F nl = nu + lambda;
-      /*
-      const auto dist = ad2N<F>(s, s, ndim);
-      return [dist, nl](size_t i) {
-        return dist(i, i-1) + nl;
-      };
-       */
-      return [&, ndim, nl](size_t i) { return ad2N<F>(s, s, ndim)(i, i - 1) + nl; };
-    }
+  // namespace multivariate {
 
-    /// Default TWE diagonal step cost function, using univariate ad2
-    template<Float F, Subscriptable D>
-    [[nodiscard]] inline auto twe_diag_ad2(const D &lines, const D &cols, size_t ndim, const F nu) {
-      const F nu2 = nu * 2;
-      /*
-      const auto dist = ad2N<F>(lines, cols, ndim);
-      return [dist, nu2](size_t i, size_t j) {
-        const auto da = dist(i, j);
-        const auto db = dist(i-1, j-1);
-        return da + db + (nu2 * utils::absdiff(i, j));
-      };
-       */
-      return [&, ndim, nu2](size_t i, size_t j) {
-        const auto da = ad2N<F>(lines, cols, ndim)(i, j);
-        const auto db = ad2N<F>(lines, cols, ndim)(i - 1, j - 1);
-        const auto r = da + db + (nu2 * utils::absdiff(i, j));
-        return r;
-      };
-    }
+  //   /// Default TWE warping step cost function, using univariate ad2
+  //   template<Float F, Subscriptable D>
+  //   [[nodiscard]] inline auto twe_warp_ad2(const D &s, size_t ndim, const F nu, const F lambda) {
+  //     const F nl = nu + lambda;
+  //     /*
+  //     const auto dist = ad2N<F>(s, s, ndim);
+  //     return [dist, nl](size_t i) {
+  //       return dist(i, i-1) + nl;
+  //     };
+  //      */
+  //     return [&, ndim, nl](size_t i) { return ad2N<F>(s, s, ndim)(i, i - 1) + nl; };
+  //   }
 
-  }
+  //   /// Default TWE diagonal step cost function, using univariate ad2
+  //   template<Float F, Subscriptable D>
+  //   [[nodiscard]] inline auto twe_diag_ad2(const D &lines, const D &cols, size_t ndim, const F nu) {
+  //     const F nu2 = nu * 2;
+  //     /*
+  //     const auto dist = ad2N<F>(lines, cols, ndim);
+  //     return [dist, nu2](size_t i, size_t j) {
+  //       const auto da = dist(i, j);
+  //       const auto db = dist(i-1, j-1);
+  //       return da + db + (nu2 * utils::absdiff(i, j));
+  //     };
+  //      */
+  //     return [&, ndim, nu2](size_t i, size_t j) {
+  //       const auto da = ad2N<F>(lines, cols, ndim)(i, j);
+  //       const auto db = ad2N<F>(lines, cols, ndim)(i - 1, j - 1);
+  //       const auto r = da + db + (nu2 * utils::absdiff(i, j));
+  //       return r;
+  //     };
+  //   }
+
+  // }
 
 } // End of namespace libtempo::distance

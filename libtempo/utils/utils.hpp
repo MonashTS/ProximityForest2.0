@@ -5,8 +5,10 @@
 #include <cassert>
 #include <cmath>
 
-#include "stats.hpp"
 #include "partasks.hpp"
+#include "progressmonitor.hpp"
+#include "stats.hpp"
+#include "timing.hpp"
 
 namespace libtempo::utils {
 

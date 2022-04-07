@@ -220,7 +220,9 @@ namespace libtempo::classifier::pf {
       states_vec.reserve(nbtrees);
 
       auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, this](size_t tree_index) {
+        auto start = libtempo::utils::now();
         auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
+        auto delta = libtempo::utils::now()-start;
         // Start lock: protecting the forest and out printing
         std::lock_guard lock(mutex);
         // --- Printing
@@ -228,21 +230,29 @@ namespace libtempo::classifier::pf {
         std::cout << std::setfill('0');
         std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
         std::cout.fill(cf);
-        std::cout << std::endl;
+        std::cout << " timing: " << libtempo::utils::as_string(delta) << std::endl;
         // --- Add in the forest
         forest.push_back(std::move(tree));
       };
 
-      tempo::ParTasks p;
+      const auto start = utils::now();
+
+      // Create the tasks per tree. Note that we clone the state.
+      libtempo::utils::ParTasks p;
       for (size_t i = 0; i<nbtrees; ++i) {
         states_vec.push_back(state.forest_clone());
         p.push_task(mk_task, i);
       }
+
       p.execute(8);
 
+      // Merge all the states back into one
       for (size_t i = 0; i<nbtrees; ++i) {
         state.forest_merge(std::move(states_vec[i]));
       }
+
+      const auto delta = utils::now() - start;
+      std::cout << "Total train time = " << utils::as_string(delta) << std::endl;
 
 
       size_t nb_classes = state.get_header().nb_labels();

@@ -230,7 +230,6 @@ int main(int argc, char **argv) {
     transformations->insert({"default", train_dataset});
     transformations->insert({"d1", d1});
     transformations->insert({"d2", d2});
-    seed = 15;
     PFState train_state = PFState(seed, transformations);
 
     auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
@@ -244,6 +243,8 @@ int main(int argc, char **argv) {
     // --- --- --- Parameters range
     auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
     auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default", "d1"}); // , "d2"});
+    auto tname_def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
+    auto tname_d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
     auto msm_costs = std::make_shared<std::vector<double>>(
       std::vector<double>{
         0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
@@ -296,6 +297,67 @@ int main(int argc, char **argv) {
     auto sg_1nn_twe =
       std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(tnames, twe_nus, twe_lambdas);
 
+
+    // --- --- --- 1NN Elastic Distance Node Generator Default
+    auto sg_1nn_def_da =
+      std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(tname_def, exponents);
+
+    auto sg_1nn_def_adtw =
+      std::make_shared<pf::SG_1NN_ADTW<F, L, Strain, Stest>>(tname_def, exponents, 2000, 20, 4);
+
+    auto sg_1nn_def_dtwf =
+      std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(tname_def, exponents);
+
+    auto sg_1nn_def_dtw =
+      std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(tname_def, exponents);
+
+    auto sg_1nn_def_wdtw =
+      std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(tname_def, exponents);
+
+    auto sg_1nn_def_erp =
+      std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(tname_def, exponents);
+
+    auto sg_1nn_def_lcss =
+      std::make_shared<pf::SG_1NN_LCSS<F, L, Strain, Stest>>(tname_def);
+
+    auto sg_1nn_def_msm =
+      std::make_shared<pf::SG_1NN_MSM<F, L, Strain, Stest>>(tname_def, msm_costs);
+
+    auto sg_1nn_def_twe =
+      std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(tname_def, twe_nus, twe_lambdas);
+
+
+    // --- --- --- 1NN Elastic Distance Node Generator D1
+    auto sg_1nn_d1_da =
+      std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(tname_d1, exponents);
+
+    auto sg_1nn_d1_adtw =
+      std::make_shared<pf::SG_1NN_ADTW<F, L, Strain, Stest>>(tname_d1, exponents, 2000, 20, 4);
+
+    auto sg_1nn_d1_dtwf =
+      std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(tname_d1, exponents);
+
+    auto sg_1nn_d1_dtw =
+      std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(tname_d1, exponents);
+
+    auto sg_1nn_d1_wdtw =
+      std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(tname_d1, exponents);
+
+    auto sg_1nn_d1_erp =
+      std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(tname_d1, exponents);
+
+    auto sg_1nn_d1_lcss =
+      std::make_shared<pf::SG_1NN_LCSS<F, L, Strain, Stest>>(tname_d1);
+
+    auto sg_1nn_d1_msm =
+      std::make_shared<pf::SG_1NN_MSM<F, L, Strain, Stest>>(tname_d1, msm_costs);
+
+    auto sg_1nn_d1_twe =
+      std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(tname_d1, twe_nus, twe_lambdas);
+
+
+
+
     auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
       pf::SG_chooser<L, Strain, Stest>::SGVec_t{
         //sg_1nn_da,
@@ -311,12 +373,40 @@ int main(int argc, char **argv) {
       , 5
     );
 
+    auto sg_try_all = std::make_shared<pf::SG_try_all<L, Strain, Stest>>(
+      pf::SG_try_all<L, Strain, Stest>::SGVec_t{
+        sg_1nn_def_da,
+        sg_1nn_def_dtw,
+        sg_1nn_def_dtwf,
+        sg_1nn_def_adtw,
+        sg_1nn_def_wdtw,
+        sg_1nn_def_erp,
+        sg_1nn_def_lcss,
+        sg_1nn_def_msm,
+        sg_1nn_def_twe,
+        sg_1nn_d1_da,
+        sg_1nn_d1_dtw,
+        sg_1nn_d1_dtwf,
+        sg_1nn_d1_adtw,
+        sg_1nn_d1_wdtw,
+        sg_1nn_d1_erp,
+        sg_1nn_d1_lcss,
+        sg_1nn_d1_msm,
+        sg_1nn_d1_twe,
+      }
+    );
+
     // --- --- --- Leaf Generator
     auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
 
 
     // --- --- --- Tree Trainer: made of a leaf generator (pure node) and a node generator (chooser)
-    auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>(sgleaf_purenode, sg_chooser);
+    auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>(
+      sgleaf_purenode,
+ //     sg_chooser
+    sg_try_all
+    );
+    /*
     {
       std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
       auto tree = tree_trainer->train(train_state, train_bcm);
@@ -337,9 +427,13 @@ int main(int argc, char **argv) {
       }
       train_state.selected_distances.clear();
     }
+    */
+    size_t fsize = std::min<size_t>(100, std::floor(20+std::pow(train_dataset.size(), 0.5)));
+    fsize=100;
+    std::cout << "Training " << fsize << " trees..." << std::endl;
 
     // --- --- --- Forest Trainer
-    pf::PForestTrainer<L, Strain, Stest> forest_trainer(tree_trainer, 100);
+    pf::PForestTrainer<L, Strain, Stest> forest_trainer(tree_trainer, fsize);
     {
       std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
       auto forest = forest_trainer.train(train_state, train_bcm);
@@ -354,7 +448,9 @@ int main(int argc, char **argv) {
           correct++;
         }
       }
-      std::cout << "5 trees: correct = " << correct << "/" << test_top << std::endl;
+      std::cout << "Result with " << fsize << " trees:" << std::endl;
+      std::cout << "  correct: " << correct << "/" << test_top << std::endl;
+      std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
       for (const auto&[n, c] : train_state.selected_distances) {
         std::cout << n << ": " << c << std::endl;
       }

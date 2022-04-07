@@ -15,6 +15,26 @@
 
 namespace libtempo::classifier::pf {
 
+
+  //// Compute the weighted (ratio of series per branch) gini impurity of a split.
+  template<Label L, typename Strain, typename Stest>
+  [[nodiscard]]
+  static double weighted_gini_impurity(const typename IPF_NodeGenerator<L, Strain, Stest>::Result& result) {
+    double wgini{0};
+    double total_size{0};
+    for (const auto& bcm : result.branch_splits) {
+      double g = bcm.gini_impurity();
+      // Weighted part: multiply gini score by the total number of item in this branch
+      const double bcm_size = bcm.size();
+      wgini += bcm_size*g;
+      // Accumulate total size for final division
+      total_size += bcm_size;
+    }
+    // Finish weighted computation by scaling to [0, 1]
+    assert(total_size!=0);
+    return wgini/total_size;
+  }
+
   template<Label L, typename Strain, typename Stest>
   requires has_prng<Strain>
   struct SG_chooser : public IPF_NodeGenerator<L, Strain, Stest> {
@@ -37,7 +57,7 @@ namespace libtempo::classifier::pf {
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<nb_candidates; ++i) {
         Result result = utils::pick_one(sgvec, *state.prng)->generate(state, bcmvec);
-        double score = weighted_gini_impurity(result);
+        double score = weighted_gini_impurity<L, Strain, Stest>(result);
         if (score<best_score) {
           best_score = score;
           best_result = std::move(result);
@@ -47,26 +67,44 @@ namespace libtempo::classifier::pf {
       return best_result;
     }
 
-  private:
-
-    //// Compute the weighted (ratio of series per branch) gini impurity of a split.
-    [[nodiscard]]
-    static double weighted_gini_impurity(const Result& split) {
-      double wgini{0};
-      double total_size{0};
-      for (const auto& bcm : split.branch_splits) {
-        double g = bcm.gini_impurity();
-        // Weighted part: multiply gini score by the total number of item in this branch
-        const double bcm_size = bcm.size();
-        wgini += bcm_size*g;
-        // Accumulate total size for final division
-        total_size += bcm_size;
-      }
-      // Finish weighted computation by scaling to [0, 1]
-      assert(total_size!=0);
-      return wgini/total_size;
-    }
   };
+
+
+  template<Label L, typename Strain, typename Stest>
+  requires has_prng<Strain>
+  struct SG_try_all : public IPF_NodeGenerator<L, Strain, Stest> {
+    using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
+
+    using SGVec_t = std::vector<std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>>>;
+
+    SGVec_t sgvec;
+
+    SG_try_all(SGVec_t&& sgvec):
+      sgvec(std::move(sgvec)) {}
+
+    /** Implementation fo the generate function
+     * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
+     */
+    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+      Result best_result{};
+      double best_score = utils::PINF<double>;
+      for (size_t i = 0; i<sgvec.size(); ++i) {
+        Result result = sgvec[i]->generate(state, bcmvec);
+        double score = weighted_gini_impurity<L, Strain, Stest>(result);
+        if (score<best_score) {
+          best_score = score;
+          best_result = std::move(result);
+        }
+      }
+
+      return best_result;
+    }
+
+  };
+
+
+
+
 
 
   /** Leaf generator, stopping at pure node */

@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "stats.hpp"
+#include "partasks.hpp"
 
 namespace libtempo::utils {
 

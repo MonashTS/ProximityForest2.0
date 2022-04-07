@@ -33,13 +33,10 @@ namespace libtempo::classifier::pf {
      * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
      */
     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-      // Access the pseudo random number generator: state must inherit from PRNG_mt64
-      auto& prng = state.prng;
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<nb_candidates; ++i) {
-        const auto idx = std::uniform_int_distribution<size_t>(0, sgvec.size() - 1)(*prng);
-        Result result = sgvec[idx]->generate(state, bcmvec);
+        Result result = utils::pick_one(sgvec, *state.prng)->generate(state, bcmvec);
         double score = weighted_gini_impurity(result);
         if (score<best_score) {
           best_score = score;
@@ -98,7 +95,7 @@ namespace libtempo::classifier::pf {
       if (bcm.nb_classes()==1) {
         const auto& header = state.get_header();
         std::string label = bcm.begin()->first;
-        return { Result{ResLeaf<L, Stest>{.splitter = std::make_unique<PureNode>(header.label_to_index(), label)}} };
+        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<PureNode>(header.label_to_index(), label)}} };
       }
         // Else, return the empty option
       else { return {}; }

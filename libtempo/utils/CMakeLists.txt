@@ -9,6 +9,7 @@ add_library(libtempo-utils INTERFACE
         utils.hpp
         stats.hpp
         partasks.hpp
+        progressmonitor.hpp
         )
 
 target_include_directories(libtempo-tseries INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../..)

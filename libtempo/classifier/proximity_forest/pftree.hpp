@@ -245,13 +245,6 @@ namespace libtempo::classifier::pf {
       }
 
 
-      // for (size_t i = 0; i<nbtrees; ++i) {
-      //   auto clone = state.forest_clone();
-      //   BCMVec copy = bcmvec;
-      //   forest.push_back(tree_trainer->train(*clone, copy));
-      //   state.forest_merge(std::move(clone));
-      // }
-
       size_t nb_classes = state.get_header().nb_labels();
 
       return std::make_unique<PForest<L, Stest>>(std::move(forest), nb_classes);

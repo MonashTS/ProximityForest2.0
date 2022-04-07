@@ -3,7 +3,7 @@
 #include <ostream>
 #include <iostream>
 
-namespace tempo {
+namespace libtempo::utils {
 
 
   struct ProgressMonitor {

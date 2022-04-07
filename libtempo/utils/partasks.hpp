@@ -5,7 +5,7 @@
 #include <queue>
 #include <thread>
 
-namespace tempo {
+namespace libtempo::utils {
 
   /** Helper class to execute several tasks in parallel.
    *  Tasks must be prepared (with push_task) before being executed.

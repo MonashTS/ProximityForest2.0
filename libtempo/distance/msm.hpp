@@ -325,7 +325,7 @@ namespace libtempo::distance {
     /// Default MSM using univariate ad1
     template<Float F, TSLike T>
     [[nodiscard]] inline F msm(const T &lines, const T &cols, const F c, F ub = utils::PINF<F>) {
-      return libtempo::distance::msm(lines, cols, c, msm_lines_ad1, msm_cols_ad1, ad1, ub);
+      return libtempo::distance::msm(lines, cols, c, msm_lines_ad1<F,T>, msm_cols_ad1<F,T>, ad1<F,T>, ub);
     }
 
     /// Specific overload for univariate vector

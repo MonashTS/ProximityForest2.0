@@ -29,7 +29,7 @@ namespace tempo {
     /// Template version
     template<class F, class... Args>
     void push_task(F&& f, Args&& ... args) {
-      tasklist.emplace(std::move(std::bind(f, args...)));
+      tasklist.emplace(std::move(std::bind(std::forward<F>(f), std::forward<Args...>(args...))));
     }
 
     /// Blocking call
@@ -107,7 +107,7 @@ namespace tempo {
       mtx.unlock();
     }
 
-    void run_thread(int nbtask) {
+    void run_thread(size_t nbtask) {
       if (nbtask<=1) { run_thread(); }
       else {
         std::vector<task_t> tasks;

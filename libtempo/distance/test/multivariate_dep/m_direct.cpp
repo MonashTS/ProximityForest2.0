@@ -8,10 +8,11 @@
 
 using namespace mock;
 using namespace libtempo::distance;
-using namespace libtempo::distance::multivariate;
 constexpr size_t nbitems = 500;
 constexpr size_t ndim = 3;
 constexpr double INF = libtempo::utils::PINF<double>;
+constexpr auto distN = multivariate::ad2N<double, std::vector<double>>;
+constexpr auto dist = univariate::ad2<double, std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -65,7 +66,7 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
       const double directa_ref_v = reference::directa(s, s, ndim);
       REQUIRE(directa_ref_v==0);
 
-      const auto directa_v = directa<double>(l, l, ad2N<double>(s, s, ndim), INF);
+      const auto directa_v = directa(l, l, distN(s, s, ndim), INF);
       REQUIRE(directa_v==0);
     }
   }
@@ -79,7 +80,7 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
       {
         const double directa_ref_v = reference::directa(s1, s2, 1);
         const double directa_ref_uni_v = reference::directa_uni(s1, s2);
-        const auto directa_tempo_v = directa<double>(l1, l1, ad2N<double>(s1, s2, 1), INF);
+        const auto directa_tempo_v = directa<double>(l1, l1, distN(s1, s2, 1), INF);
         REQUIRE(directa_ref_v==directa_ref_uni_v);
         REQUIRE(directa_ref_v==directa_tempo_v);
       }
@@ -89,7 +90,7 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
         const double directa_ref_v = reference::directa(s1, s2, ndim);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto directa_tempo_v = directa<double>(l, l, ad2N<double>(s1, s2, ndim), INF);
+        const auto directa_tempo_v = directa<double>(l, l, distN(s1, s2, ndim), INF);
         REQUIRE(directa_ref_v==directa_tempo_v);
       }
     }
@@ -101,13 +102,13 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = INF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = INF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = INF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -123,7 +124,7 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = directa<double>(l, l, ad2N<double>(s1, s2, ndim), INF);
+        const auto v = directa<double>(l, l, distN(s1, s2, ndim), INF);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -132,7 +133,7 @@ TEST_CASE("Multivariate Dependent DA Fixed length", "[directa][multivariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = directa<double>(l, l, ad2N<double>(s1, s2, ndim), bsf_tempo);
+        const auto v_tempo = directa<double>(l, l, distN(s1, s2, ndim), bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;

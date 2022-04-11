@@ -6,8 +6,10 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance::univariate;
+using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
+constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr double INF = libtempo::utils::PINF<double>;
 
 namespace reference {
 
@@ -38,7 +40,7 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
       const double directa_ref_v = reference::directa(s, s);
       REQUIRE(directa_ref_v==0);
 
-      const auto directa_v = directa<double>(s, s);
+      const auto directa_v = directa(s.size(), s.size(), dist(s, s), INF);
       REQUIRE(directa_v==0);
     }
   }
@@ -51,7 +53,7 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
       const double directa_ref_v = reference::directa(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto directa_tempo_v = directa<double>(s1, s2);
+      const auto directa_tempo_v = directa(s1.size(), s2.size(), dist(s1, s2), INF);
       REQUIRE(directa_ref_v==directa_tempo_v);
     }
   }
@@ -62,13 +64,13 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = INF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = INF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = INF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -84,7 +86,7 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = directa<double>(s1, s2);
+        const auto v = directa(s1.size(), s2.size(), dist(s1, s2), INF);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -93,7 +95,7 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = directa<double>(s1, s2, bsf_tempo);
+        const auto v_tempo = directa(s1.size(), s2.size(), dist(s1, s2), bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;

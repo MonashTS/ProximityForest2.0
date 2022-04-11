@@ -12,9 +12,7 @@ namespace libtempo::distance {
 
     /** Direct alignment (Euclidean distance like) with early abandoning. No pruning.
      * Only defined for same length series (return +INF if different length).
-     * @tparam FloatType  The floating number type used to represent the series.
-     * @tparam D          Type of underlying collection - given to dist
-     * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
+     * @tparam F          The floating number type used to represent the series.
      * @param length1     Length of the first series.
      * @param length2     Length of the second series.
      * @param dist        Distance function of type FDist
@@ -40,12 +38,12 @@ namespace libtempo::distance {
       // First, take the "next float" after "cutoff" to deal with numerical instability.
       // Then, subtract the cost of the last alignment.
       // Adjust the lower bound, taking the last alignment into account
-      const F lastA = dist(length1-1, length1-1);
-      const F ub = std::nextafter(cutoff, PINF)-lastA;
+      const F lastA = dist(length1 - 1, length1 - 1);
+      const F ub = std::nextafter(cutoff, PINF) - lastA;
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Compute the Euclidean-like distance up to, excluding, the last alignment
       double cost = 0;
-      for (size_t i{0}; i<length1-1; ++i) { // Stop before the last: counted in the bound!
+      for (size_t i{0}; i<length1 - 1; ++i) { // Stop before the last: counted in the bound!
         cost += dist(i, i);
         if (cost>ub) { return PINF; }
       }
@@ -79,9 +77,7 @@ namespace libtempo::distance {
 
   /** Direct alignment distance. Can early abandon but not prune.
    * Return +INF if the series have different length.
-   * @tparam FloatType  The floating number type used to represent the series.
-   * @tparam D          Type of underlying collection - given to dist
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
+   * @tparam F          The floating number type used to represent the series.
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
@@ -94,8 +90,8 @@ namespace libtempo::distance {
   */
   template<Float F>
   [[nodiscard]] F
-  directa(const size_t length1, const size_t length2, CFun<F> auto dist, F ub) {
-    if (std::isinf(ub) || std::isnan(ub)) {
+  directa(const size_t length1, const size_t length2, CFun<F> auto dist, F ub = utils::PINF<F>) {
+    if (std::isinf(ub)||std::isnan(ub)) {
       return internal::directa<F>(length1, length2, dist);
     } else { return internal::directa<F>(length1, length2, dist, ub); }
   }
@@ -109,34 +105,5 @@ namespace libtempo::distance {
     const CFun<F> auto dist = mkdist(lines, cols);
     return directa<F>(ls, cs, dist, ub);
   }
-
-  namespace univariate {
-
-    /// Default, using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F directa(const T& lines, const T& cols, F ub = utils::PINF<F>) {
-      return libtempo::distance::directa(lines, cols, ad2<F, T>, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F
-    directa(const std::vector<F>& lines, const std::vector<F>& cols, CFunBuilder<std::vector<F>> auto mkdist,
-      F ub = utils::PINF<F>) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      std::vector<F> v;
-      return libtempo::distance::directa<F>(ls, cs, dist, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F directa(const std::vector<F>& lines, const std::vector<F>& cols, F ub = utils::PINF<F>) {
-      return directa<F>(lines, cols, ad2<F, std::vector<F>>, ub);
-    }
-
-  }
-
 
 } // End of namespace libtempo::distance

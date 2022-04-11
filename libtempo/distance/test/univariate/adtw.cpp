@@ -4,10 +4,13 @@
 #include <mock/mockseries.hpp>
 
 #include <libtempo/distance/adtw.hpp>
+#include <libtempo/utils/utils.hpp>
 
 using namespace mock;
-using namespace libtempo::distance::univariate;
+using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
+constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr double INF = libtempo::utils::PINF<double>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -66,7 +69,7 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
       for (double p: penalties) {
         const double adtw_ref_v = reference::adtw_matrix(s, s, p);
         REQUIRE(adtw_ref_v==0);
-        const double adtw_v = adtw(s, s, p);
+        const double adtw_v = adtw(s.size(), s.size(), dist(s, s), p);
         REQUIRE(adtw_v==0);
       }
     }
@@ -79,7 +82,7 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
       for (double p: penalties) {
         const double adtw_ref_v = reference::adtw_matrix(s1, s2, p);
         INFO("Exact same operation order. Expect exact floating point equality.")
-        const auto adtw_tempo = adtw<double>(s1, s2, p);
+        const auto adtw_tempo = adtw(s1.size(), s2.size(), dist(s1, s2), p);
         REQUIRE(adtw_ref_v==adtw_tempo);
       }
     }
@@ -91,13 +94,13 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = INF;
       // Base Variables
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = INF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -114,7 +117,7 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = adtw<double>(s1, s2, p);
+          const auto v = adtw(s1.size(), s2.size(), dist(s1, s2), p);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -123,7 +126,7 @@ TEST_CASE("Univariate ADTW Fixed length", "[adtw][univariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = adtw<double>(s1, s2, p, bsf_tempo);
+          const auto v_tempo = adtw(s1.size(), s2.size(), dist(s1, s2), p, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;
@@ -148,7 +151,7 @@ TEST_CASE("Univariate ADTW Variable length", "[adtw][univariate]") {
       for (double p: penalties) {
         const double adtw_ref_v = reference::adtw_matrix(s, s, p);
         REQUIRE(adtw_ref_v==0);
-        const auto adtw_v = adtw<double>(s, s, p);
+        const auto adtw_v = adtw(s.size(), s.size(), dist(s, s), p);
         REQUIRE(adtw_v==0);
       }
     }
@@ -162,7 +165,7 @@ TEST_CASE("Univariate ADTW Variable length", "[adtw][univariate]") {
         const auto& s2 = fset[i+1];
         const double adtw_ref_v = reference::adtw_matrix(s1, s2, p);
         INFO("Exact same operation order. Expect exact floating point equality.")
-        const auto adtw_tempo_v = adtw<double>(s1, s2, p);
+        const auto adtw_tempo_v = adtw(s1.size(), s2.size(), dist(s1, s2), p);
         INFO(i << " " << pi << " length s1 = " << s1.size() << "  length s2 = " << s2.size())
         REQUIRE(adtw_ref_v==adtw_tempo_v);
       }
@@ -199,7 +202,7 @@ TEST_CASE("Univariate ADTW Variable length", "[adtw][univariate]") {
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = adtw<double>(s1, s2, p);
+          const auto v = adtw(s1.size(), s2.size(), dist(s1, s2), p);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -208,7 +211,7 @@ TEST_CASE("Univariate ADTW Variable length", "[adtw][univariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = adtw<double>(s1, s2, p, bsf_tempo);
+          const auto v_tempo = adtw(s1.size(), s2.size(), dist(s1, s2), p, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;

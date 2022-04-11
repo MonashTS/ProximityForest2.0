@@ -17,8 +17,8 @@ namespace libtempo::distance {
      * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series.
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param penalty       Fixed cost penalty for warping steps; must be >=0
      * @param dist          Cost function of concept CFun<F>
+     * @param penalty       Fixed cost penalty for warping steps; must be >=0
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
      *                      May lead to early abandoning.
      * @param buffers_v     Buffer used to perform the computation. Will reallocate if require.
@@ -28,8 +28,8 @@ namespace libtempo::distance {
     [[nodiscard]] inline F adtw(
       const size_t nblines,
       const size_t nbcols,
-      const F penalty,
       CFun<F> auto dist,
+      const F penalty,
       const F cutoff,
       std::vector<F>& buffer_v
     ) {
@@ -172,8 +172,8 @@ namespace libtempo::distance {
    * @tparam Float      The floating number type used to represent the series.
    * @param nblines     Length of the first series.
    * @param nbcols      Length of the second series.
-   * @param omega       Additive penalty for warping steps
    * @param dist        Cost function of concept CFun<F>, capturing the series matching the lines and columns
+   * @param omega       Additive penalty for warping steps
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
    *                    ub = PINF: use pruning
@@ -183,7 +183,7 @@ namespace libtempo::distance {
    */
   template<Float F>
   [[nodiscard]] F
-  adtw(size_t nblines, size_t nbcols, const F omega, CFun<F> auto dist, F ub, std::vector<F>& buffer_v) {
+  adtw(size_t nblines, size_t nbcols, CFun<F> auto dist, F omega, F ub, std::vector<F>& buffer_v) {
     constexpr F INF = utils::PINF<F>;
     if (nblines==0 && nbcols==0) { return 0; }
     else if ((nblines==0)!=(nbcols==0)) { return INF; }
@@ -204,54 +204,26 @@ namespace libtempo::distance {
         }
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed
-      return internal::adtw<F>(nblines, nbcols, omega, dist, ub, buffer_v);
+      return internal::adtw<F>(nblines, nbcols, dist, omega, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
   template<Float F>
-  [[nodiscard]] inline F adtw(size_t nblines, size_t nbcols, const F omega, CFun<F> auto dist, F ub) {
+  [[nodiscard]] inline F adtw(size_t nblines, size_t nbcols, CFun<F> auto dist, F omega, F ub=utils::PINF<F>) {
     std::vector<F> v;
-    return adtw(nblines, nbcols, omega, dist, ub, v);
+    return adtw(nblines, nbcols, dist, omega, ub, v);
   }
 
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
-  adtw(const T& lines, const T& cols, F omega, CFunBuilder<T> auto mkdist, F ub = utils::PINF<F>) {
+  adtw(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, F omega, F ub = utils::PINF<F>) {
     const auto ls = lines.length();
     const auto cs = cols.length();
     const CFun<F> auto dist = mkdist(lines, cols);
     std::vector<F> v;
-    return adtw<F>(ls, cs, omega, dist, ub, v);
+    return adtw<F>(ls, cs, dist, omega, ub, v);
   }
-
-  namespace univariate {
-
-    /// Default ADTW using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F adtw(const T& lines, const T& cols, F omega, F ub = utils::PINF<F>) {
-      return adtw(lines, cols, omega, ad2<F, T>, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F adtw(const std::vector<F>& lines, const std::vector<F>& cols, F omega,
-      CFunBuilder<std::vector<F>> auto mkdist, F ub = utils::PINF<F>) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      return libtempo::distance::adtw<F>(ls, cs, omega, dist, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F
-    adtw(const std::vector<F>& lines, const std::vector<F>& cols, F omega, F ub = utils::PINF<F>) {
-      return adtw<F>(lines, cols, omega, ad2<F, std::vector<F>>, ub);
-    }
-
-  }
-
 
 } // End of namespace libtempo::distance

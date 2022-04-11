@@ -42,7 +42,7 @@ namespace libtempo::classifier::pf {
      * @return A vector of probabilities. See DatasetHeader.
      */
     [[nodiscard]]
-    static std::vector<double> predict_proba(const PFTree& pt, Stest& state, size_t query_idx) {
+    static std::tuple<double, std::vector<double>> predict_proba(const PFTree& pt, Stest& state, size_t query_idx) {
       switch (pt.node.index()) {
       case 0: { return std::get<0>(pt.node)->predict_proba(state, query_idx); }
       case 1: {
@@ -63,7 +63,7 @@ namespace libtempo::classifier::pf {
      * @return  Vector of probability. See DatasetHeader.
      */
     [[nodiscard]]
-    std::vector<double> predict_proba(Stest& state, size_t index) const {
+    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t index) const {
       return predict_proba(*this, state, index);
     }
 
@@ -179,21 +179,22 @@ namespace libtempo::classifier::pf {
       forest(std::move(forest)), nb_classes(nb_classes) {}
 
     [[nodiscard]]
-    std::vector<double> predict_proba(Stest& state, size_t index) const {
+    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t index) const {
 
       const size_t nbtree = forest.size();
-      std::vector<utils::StddevWelford> result_welford(nb_classes);
-
-      for (size_t i = 0; i<nbtree; ++i) {
-        auto proba = forest[i]->predict_proba(state, index);
-        // Accumulate probabilities
-        for (size_t j = 0; j<nb_classes; ++j) { result_welford[j].update(proba[j]); }
-      }
-
+      double total_weight = 0;
       std::vector<double> result(nb_classes);
-      for (size_t j = 0; j<nb_classes; ++j) { result[j] = result_welford[j].get_mean(); }
 
-      return result;
+      // Accumulate weighted probabilities
+      for (size_t i = 0; i<nbtree; ++i) {
+        auto [weight, proba] = forest[i]->predict_proba(state, index);
+        total_weight+=weight;
+        for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
+      }
+      // Final divisions
+      for (size_t j = 0; j<nb_classes; ++j) { result[j] /= total_weight; }
+
+      return {total_weight, result};
     }
   };
 
@@ -220,19 +221,25 @@ namespace libtempo::classifier::pf {
       states_vec.reserve(nbtrees);
 
       auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, this](size_t tree_index) {
+        { // Lock protecting the printing
+          std::lock_guard lock(mutex);
+          std::cout << "Start tree " << tree_index << std::endl;
+        }
         auto start = libtempo::utils::now();
         auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
         auto delta = libtempo::utils::now()-start;
-        // Start lock: protecting the forest and out printing
-        std::lock_guard lock(mutex);
-        // --- Printing
-        auto cf = std::cout.fill();
-        std::cout << std::setfill('0');
-        std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
-        std::cout.fill(cf);
-        std::cout << " timing: " << libtempo::utils::as_string(delta) << std::endl;
-        // --- Add in the forest
-        forest.push_back(std::move(tree));
+        {
+          // Lock protecting the forest and out printing
+          std::lock_guard lock(mutex);
+          // --- Printing
+          auto cf = std::cout.fill();
+          std::cout << std::setfill('0');
+          std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
+          std::cout.fill(cf);
+          std::cout << " timing: " << libtempo::utils::as_string(delta) << std::endl;
+          // --- Add in the forest
+          forest.push_back(std::move(tree));
+        }
       };
 
       const auto start = utils::now();

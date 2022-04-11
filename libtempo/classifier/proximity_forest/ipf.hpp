@@ -17,8 +17,11 @@ namespace libtempo::classifier::pf {
   template<Label L, typename Stest>
   struct IPF_LeafSplitter {
 
-    /// Predict the probability of a classes at the leaf. Order must respect label_to_index from DatasetHeader.
-    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) const = 0;
+    /** Predict the probability of a classes at the leaf.
+     *  Order must respect the 'label_to_index' order from DatasetHeader.
+     *  The 1st component of the tuple is an associated weight used when ensembling; Set it to 1.0 to ignore its effect.
+     */
+    virtual std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t test_index) const = 0;
 
     virtual ~IPF_LeafSplitter() = default;
   };

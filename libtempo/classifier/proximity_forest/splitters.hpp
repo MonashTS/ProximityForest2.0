@@ -12,7 +12,6 @@
 
 namespace libtempo::classifier::pf {
 
-
   //// Compute the weighted (ratio of series per branch) gini impurity of a split.
   template<Label L, typename Strain, typename Stest>
   [[nodiscard]]
@@ -32,8 +31,7 @@ namespace libtempo::classifier::pf {
     return wgini/total_size;
   }
 
-  template<Label L, typename Strain, typename Stest>
-  requires has_prng<Strain>
+  template<Label L, typename Strain, typename Stest> requires has_prng<Strain>
   struct SG_chooser : public IPF_NodeGenerator<L, Strain, Stest> {
     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
 
@@ -66,9 +64,7 @@ namespace libtempo::classifier::pf {
 
   };
 
-
-  template<Label L, typename Strain, typename Stest>
-  requires has_prng<Strain>
+  template<Label L, typename Strain, typename Stest> requires has_prng<Strain>
   struct SG_try_all : public IPF_NodeGenerator<L, Strain, Stest> {
     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
 
@@ -76,7 +72,7 @@ namespace libtempo::classifier::pf {
 
     SGVec_t sgvec;
 
-    SG_try_all(SGVec_t&& sgvec):
+    SG_try_all(SGVec_t&& sgvec) :
       sgvec(std::move(sgvec)) {}
 
     /** Implementation fo the generate function
@@ -99,11 +95,6 @@ namespace libtempo::classifier::pf {
 
   };
 
-
-
-
-
-
   /** Leaf generator, stopping at pure node */
   template<Float F, Label L, typename Strain, typename Stest>
   struct SGLeaf_PureNode : public IPF_LeafGenerator<L, Strain, Stest> {
@@ -112,14 +103,19 @@ namespace libtempo::classifier::pf {
 
     /// leaf splitter
     struct PureNode : public IPF_LeafSplitter<L, Stest> {
+
+      double weight;
       std::vector<double> proba;
 
-      PureNode(const std::map<L, size_t>& label_to_index, L label) : proba(label_to_index.size(), 0.0) {
+      PureNode(double weight, const std::map<L, size_t>& label_to_index, L label) :
+        weight(weight),
+        proba(label_to_index.size(), 0.0) {
         proba[label_to_index.at(label)] = 1.0;
       }
 
-      std::vector<double> predict_proba(Stest& /* state */ , size_t /* test_index */) const override {
-        return proba;
+      std::tuple<double, std::vector<double>> predict_proba(Stest& /* state */ ,
+                                                            size_t /* test_index */) const override {
+        return {weight, proba};
       }
     };
 
@@ -130,12 +126,13 @@ namespace libtempo::classifier::pf {
       if (bcm.nb_classes()==1) {
         const auto& header = state.get_header();
         std::string label = bcm.begin()->first;
-        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<PureNode>(header.label_to_index(), label)}} };
+        double weight = bcm.size();
+        return {
+          Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<PureNode>(weight, header.label_to_index(), label)}}};
       }
         // Else, return the empty option
       else { return {}; }
     }
   };
-
 
 }

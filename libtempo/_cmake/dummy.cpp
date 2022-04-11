@@ -97,11 +97,11 @@ int main(int argc, char **argv) {
     fs::path adiac_test = dirpath/(name + "_TEST.ts");
     auto test_dataset = load_dataset(adiac_test);
 
-    auto derives = transform::derive(train_dataset, 2);
-    auto d1 = std::move(derives[0]);
-    auto d2 = std::move(derives[1]);
-    cout << d1.name() << endl;
-    cout << d2.name() << endl;
+    auto train_derives = transform::derive(train_dataset, 2);
+    auto train_d1 = std::move(train_derives[0]);
+    auto train_d2 = std::move(train_derives[1]);
+    cout << train_d1.name() << endl;
+    cout << train_d2.name() << endl;
 
     auto test_derives = transform::derive(test_dataset, 2);
     auto test_d1 = std::move(test_derives[0]);
@@ -215,11 +215,6 @@ int main(int argc, char **argv) {
     };
 
 
-
-
-
-
-
     using Strain = PFState;
     using Stest = PFState;
 
@@ -228,8 +223,8 @@ int main(int argc, char **argv) {
 
     auto transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
     transformations->insert({"default", train_dataset});
-    transformations->insert({"d1", d1});
-    transformations->insert({"d2", d2});
+    transformations->insert({"d1", train_d1});
+    transformations->insert({"d2", train_d2});
     PFState train_state = PFState(seed, transformations);
 
     auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
@@ -240,11 +235,12 @@ int main(int argc, char **argv) {
     PFState test_state = PFState(test_seed, test_transformations);
 
 
-    // --- --- --- Parameters range
-    auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
-    auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default", "d1"}); // , "d2"});
-    auto tname_def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
-    auto tname_d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
+    // --- --- --- Parameters ranges
+    //auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
+    auto exp2 = std::make_shared<std::vector<double>>(std::vector<double>{2});
+    auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default", "d1", "d2"});
+    auto def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
+    auto d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
     auto msm_costs = std::make_shared<std::vector<double>>(
       std::vector<double>{
         0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
@@ -269,6 +265,68 @@ int main(int argc, char **argv) {
                           0.088888889, 0.1}
     );
 
+
+    // --- --- --- PF 2018
+    auto sg_2018_chooser = libtempo::utils::initBlock{
+
+      // SQED
+      auto sg_1nn_da = std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(def, exp2);
+
+      // DTW Full Window
+      auto sg_1nn_dtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(def, exp2);
+
+      // DDTW Full Window
+      auto sg_1nn_ddtwf = std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(d1, exp2);
+
+      // DTW Window
+      auto sg_1nn_dtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(def, exp2);
+
+      // DDTW Window
+      auto sg_1nn_ddtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(d1, exp2);
+
+      // WDTW
+      auto sg_1nn_wdtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(def, exp2);
+
+      // WDDTW
+      auto sg_1nn_wddtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(d1, exp2);
+
+      // ERP
+      auto sg_1nn_erp =
+        std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(def, exp2);
+
+      // LCSS
+      auto sg_1nn_lcss =
+        std::make_shared<pf::SG_1NN_LCSS<F, L, Strain, Stest>>(def);
+
+      // MSM
+      auto sg_1nn_msm =
+        std::make_shared<pf::SG_1NN_MSM<F, L, Strain, Stest>>(def, msm_costs);
+
+      // TWE
+      auto sg_1nn_twe =
+        std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(def, twe_nus, twe_lambdas);
+
+      return std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
+        pf::SG_chooser<L, Strain, Stest>::SGVec_t{
+          sg_1nn_da,
+          sg_1nn_dtwf,
+          sg_1nn_ddtwf,
+          sg_1nn_dtw,
+          sg_1nn_ddtw,
+          sg_1nn_wdtw,
+          sg_1nn_wddtw,
+          sg_1nn_erp,
+          sg_1nn_lcss,
+          sg_1nn_msm,
+          sg_1nn_twe
+        }
+        , 5
+      );
+    };
+
+
+
+    /*
     // --- --- --- 1NN Elastic Distance Node Generator
     auto sg_1nn_da =
       std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(tnames, exponents);
@@ -354,25 +412,10 @@ int main(int argc, char **argv) {
 
     auto sg_1nn_d1_twe =
       std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(tname_d1, twe_nus, twe_lambdas);
+   */
 
 
-
-
-    auto sg_chooser = std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
-      pf::SG_chooser<L, Strain, Stest>::SGVec_t{
-        //sg_1nn_da,
-        sg_1nn_dtw,
-        //sg_1nn_dtwf,
-        sg_1nn_adtw,
-        //sg_1nn_wdtw,
-        //sg_1nn_erp,
-        sg_1nn_lcss,
-        //sg_1nn_msm,
-        //sg_1nn_twe,
-      }
-      , 5
-    );
-
+    /*
     auto sg_try_all = std::make_shared<pf::SG_try_all<L, Strain, Stest>>(
       pf::SG_try_all<L, Strain, Stest>::SGVec_t{
         sg_1nn_def_da,
@@ -395,42 +438,15 @@ int main(int argc, char **argv) {
         sg_1nn_d1_twe,
       }
     );
+     */
 
     // --- --- --- Leaf Generator
     auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
 
 
     // --- --- --- Tree Trainer: made of a leaf generator (pure node) and a node generator (chooser)
-    auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>(
-      sgleaf_purenode,
- //     sg_chooser
-    sg_try_all
-    );
-    /*
-    {
-      std::vector<ByClassMap<L>> train_bcm{std::get<0>(train_dataset.header().get_BCM())};
-      auto tree = tree_trainer->train(train_state, train_bcm);
-      const size_t test_top = test_dataset.header().size();
-      size_t correct = 0;
-      for (size_t i = 0; i<test_top; ++i) {
-        std::cout << i << std::endl;
-        auto vec = tree->predict_proba(test_state, i);
-        size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
-        std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-        if (predicted_l==test_dataset.header().labels()[i].value()) {
-          correct++;
-        }
-      }
-      std::cout << "1 tree: correct = " << correct << "/" << test_top << std::endl;
-      for (const auto&[n, c] : train_state.selected_distances) {
-        std::cout << n << ": " << c << std::endl;
-      }
-      train_state.selected_distances.clear();
-    }
-    */
-    size_t fsize = std::min<size_t>(100, std::floor(20+std::pow(train_dataset.size(), 0.5)));
-    fsize=100;
-    std::cout << "Training " << fsize << " trees..." << std::endl;
+    auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>( sgleaf_purenode, sg_2018_chooser );
+    size_t fsize=100;
 
     // --- --- --- Forest Trainer
     pf::PForestTrainer<L, Strain, Stest> forest_trainer(tree_trainer, fsize);
@@ -439,21 +455,27 @@ int main(int argc, char **argv) {
       auto forest = forest_trainer.train(train_state, train_bcm);
       const size_t test_top = test_dataset.header().size();
       size_t correct = 0;
+
       for (size_t i = 0; i<test_top; ++i) {
-        std::cout << i << std::endl;
-        auto vec = forest->predict_proba(test_state, i);
-        size_t predicted_idx = std::distance(vec.begin(), std::max_element(vec.begin(), vec.end()));
+        auto [weight, proba] = forest->predict_proba(test_state, i);
+        std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
+        for(const auto p:proba){ std::cout << " " << p; }
+        std::cout << std::endl;
+        size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
         std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-        if (predicted_l==test_dataset.header().labels()[i].value()) {
-          correct++;
-        }
+        std::string true_l = test_dataset.header().labels()[i].value();
+        std::cout << "  Predicted index = " << predicted_idx;
+        std::cout << "  Predicted class = '" << predicted_l << "'";
+        std::cout << "  True class = '" << true_l << "'" << std::endl;
+        if (predicted_l==true_l) { correct++; }
       }
+
       std::cout << "Result with " << fsize << " trees:" << std::endl;
       std::cout << "  correct: " << correct << "/" << test_top << std::endl;
       std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
-      for (const auto&[n, c] : train_state.selected_distances) {
-        std::cout << n << ": " << c << std::endl;
-      }
+
+      // Report on selected distances
+      for (const auto&[n, c] : train_state.selected_distances) { std::cout << n << ": " << c << std::endl; }
       train_state.selected_distances.clear();
     }
 

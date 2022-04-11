@@ -365,36 +365,4 @@ namespace libtempo::distance {
     return dtw<F>(ls, cs, dist, w, ub, v);
   }
 
-  /*
-  namespace univariate {
-
-    /// Default DTW using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F dtw(const T& lines, const T& cols, size_t w, F ub = utils::PINF<F>) {
-      return dtw<F>(lines, cols, ad2<F, T>, w, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F dtw(const std::vector<F>& lines, const std::vector<F>& cols,
-                                CFunBuilder<std::vector<F>> auto mkdist,
-                                size_t w, F ub = utils::PINF<F>
-    ) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      const auto r = libtempo::distance::dtw<F>(ls, cs, dist, w, ub);
-      return r;
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F dtw(const std::vector<F>& lines, const std::vector<F>& cols,
-                                size_t w, F ub = utils::PINF<F> ) {
-      return dtw<F>(lines, cols, ad2<F, std::vector<F>>, w, ub);
-    }
-
-  }
-   */
-
 } // End of namespace libtempo::distance

@@ -374,41 +374,27 @@ namespace libtempo::distance {
   }
 
 
-  // namespace multivariate {
+   namespace multivariate {
 
-  //   /// Default TWE warping step cost function, using univariate ad2
-  //   template<Float F, Subscriptable D>
-  //   [[nodiscard]] inline auto twe_warp_ad2(const D &s, size_t ndim, const F nu, const F lambda) {
-  //     const F nl = nu + lambda;
-  //     /*
-  //     const auto dist = ad2N<F>(s, s, ndim);
-  //     return [dist, nl](size_t i) {
-  //       return dist(i, i-1) + nl;
-  //     };
-  //      */
-  //     return [&, ndim, nl](size_t i) { return ad2N<F>(s, s, ndim)(i, i - 1) + nl; };
-  //   }
+     /// Default TWE warping step cost function, using multivariate ad2
+     template<Float F, Subscriptable D>
+     [[nodiscard]] inline auto twe_warp_ad2(const D &s, size_t ndim, const F nu, const F lambda) {
+       const F nl = nu + lambda;
+       return [&, ndim, nl](size_t i) { return ad2N<F, D>(s, s, ndim)(i, i - 1) + nl; };
+     }
 
-  //   /// Default TWE diagonal step cost function, using univariate ad2
-  //   template<Float F, Subscriptable D>
-  //   [[nodiscard]] inline auto twe_diag_ad2(const D &lines, const D &cols, size_t ndim, const F nu) {
-  //     const F nu2 = nu * 2;
-  //     /*
-  //     const auto dist = ad2N<F>(lines, cols, ndim);
-  //     return [dist, nu2](size_t i, size_t j) {
-  //       const auto da = dist(i, j);
-  //       const auto db = dist(i-1, j-1);
-  //       return da + db + (nu2 * utils::absdiff(i, j));
-  //     };
-  //      */
-  //     return [&, ndim, nu2](size_t i, size_t j) {
-  //       const auto da = ad2N<F>(lines, cols, ndim)(i, j);
-  //       const auto db = ad2N<F>(lines, cols, ndim)(i - 1, j - 1);
-  //       const auto r = da + db + (nu2 * utils::absdiff(i, j));
-  //       return r;
-  //     };
-  //   }
+     /// Default TWE diagonal step cost function, using multivariate ad2
+     template<Float F, Subscriptable D>
+     [[nodiscard]] inline auto twe_diag_ad2(const D &lines, const D &cols, size_t ndim, const F nu) {
+       const F nu2 = nu * 2;
+       return [&, ndim, nu2](size_t i, size_t j) {
+         const auto da = ad2N<F, D>(lines, cols, ndim)(i, j);
+         const auto db = ad2N<F, D>(lines, cols, ndim)(i - 1, j - 1);
+         const auto r = da + db + (nu2 * utils::absdiff(i, j));
+         return r;
+       };
+     }
 
-  // }
+   }
 
 } // End of namespace libtempo::distance

@@ -3,9 +3,6 @@
 #include <libtempo/classifier/proximity_forest/ipf.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/concepts.hpp>
-#include <libtempo/distance/direct.hpp>
-#include <libtempo/distance/dtw.hpp>
-#include <libtempo/distance/cdtw.hpp>
 
 #include <random>
 #include <utility>

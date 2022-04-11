@@ -6,7 +6,6 @@
 #include <libtempo/distance/direct.hpp>
 #include <libtempo/distance/adtw.hpp>
 #include <libtempo/distance/dtw.hpp>
-#include <libtempo/distance/cdtw.hpp>
 #include <libtempo/distance/wdtw.hpp>
 #include <libtempo/distance/erp.hpp>
 #include <libtempo/distance/lcss.hpp>
@@ -233,7 +232,7 @@ namespace libtempo::classifier::pf {
       double e = utils::pick_one(*exponents, *state.prng);
 
       distance_t distance = [e, w](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-        return distance::cdtw(t1, t2, w, distance::univariate::ade<F, TSeries<F, L >>(e), bsf);
+        return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), w, bsf);
       };
 
       auto cb = [tname](Strain& strain) { strain.selected_distances["dtw_"+tname] += 1; };
@@ -267,7 +266,7 @@ namespace libtempo::classifier::pf {
       double e = utils::pick_one(*exponents, *state.prng);
 
       distance_t distance = [e](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-        return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), bsf);
+        return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), utils::NO_WINDOW, bsf);
       };
 
       auto cb = [tname](Strain& strain) { strain.selected_distances["dtwf_"+tname] += 1; };
@@ -336,7 +335,7 @@ namespace libtempo::classifier::pf {
       const double omega = r*sampled_mean_dist;
 
       distance_t distance = [e, omega, dist](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-        return distance::adtw(t1, t2, omega, dist, bsf);
+        return distance::adtw(t1, t2, dist, omega, bsf);
       };
 
       auto cb = [tname](Strain& strain) { strain.selected_distances["adtw_"+tname] += 1; };

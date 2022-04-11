@@ -164,8 +164,8 @@ namespace libtempo::distance {
      * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param w             Warping window
      * @param dist          Distance function of type FDist
+     * @param w             Warping window
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
      *                      May lead to early abandoning.
      * @param buffer_v      The buffer used to carry the computation.
@@ -312,7 +312,12 @@ namespace libtempo::distance {
    */
 
   template<Float F>
-  [[nodiscard]] F dtw(size_t nblines, size_t nbcols, CFun<F> auto dist, size_t w, F ub, std::vector<F>& buffer_v
+  [[nodiscard]] F dtw(
+    size_t nblines, size_t nbcols,
+    CFun<F> auto dist,
+    size_t w,
+    F ub,
+    std::vector<F>& buffer_v
   ) {
     constexpr F INF = utils::PINF<F>;
     if (nblines==0&&nbcols==0) { return 0; }

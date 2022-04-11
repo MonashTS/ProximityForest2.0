@@ -75,7 +75,7 @@ namespace libtempo::classifier::pf {
   struct PFTreeTrainer {
 
     // Shorthand for result type
-    using Result = std::variant<ResLeaf<L, Stest>, ResNode <L, Stest>>;
+    using Result = std::variant<ResLeaf<L, Strain, Stest>, ResNode<L, Strain, Stest>>;
     using LeafResult = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
     using NodeResult = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
     using BCMVec = std::vector<ByClassMap<L>>;
@@ -86,9 +86,9 @@ namespace libtempo::classifier::pf {
     /// Build a proximity tree trainer with a leaf generator and a node generator
     PFTreeTrainer(
       std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>>
-    leaf_generator,
-    std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator ) :
-    leaf_generator (leaf_generator), node_generator(node_generator) {}
+      leaf_generator,
+      std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator) :
+      leaf_generator(leaf_generator), node_generator(node_generator) {}
 
   private:
 
@@ -111,8 +111,7 @@ namespace libtempo::classifier::pf {
     /// Train a tree
     [[nodiscard]]
     std::unique_ptr<PFTree<L, Stest>> train(Strain& strain, BCMVec bcmvec)
-    const requires std::derived_from<Strain, IStrain<L, Strain, Stest>>
-    {
+    const requires std::derived_from<Strain, IStrain<L, Strain, Stest>> {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
@@ -125,17 +124,17 @@ namespace libtempo::classifier::pf {
 
       switch (result.index()) {
       case 0: { // Leaf case - stop the recursion, build a leaf node
-        ResLeaf <L, Stest> leaf = std::get<0>(std::move(result));
+        ResLeaf<L, Strain, Stest> leaf = std::get<0>(std::move(result));
         // Train state callback
-        strain.on_make_leaf(leaf);
+        leaf.callback(strain);
         // Build the leaf node with the splitter
         ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=std::move(leaf.splitter)});
         break;
       }
       case 1: { // Inner node case: recursion per branch
-        ResNode <L, Stest> inner_node = std::get<1>(std::move(result));
+        ResNode<L, Strain, Stest> inner_node = std::get<1>(std::move(result));
         // Train state callback
-        strain.on_make_branches(inner_node);
+        inner_node.callback(strain);
         // Build subbranches, then we'll build the current node
         const size_t nbbranches = inner_node.branch_splits.size();
         typename PFTree<L, Stest>::Branches subbranches;
@@ -161,8 +160,8 @@ namespace libtempo::classifier::pf {
       }
       default: utils::should_not_happen();
       }
-      return ret;
 
+      return ret;
     }
   };
   // End of struct PFTreeTrainer
@@ -203,23 +202,58 @@ namespace libtempo::classifier::pf {
   struct PForestTrainer {
     using BCMVec = std::vector<ByClassMap<L>>;
 
-    const PFTreeTrainer<L, Strain, Stest>& tree_trainer;
+    std::shared_ptr<const PFTreeTrainer<L, Strain, Stest>> tree_trainer;
     size_t nbtrees;
 
-    explicit PForestTrainer(const PFTreeTrainer<L, Strain, Stest>& tree_trainer, size_t nbtrees) :
-      tree_trainer(tree_trainer),
+    explicit PForestTrainer(std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer, size_t nbtrees) :
+      tree_trainer(std::move(tree_trainer)),
       nbtrees(nbtrees) {}
 
+    /** Train the proximity forest */
     std::unique_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec) {
+
+      std::mutex mutex;
       typename PForest<L, Stest>::TreeVec forest;
       forest.reserve(nbtrees);
 
+      std::vector<std::unique_ptr<Strain>> states_vec;
+      states_vec.reserve(nbtrees);
+
+      auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, this](size_t tree_index) {
+        auto start = libtempo::utils::now();
+        auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
+        auto delta = libtempo::utils::now()-start;
+        // Start lock: protecting the forest and out printing
+        std::lock_guard lock(mutex);
+        // --- Printing
+        auto cf = std::cout.fill();
+        std::cout << std::setfill('0');
+        std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
+        std::cout.fill(cf);
+        std::cout << " timing: " << libtempo::utils::as_string(delta) << std::endl;
+        // --- Add in the forest
+        forest.push_back(std::move(tree));
+      };
+
+      const auto start = utils::now();
+
+      // Create the tasks per tree. Note that we clone the state.
+      libtempo::utils::ParTasks p;
       for (size_t i = 0; i<nbtrees; ++i) {
-        auto clone = state.forest_clone();
-        BCMVec copy = bcmvec;
-        forest.push_back(tree_trainer.train(*clone, copy));
-        state.forest_merge(std::move(clone));
+        states_vec.push_back(state.forest_clone());
+        p.push_task(mk_task, i);
       }
+
+      p.execute(8);
+
+      // Merge all the states back into one
+      for (size_t i = 0; i<nbtrees; ++i) {
+        state.forest_merge(std::move(states_vec[i]));
+      }
+
+      const auto delta = utils::now() - start;
+      std::cout << "Total train time = " << utils::as_string(delta) << std::endl;
+
 
       size_t nb_classes = state.get_header().nb_labels();
 

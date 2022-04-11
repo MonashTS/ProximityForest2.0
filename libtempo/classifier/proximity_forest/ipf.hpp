@@ -18,16 +18,21 @@ namespace libtempo::classifier::pf {
   struct IPF_LeafSplitter {
 
     /// Predict the probability of a classes at the leaf. Order must respect label_to_index from DatasetHeader.
-    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) = 0;
+    virtual std::vector<double> predict_proba(Stest& state, size_t test_index) const = 0;
 
     virtual ~IPF_LeafSplitter() = default;
   };
 
   /** Train time result type when generating a leaf */
-  template<Label L, typename Stest>
+  template<Label L, typename Strain, typename Stest>
   struct ResLeaf {
+
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_LeafSplitter<L, Stest>> splitter;
+
+    /// Function used to update the state with statistics
+    std::function<void(Strain& state)> callback = [](Strain& /* state */ ){};
+
   };
 
   /** Train time interface: a leaf generator.
@@ -37,12 +42,11 @@ namespace libtempo::classifier::pf {
    */
   template<Label L, typename Strain, typename Stest>
   struct IPF_LeafGenerator {
-    using Result = std::optional<ResLeaf<L, Stest>>;
+    using Result = std::optional<ResLeaf<L, Strain, Stest>>;
 
     /** Generate a leaf from a training state and the ByClassMap at the node.
      *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>
-    & bcm) const = 0;
+    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -57,13 +61,13 @@ namespace libtempo::classifier::pf {
   struct IPF_NodeSplitter {
 
     /// Get the branch index
-    virtual size_t get_branch_index(Stest& state, size_t test_index) = 0;
+    virtual size_t get_branch_index(Stest& state, size_t test_index) const = 0;
 
     virtual ~IPF_NodeSplitter() = default;
   };
 
   /** Result type when generating an internal node */
-  template<Label L, typename Stest>
+  template<Label L, typename Strain, typename Stest>
   struct ResNode {
 
     /// The actual split: the size of the vector tells us the number of branches
@@ -74,12 +78,15 @@ namespace libtempo::classifier::pf {
 
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_NodeSplitter<L, Stest>> splitter;
+
+    /// Function used to update the state with statistics
+    std::function<void(Strain& state)> callback = [](Strain& /* state */ ){};
   };
 
   /** Train time interface: a node generator. */
   template<Label L, typename Strain, typename Stest>
   struct IPF_NodeGenerator {
-    using Result = ResNode<L, Stest>;
+    using Result = ResNode<L, Strain, Stest>;
 
     /** Generate a new splitter from a training state and the ByClassMap at the node. */
     virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcm) const = 0;
@@ -108,6 +115,7 @@ namespace libtempo::classifier::pf {
     std::same_as<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
   };
 
+  /// Dataset Header mixin: provides a get_header() providing an non empty dataset_shared_map
   template<typename Base, Float F, Label L>
   struct TimeSeriesDatasetHeader {
     const DatasetHeader<L>& get_header() const {
@@ -120,12 +128,6 @@ namespace libtempo::classifier::pf {
   /** Interface for the train state */
   template<Label L, typename Strain, typename Stest>
   struct IStrain {
-
-    /// Callback when making a leaf - XOR with on_make_branches
-    virtual void on_make_leaf(const ResLeaf<L, Stest>& /* leaf */) {}
-
-    /// Callback when making a node with the result from a splitter generator - XOR with on_make_leaf
-    virtual void on_make_branches(const ResNode<L, Stest>& /* inode */) {}
 
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
     virtual Strain branch_fork(size_t /* bidx */) = 0;

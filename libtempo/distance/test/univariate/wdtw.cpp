@@ -90,7 +90,7 @@ TEST_CASE("Test weights generation", "[wdtw]") {
   }
 }
 
-TEST_CASE("Univariate WWDTW Fixed length", "[wdtw][univariate]") {
+TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_randvec(nbitems);
@@ -182,7 +182,7 @@ TEST_CASE("Univariate WWDTW Fixed length", "[wdtw][univariate]") {
 
 }
 
-TEST_CASE("Univariate WWDTW Variable length", "[wdtw][univariate]") {
+TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
   // Setup univariate with fixed length
   Mocker mocker;
   const auto fset = mocker.vec_rs_randvec(nbitems);
@@ -207,7 +207,7 @@ TEST_CASE("Univariate WWDTW Variable length", "[wdtw][univariate]") {
       for (double g: weight_factors) {
         const auto& s1 = fset[i];
         const auto& s2 = fset[i+1];
-        auto weights = generate_weights(g, (min(s1.size(), s2.size())));
+        auto weights = generate_weights(g, (max(s1.size(), s2.size())));
 
         const double dtw_ref_v = reference::wdtw_matrix(s1, s2, weights);
         INFO("Exact same operation order. Expect exact floating point equality.")
@@ -240,7 +240,7 @@ TEST_CASE("Univariate WWDTW Variable length", "[wdtw][univariate]") {
         // Create the univariate squared Euclidean distance for our dtw functions
 
         for (double g: weight_factors) {
-          auto weights = generate_weights(g, (min(s1.size(), s2.size())));
+          auto weights = generate_weights(g, (max(s1.size(), s2.size())));
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
           const double v_ref = reference::wdtw_matrix(s1, s2, weights);

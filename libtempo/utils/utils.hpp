@@ -5,13 +5,16 @@
 #include <cassert>
 #include <cmath>
 
+#include "partasks.hpp"
+#include "progressmonitor.hpp"
 #include "stats.hpp"
+#include "timing.hpp"
 
 namespace libtempo::utils {
 
   /** Pick a random item from a vector. */
   template<typename T, typename PRNG>
-  [[nodiscard]] auto pick_one(const std::vector<T>& v, PRNG& prng) {
+  [[nodiscard]] const auto& pick_one(const std::vector<T>& v, PRNG& prng) {
     if (v.size()==1) {
       return v.back();
     } else if (v.size()>1) {

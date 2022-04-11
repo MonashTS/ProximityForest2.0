@@ -8,6 +8,9 @@ add_library(libtempo-utils INTERFACE
         uncopyable.hpp
         utils.hpp
         stats.hpp
+        partasks.hpp
+        progressmonitor.hpp
+        timing.hpp
         )
 
 target_include_directories(libtempo-tseries INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/../..)

@@ -115,7 +115,7 @@ namespace libtempo::classifier::pf {
   /// Requirement for a shared map
   template<typename T, typename F, typename L>
   concept TimeSeriesDataset = requires {
-    std::same_as<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
+    std::convertible_to<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
   };
 
   /// Dataset Header mixin: provides a get_header() providing an non empty dataset_shared_map
@@ -139,7 +139,7 @@ namespace libtempo::classifier::pf {
     virtual void branch_merge(Strain&& /* other */) = 0;
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-    virtual std::unique_ptr<Strain> forest_clone() = 0;
+    virtual std::unique_ptr<Strain> forest_fork() = 0;
 
     /// Merge in this a state that has been produced by forest_clone
     virtual void forest_merge(std::unique_ptr<Strain> other) = 0;

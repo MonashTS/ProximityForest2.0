@@ -211,7 +211,7 @@ namespace libtempo::classifier::pf {
       nbtrees(nbtrees) {}
 
     /** Train the proximity forest */
-    std::unique_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec) {
+    std::shared_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec, size_t nbthread) {
 
       std::mutex mutex;
       typename PForest<L, Stest>::TreeVec forest;
@@ -242,29 +242,24 @@ namespace libtempo::classifier::pf {
         }
       };
 
-      const auto start = utils::now();
-
       // Create the tasks per tree. Note that we clone the state.
       libtempo::utils::ParTasks p;
       for (size_t i = 0; i<nbtrees; ++i) {
-        states_vec.push_back(state.forest_clone());
+        states_vec.push_back(state.forest_fork());
         p.push_task(mk_task, i);
       }
 
-      p.execute(8);
+      p.execute(nbthread);
 
       // Merge all the states back into one
       for (size_t i = 0; i<nbtrees; ++i) {
         state.forest_merge(std::move(states_vec[i]));
       }
 
-      const auto delta = utils::now() - start;
-      std::cout << "Total train time = " << utils::as_string(delta) << std::endl;
-
 
       size_t nb_classes = state.get_header().nb_labels();
 
-      return std::make_unique<PForest<L, Stest>>(std::move(forest), nb_classes);
+      return std::make_shared<PForest<L, Stest>>(std::move(forest), nb_classes);
 
     }
   };

@@ -127,4 +127,6 @@ namespace libtempo::utils {
 
 #define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
 
+#define initBlockStatic initBlock_detail::tag{} + []() -> decltype(auto)
+
 } // end of namespace libtempo::utils

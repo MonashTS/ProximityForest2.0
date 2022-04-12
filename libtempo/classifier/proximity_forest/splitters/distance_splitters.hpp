@@ -107,7 +107,7 @@ namespace libtempo::classifier::pf {
         // Pick on exemplar per class using the pseudo random number generator from the state
         auto& prng = state.prng;
         ByClassMap<L> train_bcm = bcm.template pick_one_by_class(*prng);
-        const IndexSet& train_indexset = IndexSet(train_bcm);
+        IndexSet train_indexset = IndexSet(train_bcm);
         // Access the dataset
         const auto& train_dataset_map = *state.dataset_shared_map;
         const auto& train_dataset = train_dataset_map.at(transformation_name);

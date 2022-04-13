@@ -1,10 +1,7 @@
 #include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
-#include <libtempo/classifier/proximity_forest/pf2018.hpp>
-#include <libtempo/classifier/proximity_forest/pftree.hpp>
-#include <libtempo/classifier/proximity_forest/splitters.hpp>
-#include <libtempo/classifier/proximity_forest/splitters/distance_splitters.hpp>
+#include <libtempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libtempo/classifier/proximity_forest/ipf.hpp>
+#include "ipf.hpp"
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/concepts.hpp>
 

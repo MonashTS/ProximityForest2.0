@@ -3,7 +3,7 @@
 #include <libtempo/concepts.hpp>
 #include <libtempo/tseries/dataset.hpp>
 #include <libtempo/utils/utils.hpp>
-#include <libtempo/classifier/proximity_forest/ipf.hpp>
+#include <libtempo/classifier/splitting_forest/ipf.hpp>
 
 #include <functional>
 #include <map>

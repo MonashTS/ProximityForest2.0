@@ -1,8 +1,8 @@
 #pragma once
 
-#include "pftree.hpp"
-#include "splitters/distance_splitters.hpp"
-#include "splitters.hpp"
+#include "libtempo/classifier/splitting_forest/pftree.hpp"
+#include "distance_splitters.hpp"
+#include "libtempo/classifier/splitting_forest/splitters.hpp"
 
 namespace libtempo::classifier::pf {
 

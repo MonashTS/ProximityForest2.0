@@ -165,7 +165,7 @@ namespace libtempo::classifier::pf {
 
   /// Distance Splitter State components
   template<Label L, bool B>
-  struct DistanceSplitterState: public pf::IStrainComp<L, DistanceSplitterState<L, B>> {
+  struct DistanceSplitterState: public pf::IStateComp<L, DistanceSplitterState<L, B>> {
 
     std::map<std::string, size_t> selected_distances;
 

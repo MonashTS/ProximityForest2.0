@@ -111,7 +111,7 @@ namespace libtempo::classifier::pf {
     /// Train a tree
     [[nodiscard]]
     std::unique_ptr<PFTree<L, Stest>> train(Strain& strain, BCMVec bcmvec)
-    const requires std::derived_from<Strain, IStrain<L, Strain>> {
+    const requires std::derived_from<Strain, IState<L, Strain>> {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();

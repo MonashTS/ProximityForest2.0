@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
   // --------------------------------------------------------------------------------------------------------------
 
   struct PFState :
-    public pf::IStrain<L, PFState>,
+    public pf::IState<L, PFState>,
     public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
     pf::DistanceSplitterState<L, true> distance_splitter_state;

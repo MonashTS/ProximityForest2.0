@@ -128,37 +128,37 @@ namespace libtempo::classifier::pf {
     }
   };
 
-  /** Interface for the train state */
-  template<Label L, typename Strain>
-  struct IStrain {
+  /** Interface for both the train and the test state */
+  template<Label L, typename Derived>
+  struct IState {
 
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
-    virtual Strain branch_fork(size_t /* bidx */) = 0;
+    virtual Derived branch_fork(size_t /* bidx */) = 0;
 
     /// Merge-move "other" into "this".
-    virtual void branch_merge(Strain&& /* other */) = 0;
+    virtual void branch_merge(Derived&& /* other */) = 0;
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-    virtual std::unique_ptr<Strain> forest_fork(size_t /* tree_idx */) = 0;
+    virtual std::unique_ptr<Derived> forest_fork(size_t /* tree_idx */) = 0;
 
-    virtual ~IStrain() = default;
+    virtual ~IState() = default;
   };
 
 
-  /** Helper for train state components.
+  /** Helper for state components.
    *  We do not differentiate between branch and forest levels.
    *  Do not use when dealing with "resources", e.g. a random number generator with internal state.
    */
-  template<Label L, typename Comp>
-  struct IStrainComp {
+  template<Label L, typename DerivedComp>
+  struct IStateComp {
 
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
-    virtual Comp fork(size_t /* bidx */) = 0;
+    virtual DerivedComp fork(size_t /* bidx */) = 0;
 
-    /// Merge-move "other" into "this".
-    virtual void merge(const Comp& /* other */) = 0;
+    /// Merge "other" into "this".
+    virtual void merge(const DerivedComp& /* other */) = 0;
 
-    virtual ~IStrainComp() = default;
+    virtual ~IStateComp() = default;
   };
 
 }

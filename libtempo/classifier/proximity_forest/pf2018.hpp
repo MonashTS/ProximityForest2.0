@@ -52,7 +52,7 @@ namespace libtempo::classifier::pf {
 
     /// Structure for the state at both train and test time
     struct PFState :
-      public pf::IStrain<L, PFState>,
+      public pf::IState<L, PFState>,
       public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
       /// Track the depth of the tree

@@ -55,11 +55,12 @@ namespace libtempo::classifier::pf {
       public pf::IState<L, PFState>,
       public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
-      /// Track the depth of the tree
-      size_t depth{0};
+      /// Track the depth of the tree; starts at 1
+      size_t current_depth{1};
+      size_t max_depth{0};
 
       /// Track selected distances; On merge, just create a new empty one (done by default)
-      DistanceSplitterState<L, true> distance_splitter_state;
+      DistanceSplitterState<L> distance_splitter_state;
 
       /// Pseudo random number generator: use a unique pointer (stateful)
       std::unique_ptr<PRNG> prng;
@@ -67,8 +68,10 @@ namespace libtempo::classifier::pf {
       /// Dictionary of name->dataset of time series
       std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map;
 
-      PFState(size_t seed, std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map)
-        : prng(std::make_unique<PRNG>(seed)), dataset_shared_map(std::move(dataset_shared_map)) {}
+      PFState(bool do_instrumentation, size_t seed, std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map) :
+        distance_splitter_state(do_instrumentation),
+        prng(std::make_unique<PRNG>(seed)),
+        dataset_shared_map(std::move(dataset_shared_map)) {}
 
       /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
       PFState(const PFState&) = delete;
@@ -78,19 +81,38 @@ namespace libtempo::classifier::pf {
 
     private:
 
-      /// Cloning Constructor: create a new PRNG
-      PFState(size_t depth, size_t new_seed, std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
-        depth(depth), prng(std::make_unique<PRNG>(new_seed)), dataset_shared_map(std::move(map)) {}
+      PFState(bool do_instrumentation,
+              size_t current_depth,
+              size_t seed,
+              std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map) :
+        current_depth(current_depth),
+        distance_splitter_state(do_instrumentation),
+        prng(std::make_unique<PRNG>(seed)),
+        dataset_shared_map(std::move(dataset_shared_map)) {}
 
       /// Forking Constructor: transmit PRNG into the new state
-      PFState(size_t depth, std::unique_ptr<PRNG>&& m_prng, std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
-        depth(depth), prng(std::move(m_prng)), dataset_shared_map(std::move(map)) {}
+      PFState(bool do_instrumentation,
+              size_t current_depth,
+              std::unique_ptr<PRNG>&& m_prng,
+              std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
+        current_depth(current_depth),
+        distance_splitter_state(do_instrumentation),
+        prng(std::move(m_prng)),
+        dataset_shared_map(std::move(map)) {}
 
     public:
 
+      /// On leaf
+      void on_leaf(const BCMVec<L>& bcmvec) override {
+        max_depth = current_depth;
+        distance_splitter_state.on_leaf(bcmvec);
+      }
+
       /// Transmit the prng down the branch
       PFState branch_fork(size_t /* bidx */) override {
-        return PFState(depth + 1, std::move(prng), dataset_shared_map);
+        return PFState(
+          distance_splitter_state.do_instrumentation, current_depth + 1, std::move(prng), dataset_shared_map
+        );
       }
 
       /// Merge "other" into "this". Move the prng into this. Merge statistics into this
@@ -99,14 +121,16 @@ namespace libtempo::classifier::pf {
         prng = std::move(other.prng);
         // Values:
         distance_splitter_state.merge(move(other.distance_splitter_state));
-        depth = std::max(depth, other.depth);
+        max_depth = std::max(max_depth, other.max_depth);
       }
 
       /// Clone at the forest level - clones must be fully independent as they can be used in parallel
       /// Create a new prng
       std::unique_ptr<PFState> forest_fork(size_t /* tree_index */) override {
         size_t new_seed = (*prng)();
-        return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
+        return std::unique_ptr<PFState>(
+          new PFState(distance_splitter_state.do_instrumentation, current_depth, new_seed, dataset_shared_map)
+        );
       }
     };
 
@@ -121,8 +145,9 @@ namespace libtempo::classifier::pf {
       Classifier(
         size_t seed,
         std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
-        std::shared_ptr<PForest<L, PFState>> forest
-      ) : test_state(seed, dataset_shared_map), forest(std::move(forest)) {}
+        std::shared_ptr<PForest<L, PFState>> forest,
+        bool do_instrumentation
+      ) : test_state(do_instrumentation, seed, dataset_shared_map), forest(std::move(forest)) {}
 
       [[nodiscard]]
       std::tuple<double, std::vector<double>> predict_proba(size_t index, size_t nbthread) {
@@ -146,7 +171,8 @@ namespace libtempo::classifier::pf {
       /// Get a classifier over a test set
       Classifier get_classifier_for(
         size_t seed,
-        std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map
+        std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
+        bool do_instrumentation
       ) noexcept(false) {
 
         // Check that we have trained the classifier
@@ -162,7 +188,7 @@ namespace libtempo::classifier::pf {
         }
 
         // Build state and forest trainer
-        return Classifier(seed, dataset_shared_map, trained_forest);
+        return Classifier(seed, dataset_shared_map, trained_forest, do_instrumentation);
       }
 
     };
@@ -172,6 +198,10 @@ namespace libtempo::classifier::pf {
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
     // List of splitters. This one are shared amongst all PF instances.
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
+
+    /// ADTW
+    static inline std::shared_ptr<pf::SG_1NN_ADTW<F, L, PFState, PFState>> sg_1nn_adtw =
+      std::make_shared<pf::SG_1NN_ADTW<F, L, PFState, PFState>>(def, exp2, 2000, 20, 4);
 
     /// SQED
     static inline std::shared_ptr<pf::SG_1NN_DA<F, L, PFState, PFState>> sg_1nn_da =
@@ -226,11 +256,24 @@ namespace libtempo::classifier::pf {
     static std::shared_ptr<pf::PFTreeTrainer<L, PFState, PFState>> tree_trainer(size_t nbc) {
       auto chooser = std::make_shared<pf::SG_chooser<L, PFState, PFState>>(
         typename pf::SG_chooser<L, PFState, PFState>::SGVec_t(
-          {sg_1nn_da, sg_1nn_dtwf, sg_1nn_ddtwf, sg_1nn_dtw, sg_1nn_ddtw, sg_1nn_wdtw, sg_1nn_wddtw,
-           sg_1nn_erp, sg_1nn_lcss, sg_1nn_msm, sg_1nn_twe}
+          {
+            sg_1nn_da,
+            sg_1nn_dtwf,
+            sg_1nn_ddtwf,
+            sg_1nn_dtw,
+            sg_1nn_ddtw,
+            sg_1nn_wdtw,
+            sg_1nn_wddtw,
+            sg_1nn_erp,
+            sg_1nn_lcss,
+            sg_1nn_msm,
+            sg_1nn_twe
+          }
         ), nbc
       );
-      return std::make_shared<pf::PFTreeTrainer<L, PFState, PFState>>(sgleaf_purenode, std::move(chooser));
+      // mk trainer
+      return std::make_shared<pf::PFTreeTrainer<L, PFState, PFState>>(sgleaf_purenode, std::move(chooser)
+      );
     }
 
     size_t _nbtree;
@@ -249,7 +292,8 @@ namespace libtempo::classifier::pf {
     Trained train(
       size_t seed,
       std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
-      size_t nbthreads
+      size_t nbthreads = 1,
+      bool do_instrumentation = true
     ) noexcept(false) {
       const auto total_train_start = utils::now();
 
@@ -262,7 +306,7 @@ namespace libtempo::classifier::pf {
       }
 
       // Build state and forest trainer
-      PFState train_state(seed, dataset_shared_map);
+      PFState train_state(do_instrumentation, seed, dataset_shared_map);
       pf::PForestTrainer<L, PFState, PFState> forest_trainer(_tree_trainer, _nbtree);
 
       // Build ByClassMap vector

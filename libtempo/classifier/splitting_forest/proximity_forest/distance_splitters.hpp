@@ -21,44 +21,80 @@ namespace libtempo::classifier::pf {
 
   /// Distance Splitter State components
   /// The forest train  and test states must include a field "distance_splitter_state" of this type.
-  template<Label L, bool Instru>
-  struct DistanceSplitterState : public pf::IStateComp<L, DistanceSplitterState<L, Instru>> {
+  template<Label L>
+  struct DistanceSplitterState : public pf::IStateComp<L, DistanceSplitterState<L>> {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Statistics
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    bool do_instrumentation;
 
     /// Map of selected distances.
     /// A new empty map is created when branching, and later merged with other maps.
     std::map<std::string, size_t> selected_distances;
 
-    /// IndexSet specific: do not recompute the IndexSet every time
-    std::optional<IndexSet> Dist_index_set;
-
-    /// ADTW specific
-    std::optional<double> ADTW_sample_penalty;
-
-    DistanceSplitterState() = default;
-
-    DistanceSplitterState<L, Instru> fork(size_t /* bidx */) override {
-      return DistanceSplitterState<L, Instru>();
+    /// Update distance usage statistics
+    void update(const std::string& distname) {
+      if (do_instrumentation) {
+        selected_distances[distname] += 1;
+      }
     }
 
-    void merge(const DistanceSplitterState<L, Instru>& other) override {
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Cache
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// IndexSet specific: do not recompute the IndexSet every time
+    std::optional<IndexSet> dist_index_set;
+
+    /// Helper for the above
+    [[nodiscard]] const IndexSet& get_index_set(const ByClassMap<L>& bcm) {
+      if (!(bool)dist_index_set) {
+        dist_index_set = std::make_optional<IndexSet>(bcm);
+      }
+      return dist_index_set.value();
+    }
+
+    /// ADTW specific
+    std::optional<double> ADTW_sampled_mean_da;
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Constructors
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    DistanceSplitterState() = delete;
+
+    DistanceSplitterState(const DistanceSplitterState&) = delete;
+
+    explicit DistanceSplitterState(bool do_instrumentation) : do_instrumentation(do_instrumentation) {}
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Overrides
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// Branch the state. Per-node states do not contain data (empty options, map...)
+    DistanceSplitterState<L> fork(size_t /* bidx */) override {
+      return DistanceSplitterState<L>(do_instrumentation);
+    }
+
+    /// Merge statistics, not cached data
+    void merge(const DistanceSplitterState<L>& other) override {
       for (const auto&[n, c] : other.selected_distances) {
         selected_distances[n] += c;
       }
     }
 
-    void update(const std::string& distname) {
-      if constexpr(Instru) {
-        selected_distances[distname] += 1;
-      }
-    }
-
+    /// On leaf: nothing
+    void on_leaf(const BCMVec<L>& /* bcmvec */ ) override {}
   };
 
   /// Concept enforcing the presence of the "distance_splitter_state" field in a State class
   template<typename State, typename L>
-  concept has_distance_splitter_state =
-    std::convertible_to<decltype(State::distance_splitter_state), DistanceSplitterState<L, true>>
-    ||std::convertible_to<decltype(State::distance_splitter_state), DistanceSplitterState<L, false>>;
+  concept has_distance_splitter_state = true;
+  // std::convertible_to<decltype(State::distance_splitter_state), DistanceSplitterState<L>>;
 
   /// Concept enforcing requirements for distance splitters
   template<typename State, typename F, typename L>
@@ -123,8 +159,7 @@ namespace libtempo::classifier::pf {
     };
 
     /** 1NN Splitter Generator - Randomly Pick one exemplar per class. */
-    template<Float F, Label L, typename Strain, typename Stest>
-    requires distance_splitter_acceptable<Stest, F, L>
+    template<Float F, Label L, typename Strain, typename Stest> requires distance_splitter_acceptable<Stest, F, L>
     struct TrainSplitter_1NN : public IPF_NodeGenerator<L, Strain, Stest> {
 
       /// Use same distance type as the resulting test splitter
@@ -155,9 +190,7 @@ namespace libtempo::classifier::pf {
         auto& prng = state.prng;
         ByClassMap<L> train_bcm = bcm.template pick_one_by_class(*prng);
         // Check the state for the index set
-        //const IndexSet& train_indexset =
-
-        IndexSet train_indexset = IndexSet(train_bcm);
+        const IndexSet& train_indexset = state.distance_splitter_state.get_index_set(train_bcm);
         // Access the dataset
         const auto& train_dataset_map = *state.dataset_shared_map;
         const auto& train_dataset = train_dataset_map.at(transformation_name);
@@ -338,24 +371,24 @@ namespace libtempo::classifier::pf {
     /// Exponent used in the cost function
     std::shared_ptr<std::vector<double>> exponents;
 
-    /// Sampling size when assessing the penalty
-    size_t penalty_sampling_size;
+    /// Mean direct alignment sampling size
+    size_t mean_da_sampling_size;
 
-    /// Herrmann Schedule - divisor
-    size_t hs_div;
+    /// Herrmann Schedule - sampling size
+    size_t hs_sampling_size;
 
     /// Herrmann Schedule - exponent
     double hs_exp;
 
     SG_1NN_ADTW(std::shared_ptr<std::vector<std::string>> transformation_names,
                 std::shared_ptr<std::vector<double>> exponents,
-                size_t penalty_sampling_size,
-                size_t hs_div,
+                size_t mean_da_sampling_size,
+                size_t hs_sampling_size,
                 double hs_exp) :
       transformation_names(std::move(transformation_names)),
       exponents(std::move(exponents)),
-      penalty_sampling_size(penalty_sampling_size),
-      hs_div(hs_div),
+      mean_da_sampling_size(mean_da_sampling_size),
+      hs_sampling_size(hs_sampling_size),
       hs_exp(hs_exp) {}
 
     /// Override interface ISplitterGenerator
@@ -366,23 +399,28 @@ namespace libtempo::classifier::pf {
       auto dist = distance::univariate::ade<F, TSeries<F, L >>(e);
 
       // --- --- --- Sampling
-      const auto& train_dataset_map = *state.dataset_shared_map;
-      const auto& train_dataset = train_dataset_map.at(tname);
-      utils::StddevWelford welford;
-      {
-        for (size_t i = 0; i<penalty_sampling_size; ++i) {
-          const auto& q = utils::pick_one(train_dataset.data(), *state.prng);
-          const auto& s = utils::pick_one(train_dataset.data(), *state.prng);
-          const auto cost = distance::directa<F>(q, s, dist);
-          welford.update(cost);
+      // lazy-shared, i.e. do not resample if already done at this node
+      if(!(bool)state.distance_splitter_state.ADTW_sampled_mean_da){
+        const auto& train_dataset_map = *state.dataset_shared_map;
+        const auto& train_dataset = train_dataset_map.at(tname);
+        utils::StddevWelford welford;
+        {
+          for (size_t i = 0; i<mean_da_sampling_size; ++i) {
+            const auto& q = utils::pick_one(train_dataset.data(), *state.prng);
+            const auto& s = utils::pick_one(train_dataset.data(), *state.prng);
+            const auto cost = distance::directa<F>(q, s, dist);
+            welford.update(cost);
+          }
         }
+        state.distance_splitter_state.ADTW_sampled_mean_da = std::make_optional<double>(welford.get_mean());
       }
-      const double sampled_mean_dist = welford.get_mean();
+      double sampled_mean_da = state.distance_splitter_state.ADTW_sampled_mean_da.value();
 
-      // Get a x in [0, div]
-      const double x = std::uniform_int_distribution<int>(0, hs_div + 1)(*state.prng);
-      const double r = std::pow(x/(double)hs_div, hs_exp);
-      const double omega = r*sampled_mean_dist;
+
+      // Get a x in [0, sampling_size]
+      const double x = std::uniform_int_distribution<int>(0, hs_sampling_size + 1)(*state.prng);
+      const double r = std::pow(x/(double)hs_sampling_size, hs_exp);
+      const double omega = r*sampled_mean_da;
 
       distance_t distance = [e, omega, dist](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
         return distance::adtw(t1, t2, dist, omega, bsf);

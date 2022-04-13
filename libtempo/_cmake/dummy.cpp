@@ -96,57 +96,6 @@ int main(int argc, char **argv) {
 
   // --------------------------------------------------------------------------------------------------------------
 
-  struct PFState :
-    public pf::IState<L, PFState>,
-    public pf::TimeSeriesDatasetHeader<PFState, F, L> {
-
-    pf::DistanceSplitterState<L, true> distance_splitter_state;
-
-    size_t depth{0};
-
-    /// Pseudo random number generator: use a unique pointer (stateful)
-    std::unique_ptr<PRNG> prng;
-
-    /// Dictionary of name->dataset of time series
-    std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map;
-
-    PFState(size_t seed, std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map)
-      : prng(std::make_unique<PRNG>(seed)), dataset_shared_map(std::move(dataset_shared_map)) {}
-
-    /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
-    PFState(const PFState&) = delete;
-
-  private:
-
-    /// Cloning Constructor: create a new PRNG
-    PFState(size_t depth, size_t new_seed, std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
-      depth(depth), prng(std::make_unique<PRNG>(new_seed)), dataset_shared_map(std::move(map)) {}
-
-    /// Forking Constructor: transmit PRNG into the new state
-    PFState(size_t depth, std::unique_ptr<PRNG>&& m_prng, std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
-      depth(depth), prng(std::move(m_prng)), dataset_shared_map(std::move(map)) {}
-
-  public:
-
-    /// Transmit the prng down the branch
-    PFState branch_fork(size_t /* bidx */) override {
-      return PFState(depth + 1, std::move(prng), dataset_shared_map);
-    }
-
-    /// Merge "other" into "this". Move the prng into this. Merge statistics into this
-    void branch_merge(PFState&& other) override {
-      prng = std::move(other.prng);
-      distance_splitter_state.merge(other.distance_splitter_state);
-    }
-
-    /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-    /// Create a new prng
-    std::unique_ptr<PFState> forest_fork(size_t /* tree_idx */) override {
-      size_t new_seed = (*prng)();
-      return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
-    }
-  };
-
   std::random_device rd;
   size_t seed = rd();
 
@@ -154,26 +103,24 @@ int main(int argc, char **argv) {
   transformations->insert({"default", train_dataset});
   transformations->insert({"d1", train_d1});
   transformations->insert({"d2", train_d2});
-  PFState train_state = PFState(seed, transformations);
 
   auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
   test_transformations->insert({"default", test_dataset});
   test_transformations->insert({"d1", test_d1});
   test_transformations->insert({"d2", test_d2});
   size_t test_seed = seed + 5;
-  PFState test_state = PFState(test_seed, test_transformations);
 
   auto trained_forest = pf2018.train(seed, transformations, nbthread);
-  auto classifier = trained_forest.get_classifier_for(seed + 1, test_transformations);
+  auto classifier = trained_forest.get_classifier_for(test_seed, test_transformations, B);
 
   if constexpr(B) {
 
     std::vector<size_t> depths;
-    pf::DistanceSplitterState<L, B> distance_splitter_state;
+    pf::DistanceSplitterState<L> distance_splitter_state(B);
 
     for (const auto& s : trained_forest.trained_states) {
       distance_splitter_state.merge(s->distance_splitter_state);
-      depths.push_back(s->depth);
+      depths.push_back(s->max_depth);
     }
 
     // Report on selected distances
@@ -199,12 +146,12 @@ int main(int argc, char **argv) {
     std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
     std::string true_l = test_dataset.header().labels()[i].value();
     if (predicted_l==true_l) { correct++; }
-    // std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
-    // for (const auto p : proba) { std::cout << " " << p; }
-    // std::cout << std::endl;
-    // std::cout << "  Predicted index = " << predicted_idx;
-    // std::cout << "  Predicted class = '" << predicted_l << "'";
-    // std::cout << "  True class = '" << true_l << "'" << std::endl;
+    //std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
+    //for (const auto p : proba) { std::cout << " " << p; }
+    //std::cout << std::endl;
+    //std::cout << "  Predicted index = " << predicted_idx;
+    //std::cout << "  Predicted class = '" << predicted_l << "'";
+    //std::cout << "  True class = '" << true_l << "'" << std::endl;
   }
 
   std::cout << "Result with " << nbt << " trees:" << std::endl;

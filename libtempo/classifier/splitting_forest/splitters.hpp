@@ -135,4 +135,62 @@ namespace libtempo::classifier::pf {
     }
   };
 
+  /** Leaf generator, stopping if a node is pure, or at a given depth */
+  template<Float F, Label L, typename Strain, typename Stest>
+  struct SGLeaf_DepthNode : public IPF_LeafGenerator<L, Strain, Stest> {
+    // Type shorthands
+    using Result = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
+
+    size_t depth_cutoff;
+
+    explicit SGLeaf_DepthNode(size_t depth_cutoff) :
+      depth_cutoff(depth_cutoff) {
+    }
+
+    /// leaf splitter
+    struct DepthNode : public IPF_LeafSplitter<L, Stest> {
+
+      double weight;
+      std::vector<double> proba;
+
+      DepthNode(double weight, std::vector<double>&& vec) :
+        weight(weight),
+        proba(std::move(vec)){}
+
+      std::tuple<double, std::vector<double>> predict_proba(Stest& /* state */ ,
+                                                            size_t /* test_index */) const override {
+        return {weight, proba};
+      }
+    };
+
+    /// Override interface ISplitterGenerator
+    Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcmvec) const override {
+      const auto& bcm = bcmvec.back();
+      // Generate leaf on pure node
+      if (bcm.nb_classes()==1) {
+        const auto& header = state.get_header();
+        std::string label = bcm.begin()->first;
+        double weight = bcm.size();
+        auto l_to_i = header.label_to_index();
+        std::vector<double> proba(l_to_i.size(), 0.0);   // Allocate one per class
+        size_t idx = l_to_i.at(label);
+        proba[idx] = 1.0;
+        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+      }
+      // Stop at a given depth
+      if (bcmvec.size() >= depth_cutoff) {
+        const auto& header = state.get_header();
+        double weight = bcm.size();
+        auto l_to_i = header.label_to_index();
+        std::vector<double> proba(l_to_i.size(), 0.0);   // Allocate one per class
+        for(const auto& [label, vec]: bcm){
+          size_t idx = l_to_i.at(label);
+          proba[idx] = ((double)vec.size())/weight;
+        }
+        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+      }
+      else { return {}; } // Else, return the empty option
+    }
+  };
+
 }

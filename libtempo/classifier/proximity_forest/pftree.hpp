@@ -187,8 +187,8 @@ namespace libtempo::classifier::pf {
 
       // Accumulate weighted probabilities
       for (size_t i = 0; i<nbtree; ++i) {
-        auto [weight, proba] = forest[i]->predict_proba(state, index);
-        total_weight+=weight;
+        auto[weight, proba] = forest[i]->predict_proba(state, index);
+        total_weight += weight;
         for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
       }
       // Final divisions
@@ -211,7 +211,10 @@ namespace libtempo::classifier::pf {
       nbtrees(nbtrees) {}
 
     /** Train the proximity forest */
-    std::shared_ptr<PForest<L, Stest>> train(Strain& state, BCMVec bcmvec, size_t nbthread) {
+    std::tuple<
+      std::vector<std::unique_ptr<Strain>>,
+      std::shared_ptr<PForest<L, Stest>>
+    > train(Strain& state, BCMVec bcmvec, size_t nbthread) {
 
       std::mutex mutex;
       typename PForest<L, Stest>::TreeVec forest;
@@ -227,7 +230,7 @@ namespace libtempo::classifier::pf {
         }
         auto start = libtempo::utils::now();
         auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
-        auto delta = libtempo::utils::now()-start;
+        auto delta = libtempo::utils::now() - start;
         {
           // Lock protecting the forest and out printing
           std::lock_guard lock(mutex);
@@ -250,16 +253,12 @@ namespace libtempo::classifier::pf {
       }
 
       p.execute(nbthread);
-
-      // Merge all the states back into one
-      for (size_t i = 0; i<nbtrees; ++i) {
-        state.forest_merge(std::move(states_vec[i]));
-      }
-
-
       size_t nb_classes = state.get_header().nb_labels();
 
-      return std::make_shared<PForest<L, Stest>>(std::move(forest), nb_classes);
+      return {
+        std::move(states_vec),
+        std::make_shared<PForest<L, Stest>>(std::move(forest), nb_classes)
+      };
 
     }
   };

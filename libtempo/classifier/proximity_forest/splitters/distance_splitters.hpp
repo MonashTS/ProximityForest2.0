@@ -169,19 +169,21 @@ namespace libtempo::classifier::pf {
 
     std::map<std::string, size_t> selected_distances;
 
-    void update(const std::string& distname){
-      if constexpr(B){
-        selected_distances[distname] += 1;
-      }
-    }
+    DistanceSplitterState() = default;
 
     DistanceSplitterState<L, B> fork(size_t /* bidx */ ) override {
       return DistanceSplitterState<L, B>();
     }
 
-    void merge(DistanceSplitterState<L, B>&& other) override {
+    void merge(const DistanceSplitterState<L, B>& other) override {
       for (const auto&[n, c] : other.selected_distances) {
         selected_distances[n] += c;
+      }
+    }
+
+    void update(const std::string& distname){
+      if constexpr(B){
+        selected_distances[distname] += 1;
       }
     }
 

@@ -141,9 +141,6 @@ namespace libtempo::classifier::pf {
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
     virtual std::unique_ptr<Strain> forest_fork(size_t /* tree_idx */) = 0;
 
-    /// Merge in this a state that has been produced by forest_clone
-    virtual void forest_merge(std::unique_ptr<Strain> other) = 0;
-
     virtual ~IStrain() = default;
   };
 
@@ -159,7 +156,7 @@ namespace libtempo::classifier::pf {
     virtual Comp fork(size_t /* bidx */) = 0;
 
     /// Merge-move "other" into "this".
-    virtual void merge(Comp&& /* other */) = 0;
+    virtual void merge(const Comp& /* other */) = 0;
 
     virtual ~IStrainComp() = default;
   };

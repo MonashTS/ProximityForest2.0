@@ -20,6 +20,7 @@ namespace fs = std::filesystem;
 using namespace std;
 using namespace libtempo;
 using PRNG = std::mt19937_64;
+constexpr bool B = true;
 
 void derivative(const double *series, size_t length, double *out) {
   if (length>2) {
@@ -137,7 +138,7 @@ int main(int argc, char **argv) {
     /// Merge "other" into "this". Move the prng into this. Merge statistics into this
     void branch_merge(PFState&& other) override {
       prng = std::move(other.prng);
-      distance_splitter_state.merge(move(other.distance_splitter_state));
+      distance_splitter_state.merge(other.distance_splitter_state);
     }
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
@@ -146,17 +147,7 @@ int main(int argc, char **argv) {
       size_t new_seed = (*prng)();
       return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
     }
-
-    /// Merge in this a state that has been produced by forest_clone
-    void forest_merge(std::unique_ptr<PFState> other) override {
-      distance_splitter_state.merge(move(other->distance_splitter_state));
-    }
-
   };
-
-
-  using Strain = PFState;
-  using Stest = PFState;
 
   std::random_device rd;
   size_t seed = rd();
@@ -174,136 +165,53 @@ int main(int argc, char **argv) {
   size_t test_seed = seed + 5;
   PFState test_state = PFState(test_seed, test_transformations);
 
+  auto trained_forest = pf2018.train(seed, transformations, 8);
+  auto classifier = trained_forest.get_classifier_for(seed + 1, test_transformations);
 
+  if constexpr(B) {
 
-  // --- --- --- PF 2018
-  auto sg_2018_chooser = libtempo::utils::initBlock {
+    std::vector<size_t> depths;
+    pf::DistanceSplitterState<L, B> distance_splitter_state;
 
-    // --- --- --- Parameters ranges
-    //auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
-    auto exp2 = std::make_shared<std::vector<double>>(std::vector<double>{2});
-    auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default", "d1", "d2"});
-    auto def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
-    auto d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
-    auto msm_costs = std::make_shared<std::vector<double>>(
-      std::vector<double>{
-        0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
-        0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
-        0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
-        0.388, 0.424, 0.46, 0.496, 0.532, 0.568, 0.604, 0.64, 0.676, 0.712, 0.748, 0.784,
-        0.82, 0.856, 0.892, 0.928, 0.964, 1, 1.36, 1.72, 2.08, 2.44, 2.8, 3.16, 3.52, 3.88,
-        4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
-        9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
-        60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
-      }
-    );
-
-    /** TWE nu parameters */
-    auto twe_nus = std::make_shared<std::vector<double>>(
-      std::vector<double>{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
-    );
-
-    /** TWE lambda parameters */
-    auto twe_lambdas = std::make_shared<std::vector<double>>(
-      std::vector<double>{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444, 0.055555556, 0.066666667, 0.077777778,
-                          0.088888889, 0.1}
-    );
-
-    // SQED
-    auto sg_1nn_da =
-      std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(def, exp2);
-
-    // DTW Full Window
-    auto sg_1nn_dtwf =
-      std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(def, exp2);
-
-    // DDTW Full Window
-    auto sg_1nn_ddtwf =
-      std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(d1, exp2);
-
-    // DTW Window
-    auto sg_1nn_dtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(def, exp2);
-
-    // DDTW Window
-    auto sg_1nn_ddtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(d1, exp2);
-
-    // WDTW
-    auto sg_1nn_wdtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(def, exp2);
-
-    // WDDTW
-    auto sg_1nn_wddtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(d1, exp2);
-
-    // ERP
-    auto sg_1nn_erp =
-      std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(def, exp2);
-
-    // LCSS
-    auto sg_1nn_lcss =
-      std::make_shared<pf::SG_1NN_LCSS<F, L, Strain, Stest>>(def);
-
-    // MSM
-    auto sg_1nn_msm =
-      std::make_shared<pf::SG_1NN_MSM<F, L, Strain, Stest>>(def, msm_costs);
-
-    // TWE
-    auto sg_1nn_twe =
-      std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(def, twe_nus, twe_lambdas);
-
-    return std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
-      pf::SG_chooser<L, Strain, Stest>::SGVec_t({
-                                                  sg_1nn_da,
-                                                  sg_1nn_dtwf,
-                                                  sg_1nn_ddtwf,
-                                                  sg_1nn_dtw,
-                                                  sg_1nn_ddtw,
-                                                  sg_1nn_wdtw,
-                                                  sg_1nn_wddtw,
-                                                  sg_1nn_erp,
-                                                  sg_1nn_lcss,
-                                                  sg_1nn_msm,
-                                                  sg_1nn_twe
-                                                }
-      ), 5
-    );
-  };
-
-  // --- --- --- Leaf Generator
-  auto sgleaf_purenode = std::make_shared<pf::SGLeaf_PureNode<F, L, Strain, Stest>>();
-
-  // --- --- --- Tree Trainer: made of a leaf generator (pure node) and a node generator (chooser)
-  auto tree_trainer = std::make_shared<pf::PFTreeTrainer<L, Strain, Stest>>(sgleaf_purenode, sg_2018_chooser);
-  size_t fsize = 100;
-
-  // --- --- --- Forest Trainer
-  {
-    auto trained_forest = pf2018.train(seed, transformations, 8);
-    auto classifier = trained_forest.get_classifier_for(seed + 1, test_transformations);
-    const size_t test_top = test_dataset.header().size();
-    size_t correct = 0;
-
-    for (size_t i = 0; i<test_top; ++i) {
-      auto[weight, proba] = classifier.predict_proba(i);
-      std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
-      for (const auto p : proba) { std::cout << " " << p; }
-      std::cout << std::endl;
-      size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
-      std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-      std::string true_l = test_dataset.header().labels()[i].value();
-      std::cout << "  Predicted index = " << predicted_idx;
-      std::cout << "  Predicted class = '" << predicted_l << "'";
-      std::cout << "  True class = '" << true_l << "'" << std::endl;
-      if (predicted_l==true_l) { correct++; }
+    for (const auto& s : trained_forest.trained_states) {
+      distance_splitter_state.merge(s->distance_splitter_state);
+      depths.push_back(s->depth);
     }
-
-    std::cout << "Result with " << fsize << " trees:" << std::endl;
-    std::cout << "  correct: " << correct << "/" << test_top << std::endl;
-    std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
 
     // Report on selected distances
-    for (const auto&[n, c] : train_state.distance_splitter_state.selected_distances) {
+    for (const auto&[n, c] : distance_splitter_state.selected_distances) {
       std::cout << n << ": " << c << std::endl;
     }
+    // Report on depth
+    double ad = 0;
+    for (auto d : depths) {
+      std::cout << d << "  ";
+      ad += d;
+    }
+    std::cout << endl;
+    std::cout << "Average depth = " << ad/depths.size() << std::endl;
   }
+
+  const size_t test_top = test_dataset.header().size();
+  size_t correct = 0;
+
+  for (size_t i = 0; i<test_top; ++i) {
+    auto[weight, proba] = classifier.predict_proba(i);
+    size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
+    std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
+    std::string true_l = test_dataset.header().labels()[i].value();
+    if (predicted_l==true_l) { correct++; }
+    // std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
+    // for (const auto p : proba) { std::cout << " " << p; }
+    // std::cout << std::endl;
+    // std::cout << "  Predicted index = " << predicted_idx;
+    // std::cout << "  Predicted class = '" << predicted_l << "'";
+    // std::cout << "  True class = '" << true_l << "'" << std::endl;
+  }
+
+  std::cout << "Result with " << nbt << " trees:" << std::endl;
+  std::cout << "  correct: " << correct << "/" << test_top << std::endl;
+  std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
 
   return 0;
 }
@@ -463,4 +371,120 @@ auto sg_try_all = std::make_shared<pf::SG_try_all<L, Strain, Stest>>(
     sg_1nn_d1_twe,
   }
 );
- */
+
+
+
+
+
+  // --- --- --- PF 2018
+  auto sg_2018_chooser = libtempo::utils::initBlock {
+
+    // --- --- --- Parameters ranges
+    //auto exponents = std::make_shared<std::vector<double>>(std::vector<double>{0.25, 0.33, 0.5, 1, 2, 3, 4});
+    auto exp2 = std::make_shared<std::vector<double>>(std::vector<double>{2});
+    auto tnames = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default", "d1", "d2"});
+    auto def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
+    auto d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
+    auto msm_costs = std::make_shared<std::vector<double>>(
+      std::vector<double>{
+        0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
+        0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
+        0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
+        0.388, 0.424, 0.46, 0.496, 0.532, 0.568, 0.604, 0.64, 0.676, 0.712, 0.748, 0.784,
+        0.82, 0.856, 0.892, 0.928, 0.964, 1, 1.36, 1.72, 2.08, 2.44, 2.8, 3.16, 3.52, 3.88,
+        4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
+        9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
+        60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
+      }
+    );
+
+    /// TWE nu parameters
+auto twe_nus = std::make_shared<std::vector<double>>(
+  std::vector<double>{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
+);
+
+/// TWE lambda parameters
+auto twe_lambdas = std::make_shared<std::vector<double>>(
+  std::vector<double>{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444, 0.055555556, 0.066666667, 0.077777778,
+                      0.088888889, 0.1}
+);
+
+// SQED
+auto sg_1nn_da =
+  std::make_shared<pf::SG_1NN_DA<F, L, Strain, Stest>>(def, exp2);
+
+// DTW Full Window
+auto sg_1nn_dtwf =
+  std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(def, exp2);
+
+// DDTW Full Window
+auto sg_1nn_ddtwf =
+  std::make_shared<pf::SG_1NN_DTWFull<F, L, Strain, Stest>>(d1, exp2);
+
+// DTW Window
+auto sg_1nn_dtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(def, exp2);
+
+// DDTW Window
+auto sg_1nn_ddtw = std::make_shared<pf::SG_1NN_DTW<F, L, Strain, Stest>>(d1, exp2);
+
+// WDTW
+auto sg_1nn_wdtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(def, exp2);
+
+// WDDTW
+auto sg_1nn_wddtw = std::make_shared<pf::SG_1NN_WDTW<F, L, Strain, Stest>>(d1, exp2);
+
+// ERP
+auto sg_1nn_erp =
+  std::make_shared<pf::SG_1NN_ERP<F, L, Strain, Stest>>(def, exp2);
+
+// LCSS
+auto sg_1nn_lcss =
+  std::make_shared<pf::SG_1NN_LCSS<F, L, Strain, Stest>>(def);
+
+// MSM
+auto sg_1nn_msm =
+  std::make_shared<pf::SG_1NN_MSM<F, L, Strain, Stest>>(def, msm_costs);
+
+// TWE
+auto sg_1nn_twe =
+  std::make_shared<pf::SG_1NN_TWE<F, L, Strain, Stest>>(def, twe_nus, twe_lambdas);
+
+return std::make_shared<pf::SG_chooser<L, Strain, Stest>>(
+pf::SG_chooser<L, Strain, Stest>::SGVec_t({
+sg_1nn_da,
+sg_1nn_dtwf,
+sg_1nn_ddtwf,
+sg_1nn_dtw,
+sg_1nn_ddtw,
+sg_1nn_wdtw,
+sg_1nn_wddtw,
+sg_1nn_erp,
+sg_1nn_lcss,
+sg_1nn_msm,
+sg_1nn_twe
+}
+), 5
+);
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/

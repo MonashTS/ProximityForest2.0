@@ -55,9 +55,11 @@ namespace libtempo::classifier::pf {
       public pf::IStrain<L, PFState>,
       public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
-      DistanceSplitterState<L, true> distance_splitter_state;
-
+      /// Track the depth of the tree
       size_t depth{0};
+
+      /// Track selected distances; On merge, just create a new empty one (done by default)
+      DistanceSplitterState<L, true> distance_splitter_state;
 
       /// Pseudo random number generator: use a unique pointer (stateful)
       std::unique_ptr<PRNG> prng;
@@ -93,22 +95,19 @@ namespace libtempo::classifier::pf {
 
       /// Merge "other" into "this". Move the prng into this. Merge statistics into this
       void branch_merge(PFState&& other) override {
+        // Resources: move!
         prng = std::move(other.prng);
+        // Values:
         distance_splitter_state.merge(move(other.distance_splitter_state));
+        depth = std::max(depth, other.depth);
       }
 
       /// Clone at the forest level - clones must be fully independent as they can be used in parallel
       /// Create a new prng
-      std::unique_ptr<PFState> forest_fork(size_t /* tree_index */ ) override {
+      std::unique_ptr<PFState> forest_fork(size_t /* tree_index */) override {
         size_t new_seed = (*prng)();
         return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
       }
-
-      /// Merge in this a state that has been produced by forest_clone
-      void forest_merge(std::unique_ptr<PFState> other) override {
-        distance_splitter_state.merge(std::move(other->distance_splitter_state));
-      }
-
     };
 
     /// Test time structure
@@ -133,16 +132,16 @@ namespace libtempo::classifier::pf {
     };
 
     /// Result of the train
-    class Trained {
+    struct Trained {
 
-      PFState _trained_state;
-      std::shared_ptr<PForest<L, PFState>> _trained_forest;
+      std::vector<std::unique_ptr<PFState>> trained_states;
+      std::shared_ptr<PForest<L, PFState>> trained_forest;
 
-    public:
-
-      Trained(PFState&& trained_state, std::shared_ptr<PForest<L, PFState>> trained_forest)
-        : _trained_state(std::move(trained_state)),
-          _trained_forest(std::move(trained_forest)) {}
+      Trained(
+        std::vector<std::unique_ptr<PFState>>&& trained_states,
+        std::shared_ptr<PForest<L, PFState>> trained_forest
+      ) : trained_states(std::move(trained_states)),
+          trained_forest(std::move(trained_forest)) {}
 
       /// Get a classifier over a test set
       Classifier get_classifier_for(
@@ -151,7 +150,7 @@ namespace libtempo::classifier::pf {
       ) noexcept(false) {
 
         // Check that we have trained the classifier
-        if (!(bool)_trained_forest) {
+        if (!(bool)trained_forest) {
           throw std::logic_error("PF2018 must be trained first");
         }
         // Arg check
@@ -163,7 +162,7 @@ namespace libtempo::classifier::pf {
         }
 
         // Build state and forest trainer
-        return Classifier(seed, dataset_shared_map, _trained_forest);
+        return Classifier(seed, dataset_shared_map, trained_forest);
       }
 
     };
@@ -272,12 +271,12 @@ namespace libtempo::classifier::pf {
       std::vector<ByClassMap<L>> train_bcmvec{train_bcm};
 
       // training...
-      auto trained_forest = forest_trainer.train(train_state, train_bcmvec, nbthreads);
+      auto[trained_states, trained_forest] = forest_trainer.train(train_state, train_bcmvec, nbthreads);
 
       const auto total_train_delta = utils::now() - total_train_start;
       std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;
 
-      return Trained(std::move(train_state), std::move(trained_forest));
+      return Trained(std::move(trained_states), std::move(trained_forest));
     }
 
   }; // End of struct PF2018

@@ -9,6 +9,9 @@
 
 namespace libtempo::classifier::pf {
 
+  template<Label L>
+  using BCMVec = std::vector<ByClassMap<L>>;
+
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- Leaf
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -49,7 +52,7 @@ namespace libtempo::classifier::pf {
 
     /** Generate a leaf from a training state and the ByClassMap at the node.
      *  If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcm) const = 0;
+    virtual Result generate(Strain& state, const BCMVec<L>& bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -92,7 +95,7 @@ namespace libtempo::classifier::pf {
     using Result = ResNode<L, Strain, Stest>;
 
     /** Generate a new splitter from a training state and the ByClassMap at the node. */
-    virtual Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcm) const = 0;
+    virtual Result generate(Strain& state, const BCMVec<L>& bcm) const = 0;
 
     virtual ~IPF_NodeGenerator() = default;
   };
@@ -132,6 +135,9 @@ namespace libtempo::classifier::pf {
   template<Label L, typename Derived>
   struct IState {
 
+    /// Action when creating a leaf
+    virtual void on_leaf(const BCMVec<L>& /* bcmvec */) = 0;
+
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
     virtual Derived branch_fork(size_t /* bidx */) = 0;
 
@@ -151,6 +157,9 @@ namespace libtempo::classifier::pf {
    */
   template<Label L, typename DerivedComp>
   struct IStateComp {
+
+    /// Action when creating a leaf
+    virtual void on_leaf(const BCMVec<L>& /* bcmvec */) = 0;
 
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
     virtual DerivedComp fork(size_t /* bidx */) = 0;

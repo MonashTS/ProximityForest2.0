@@ -125,8 +125,10 @@ namespace libtempo::classifier::pf {
       switch (result.index()) {
       case 0: { // Leaf case - stop the recursion, build a leaf node
         ResLeaf<L, Strain, Stest> leaf = std::get<0>(std::move(result));
-        // Train state callback
+        // Node callback
         leaf.callback(strain);
+        // State callback
+        strain.on_leaf(bcmvec);
         // Build the leaf node with the splitter
         ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=std::move(leaf.splitter)});
         break;

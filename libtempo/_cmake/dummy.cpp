@@ -98,10 +98,10 @@ int main(int argc, char **argv) {
   // --------------------------------------------------------------------------------------------------------------
 
   struct PFState :
-    public pf::IStrain<L, PFState, PFState>,
+    public pf::IStrain<L, PFState>,
     public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
-    std::map<std::string, size_t> selected_distances;
+    pf::DistanceSplitterState<L, true> distance_splitter_state;
 
     size_t depth{0};
 
@@ -137,24 +137,19 @@ int main(int argc, char **argv) {
     /// Merge "other" into "this". Move the prng into this. Merge statistics into this
     void branch_merge(PFState&& other) override {
       prng = std::move(other.prng);
-      for (const auto&[n, c] : other.selected_distances) {
-        selected_distances[n] += c;
-      }
-
+      distance_splitter_state.merge(move(other.distance_splitter_state));
     }
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
     /// Create a new prng
-    std::unique_ptr<PFState> forest_fork() override {
+    std::unique_ptr<PFState> forest_fork(size_t /* tree_idx */) override {
       size_t new_seed = (*prng)();
       return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
     }
 
     /// Merge in this a state that has been produced by forest_clone
     void forest_merge(std::unique_ptr<PFState> other) override {
-      for (const auto&[n, c] : other->selected_distances) {
-        selected_distances[n] += c;
-      }
+      distance_splitter_state.merge(move(other->distance_splitter_state));
     }
 
   };
@@ -267,7 +262,8 @@ int main(int argc, char **argv) {
                                                   sg_1nn_lcss,
                                                   sg_1nn_msm,
                                                   sg_1nn_twe
-                                                }), 5
+                                                }
+      ), 5
     );
   };
 
@@ -281,7 +277,7 @@ int main(int argc, char **argv) {
   // --- --- --- Forest Trainer
   {
     auto trained_forest = pf2018.train(seed, transformations, 8);
-    auto classifier = trained_forest.get_classifier_for(seed+1, test_transformations);
+    auto classifier = trained_forest.get_classifier_for(seed + 1, test_transformations);
     const size_t test_top = test_dataset.header().size();
     size_t correct = 0;
 
@@ -304,8 +300,9 @@ int main(int argc, char **argv) {
     std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
 
     // Report on selected distances
-    for (const auto&[n, c] : train_state.selected_distances) { std::cout << n << ": " << c << std::endl; }
-    train_state.selected_distances.clear();
+    for (const auto&[n, c] : train_state.distance_splitter_state.selected_distances) {
+      std::cout << n << ": " << c << std::endl;
+    }
   }
 
   return 0;

@@ -163,6 +163,29 @@ namespace libtempo::classifier::pf {
 
   } // End of namespace internal
 
+  /// Distance Splitter State components
+  template<Label L, bool B>
+  struct DistanceSplitterState: public pf::IStrainComp<L, DistanceSplitterState<L, B>> {
+
+    std::map<std::string, size_t> selected_distances;
+
+    void update(const std::string& distname){
+      if constexpr(B){
+        selected_distances[distname] += 1;
+      }
+    }
+
+    DistanceSplitterState<L, B> fork(size_t /* bidx */ ) override {
+      return DistanceSplitterState<L, B>();
+    }
+
+    void merge(DistanceSplitterState<L, B>&& other) override {
+      for (const auto&[n, c] : other.selected_distances) {
+        selected_distances[n] += c;
+      }
+    }
+
+  };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Elastic distance splitters generators
@@ -196,7 +219,7 @@ namespace libtempo::classifier::pf {
         return distance::directa(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["da_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("da_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -235,7 +258,7 @@ namespace libtempo::classifier::pf {
         return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), w, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["dtw_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("dtw_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -269,7 +292,7 @@ namespace libtempo::classifier::pf {
         return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(e), utils::NO_WINDOW, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["dtwf_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("dtwf_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -338,7 +361,7 @@ namespace libtempo::classifier::pf {
         return distance::adtw(t1, t2, dist, omega, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["adtw_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("adtw_"+tname); };
 
       auto sg = internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb);
       return sg.generate(state, bcmvec);
@@ -377,7 +400,7 @@ namespace libtempo::classifier::pf {
         return distance::wdtw(t1, t2, *weights, distance::univariate::ade<F, TSeries<F, L >>(e), bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["wdtw_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("wdtw_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -424,7 +447,7 @@ namespace libtempo::classifier::pf {
         );
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["erp_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("erp_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -461,7 +484,7 @@ namespace libtempo::classifier::pf {
         return distance::univariate::lcss(t1, t2, w, epsilon, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["lcss_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("lcss_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -498,7 +521,7 @@ namespace libtempo::classifier::pf {
         return distance::univariate::msm(t1, t2, c, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["msm_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("msm_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }
@@ -542,7 +565,7 @@ namespace libtempo::classifier::pf {
         return distance::univariate::twe<F, TSeries<F,L>>(t1, t2, nu, lambda, bsf);
       };
 
-      auto cb = [tname](Strain& strain) { strain.selected_distances["twe_"+tname] += 1; };
+      auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("twe_"+tname); };
 
       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
     }

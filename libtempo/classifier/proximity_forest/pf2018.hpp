@@ -52,10 +52,10 @@ namespace libtempo::classifier::pf {
 
     /// Structure for the state at both train and test time
     struct PFState :
-      public pf::IStrain<L, PFState, PFState>,
+      public pf::IStrain<L, PFState>,
       public pf::TimeSeriesDatasetHeader<PFState, F, L> {
 
-      std::map<std::string, size_t> selected_distances;
+      DistanceSplitterState<L, true> distance_splitter_state;
 
       size_t depth{0};
 
@@ -70,6 +70,9 @@ namespace libtempo::classifier::pf {
 
       /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
       PFState(const PFState&) = delete;
+
+      /// Ensure that we have a move constructor
+      PFState(PFState&&) = default;
 
     private:
 
@@ -91,24 +94,19 @@ namespace libtempo::classifier::pf {
       /// Merge "other" into "this". Move the prng into this. Merge statistics into this
       void branch_merge(PFState&& other) override {
         prng = std::move(other.prng);
-        for (const auto&[n, c] : other.selected_distances) {
-          selected_distances[n] += c;
-        }
-
+        distance_splitter_state.merge(move(other.distance_splitter_state));
       }
 
       /// Clone at the forest level - clones must be fully independent as they can be used in parallel
       /// Create a new prng
-      std::unique_ptr<PFState> forest_fork() override {
+      std::unique_ptr<PFState> forest_fork(size_t /* tree_index */ ) override {
         size_t new_seed = (*prng)();
         return std::unique_ptr<PFState>(new PFState(depth, new_seed, dataset_shared_map));
       }
 
       /// Merge in this a state that has been produced by forest_clone
       void forest_merge(std::unique_ptr<PFState> other) override {
-        for (const auto&[n, c] : other->selected_distances) {
-          selected_distances[n] += c;
-        }
+        distance_splitter_state.merge(std::move(other->distance_splitter_state));
       }
 
     };
@@ -143,12 +141,8 @@ namespace libtempo::classifier::pf {
     public:
 
       Trained(PFState&& trained_state, std::shared_ptr<PForest<L, PFState>> trained_forest)
-        : _trained_state(trained_state),
-        _trained_forest(trained_forest) {}
-
-        /// Access the trained state
-
-
+        : _trained_state(std::move(trained_state)),
+          _trained_forest(std::move(trained_forest)) {}
 
       /// Get a classifier over a test set
       Classifier get_classifier_for(
@@ -171,9 +165,6 @@ namespace libtempo::classifier::pf {
         // Build state and forest trainer
         return Classifier(seed, dataset_shared_map, _trained_forest);
       }
-
-
-
 
     };
 
@@ -237,7 +228,8 @@ namespace libtempo::classifier::pf {
       auto chooser = std::make_shared<pf::SG_chooser<L, PFState, PFState>>(
         typename pf::SG_chooser<L, PFState, PFState>::SGVec_t(
           {sg_1nn_da, sg_1nn_dtwf, sg_1nn_ddtwf, sg_1nn_dtw, sg_1nn_ddtw, sg_1nn_wdtw, sg_1nn_wddtw,
-           sg_1nn_erp, sg_1nn_lcss, sg_1nn_msm, sg_1nn_twe}), nbc
+           sg_1nn_erp, sg_1nn_lcss, sg_1nn_msm, sg_1nn_twe}
+        ), nbc
       );
       return std::make_shared<pf::PFTreeTrainer<L, PFState, PFState>>(sgleaf_purenode, std::move(chooser));
     }
@@ -285,7 +277,7 @@ namespace libtempo::classifier::pf {
       const auto total_train_delta = utils::now() - total_train_start;
       std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;
 
-      return Trained(std::move(trained_forest));
+      return Trained(std::move(train_state), std::move(trained_forest));
     }
 
   }; // End of struct PF2018

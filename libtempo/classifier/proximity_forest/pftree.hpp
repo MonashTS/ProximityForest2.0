@@ -111,7 +111,7 @@ namespace libtempo::classifier::pf {
     /// Train a tree
     [[nodiscard]]
     std::unique_ptr<PFTree<L, Stest>> train(Strain& strain, BCMVec bcmvec)
-    const requires std::derived_from<Strain, IStrain<L, Strain, Stest>> {
+    const requires std::derived_from<Strain, IStrain<L, Strain>> {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
@@ -245,7 +245,7 @@ namespace libtempo::classifier::pf {
       // Create the tasks per tree. Note that we clone the state.
       libtempo::utils::ParTasks p;
       for (size_t i = 0; i<nbtrees; ++i) {
-        states_vec.push_back(state.forest_fork());
+        states_vec.push_back(state.forest_fork(i));
         p.push_task(mk_task, i);
       }
 

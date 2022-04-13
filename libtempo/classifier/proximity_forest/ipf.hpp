@@ -129,7 +129,7 @@ namespace libtempo::classifier::pf {
   };
 
   /** Interface for the train state */
-  template<Label L, typename Strain, typename Stest>
+  template<Label L, typename Strain>
   struct IStrain {
 
     /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
@@ -139,12 +139,29 @@ namespace libtempo::classifier::pf {
     virtual void branch_merge(Strain&& /* other */) = 0;
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-    virtual std::unique_ptr<Strain> forest_fork() = 0;
+    virtual std::unique_ptr<Strain> forest_fork(size_t /* tree_idx */) = 0;
 
     /// Merge in this a state that has been produced by forest_clone
     virtual void forest_merge(std::unique_ptr<Strain> other) = 0;
 
     virtual ~IStrain() = default;
+  };
+
+
+  /** Helper for train state components.
+   *  We do not differentiate between branch and forest levels.
+   *  Do not use when dealing with "resources", e.g. a random number generator with internal state.
+   */
+  template<Label L, typename Comp>
+  struct IStrainComp {
+
+    /// Fork the state for sub branch/sub tree with index "bidx", leading to a "sub state"
+    virtual Comp fork(size_t /* bidx */) = 0;
+
+    /// Merge-move "other" into "this".
+    virtual void merge(Comp&& /* other */) = 0;
+
+    virtual ~IStrainComp() = default;
   };
 
 }

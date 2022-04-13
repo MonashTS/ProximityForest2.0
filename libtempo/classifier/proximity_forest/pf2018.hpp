@@ -125,8 +125,8 @@ namespace libtempo::classifier::pf {
       ) : test_state(seed, dataset_shared_map), forest(std::move(forest)) {}
 
       [[nodiscard]]
-      std::tuple<double, std::vector<double>> predict_proba(size_t index) {
-        return forest->predict_proba(test_state, index);
+      std::tuple<double, std::vector<double>> predict_proba(size_t index, size_t nbthread) {
+        return forest->predict_proba(test_state, index, nbthread);
       }
 
     };

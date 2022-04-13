@@ -179,18 +179,38 @@ namespace libtempo::classifier::pf {
       forest(std::move(forest)), nb_classes(nb_classes) {}
 
     [[nodiscard]]
-    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t index) const {
-
+    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t instance_index, size_t nbthread) const {
       const size_t nbtree = forest.size();
-      double total_weight = 0;
-      std::vector<double> result(nb_classes);
 
-      // Accumulate weighted probabilities
+      // Result variables
+      std::vector<double> result(nb_classes);
+      double total_weight = 0;
+
+      // State vector
+      std::vector<std::unique_ptr<Stest>> states_vec;
+      states_vec.reserve(nbtree);
+
+      // Multithreading control
+      std::mutex mutex;
+
+      auto test_task = [&](size_t tree_index) {
+        auto[weight, proba] = forest[tree_index]->predict_proba(state, instance_index);
+        { // Accumulate weighted probabilities
+          std::lock_guard lock(mutex);
+          for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
+          total_weight += weight;
+        }
+      };
+
+      // Create the tasks per tree. Note that we clone the state.
+      libtempo::utils::ParTasks p;
       for (size_t i = 0; i<nbtree; ++i) {
-        auto[weight, proba] = forest[i]->predict_proba(state, index);
-        total_weight += weight;
-        for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
+        states_vec.push_back(state.forest_fork(i));
+        p.push_task(test_task, i);
       }
+
+      p.execute(nbthread);
+
       // Final divisions
       for (size_t j = 0; j<nb_classes; ++j) { result[j] /= total_weight; }
 

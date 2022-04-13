@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
 
   size_t nbt = 100;
   size_t nbc = 5;
+  size_t nbthread = 8;
 
   pf::PF2018<L> pf2018(nbt, nbc);
 
@@ -165,7 +166,7 @@ int main(int argc, char **argv) {
   size_t test_seed = seed + 5;
   PFState test_state = PFState(test_seed, test_transformations);
 
-  auto trained_forest = pf2018.train(seed, transformations, 8);
+  auto trained_forest = pf2018.train(seed, transformations, nbthread);
   auto classifier = trained_forest.get_classifier_for(seed + 1, test_transformations);
 
   if constexpr(B) {
@@ -196,7 +197,7 @@ int main(int argc, char **argv) {
   size_t correct = 0;
 
   for (size_t i = 0; i<test_top; ++i) {
-    auto[weight, proba] = classifier.predict_proba(i);
+    auto[weight, proba] = classifier.predict_proba(i, nbthread);
     size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
     std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
     std::string true_l = test_dataset.header().labels()[i].value();

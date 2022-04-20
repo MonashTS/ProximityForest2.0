@@ -50,10 +50,9 @@ namespace libtempo::classifier::pf {
                           0.088888889, 0.1}
     );
 
-    /// Structure for the state at both train and test time
-    struct PFState :
-      public pf::IState<L, PFState>,
-      public pf::TimeSeriesDatasetHeader<PFState, F, L> {
+    /// Train time state structure
+    struct TrainState :
+      public pf::IState<L, TrainState> {
 
       /// Track the depth of the tree; starts at 1
       size_t current_depth{1};
@@ -65,40 +64,32 @@ namespace libtempo::classifier::pf {
       /// Pseudo random number generator: use a unique pointer (stateful)
       std::unique_ptr<PRNG> prng;
 
-      /// Dictionary of name->dataset of time series
-      std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map;
-
-      PFState(bool do_instrumentation, size_t seed, std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map) :
+      TrainState(bool do_instrumentation, size_t seed) :
         distance_splitter_state(do_instrumentation),
-        prng(std::make_unique<PRNG>(seed)),
-        dataset_shared_map(std::move(dataset_shared_map)) {}
+        prng(std::make_unique<PRNG>(seed)) {}
 
       /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
-      PFState(const PFState&) = delete;
+      TrainState(const TrainState&) = delete;
 
       /// Ensure that we have a move constructor
-      PFState(PFState&&) = default;
+      TrainState(TrainState&&) = default;
 
     private:
 
-      PFState(bool do_instrumentation,
-              size_t current_depth,
-              size_t seed,
-              std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map) :
+      TrainState(bool do_instrumentation,
+                 size_t current_depth,
+                 size_t seed) :
         current_depth(current_depth),
         distance_splitter_state(do_instrumentation),
-        prng(std::make_unique<PRNG>(seed)),
-        dataset_shared_map(std::move(dataset_shared_map)) {}
+        prng(std::make_unique<PRNG>(seed)) {}
 
       /// Forking Constructor: transmit PRNG into the new state
-      PFState(bool do_instrumentation,
-              size_t current_depth,
-              std::unique_ptr<PRNG>&& m_prng,
-              std::shared_ptr<pf::DatasetMap_t<F, L>> map) :
+      TrainState(bool do_instrumentation,
+                 size_t current_depth,
+                 std::unique_ptr<PRNG>&& m_prng) :
         current_depth(current_depth),
         distance_splitter_state(do_instrumentation),
-        prng(std::move(m_prng)),
-        dataset_shared_map(std::move(map)) {}
+        prng(std::move(m_prng)) {}
 
     public:
 
@@ -109,14 +100,12 @@ namespace libtempo::classifier::pf {
       }
 
       /// Transmit the prng down the branch
-      PFState branch_fork(size_t /* bidx */) override {
-        return PFState(
-          distance_splitter_state.do_instrumentation, current_depth + 1, std::move(prng), dataset_shared_map
-        );
+      TrainState branch_fork(size_t /* bidx */) override {
+        return TrainState(distance_splitter_state.do_instrumentation, current_depth + 1, std::move(prng));
       }
 
       /// Merge "other" into "this". Move the prng into this. Merge statistics into this
-      void branch_merge(PFState&& other) override {
+      void branch_merge(TrainState&& other) override {
         // Resources: move!
         prng = std::move(other.prng);
         // Values:
@@ -126,32 +115,92 @@ namespace libtempo::classifier::pf {
 
       /// Clone at the forest level - clones must be fully independent as they can be used in parallel
       /// Create a new prng
-      std::unique_ptr<PFState> forest_fork(size_t /* tree_index */) override {
+      std::unique_ptr<TrainState> forest_fork(size_t /* tree_index */) override {
         size_t new_seed = (*prng)();
-        return std::unique_ptr<PFState>(
-          new PFState(distance_splitter_state.do_instrumentation, current_depth, new_seed, dataset_shared_map)
+        return std::unique_ptr<TrainState>(
+          new TrainState(distance_splitter_state.do_instrumentation, current_depth, new_seed)
         );
       }
+    };
+
+    /// Train time data structure
+    struct TrainData {
+
+      /// Dictionary of name->dataset of time series
+      std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_map_sptr;
+
+      /// Concept requirement - train_dataset_map
+      [[nodiscard]] inline
+      const pf::DatasetMap_t<F, L>& train_dataset_map() const { return *train_dataset_map_sptr; }
+
+      /// Concept requirement - get_train_dataset
+      [[nodiscard]] inline
+      const DTS<F, L> get_train_dataset(const std::string& tname) const {
+        return train_dataset_map().at(tname);
+      }
+
+      /// Get header
+      const DatasetHeader<L>& get_header() const {
+        return train_dataset_map().begin()->second.header();
+      }
+
+      explicit TrainData(std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map) :
+        train_dataset_map_sptr(dataset_shared_map) {}
+    };
+
+    /// Test time state structure - use the same as the train time
+    using TestState = TrainState;
+
+    /// Test time data structure - "include" all member from TrainData
+    struct TestData : public TrainData {
+
+      /// Dictionary of name->dataset of time series
+      std::shared_ptr<pf::DatasetMap_t<F, L>> test_dataset_map_sptr;
+
+      /// Concept requirement - test_dataset_map
+      [[nodiscard]] inline
+      const pf::DatasetMap_t<F, L>& test_dataset_map() const { return *test_dataset_map_sptr; }
+
+      /// Concept requirement - get_test_dataset
+      [[nodiscard]] inline
+      const DTS<F, L> get_test_dataset(const std::string& tname) const {
+        return test_dataset_map().at(tname);
+      }
+
+      TestData(
+        std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t<F, L>> test_dataset_shared_map
+      ) :
+        TrainData(std::move(train_dataset_shared_map)),
+        test_dataset_map_sptr(test_dataset_shared_map) {}
     };
 
     /// Test time structure
     class Classifier {
 
-      PFState test_state;
-      std::shared_ptr<PForest<L, PFState>> forest;
+      TestState test_state;
+      TestData test_data;
+      std::shared_ptr<PForest<L, TestState, TestData>> forest;
 
     public :
 
+      /// Build a classifier with a seed, the train data, the test data and the forest
       Classifier(
         size_t seed,
-        std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
-        std::shared_ptr<PForest<L, PFState>> forest,
+        std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t<F, L>> test_dataset_shared_map,
+        std::shared_ptr<PForest<L, TestState, TestData>> forest,
         bool do_instrumentation
-      ) : test_state(do_instrumentation, seed, dataset_shared_map), forest(std::move(forest)) {}
+      ) :
+        test_state(do_instrumentation, seed),
+        test_data(train_dataset_shared_map, test_dataset_shared_map),
+        forest(std::move(forest)) {}
 
+      /// Classifier interface
       [[nodiscard]]
-      std::tuple<double, std::vector<double>> predict_proba(size_t index, size_t nbthread) {
-        return forest->predict_proba(test_state, index, nbthread);
+      std::tuple<double, std::vector<double>>
+      predict_proba(size_t index, size_t nbthread) {
+        return forest->predict_proba(test_state, test_data, index, nbthread);
       }
 
     };
@@ -159,19 +208,23 @@ namespace libtempo::classifier::pf {
     /// Result of the train
     struct Trained {
 
-      std::vector<std::unique_ptr<PFState>> trained_states;
-      std::shared_ptr<PForest<L, PFState>> trained_forest;
+      std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_shared_map;
+      std::vector<std::unique_ptr<TrainState>> trained_states;
+      std::shared_ptr<PForest<L, TestState, TestData>> trained_forest;
 
       Trained(
-        std::vector<std::unique_ptr<PFState>>&& trained_states,
-        std::shared_ptr<PForest<L, PFState>> trained_forest
-      ) : trained_states(std::move(trained_states)),
-          trained_forest(std::move(trained_forest)) {}
+        std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_shared_map,
+        std::vector<std::unique_ptr<TrainState>>&& trained_states,
+        std::shared_ptr<PForest<L, TestState, TestData>> trained_forest
+      ) :
+        train_dataset_shared_map(std::move(train_dataset_shared_map)),
+        trained_states(std::move(trained_states)),
+        trained_forest(std::move(trained_forest)) {}
 
       /// Get a classifier over a test set
       Classifier get_classifier_for(
         size_t seed,
-        std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t<F, L>> test_dataset_shared_map,
         bool do_instrumentation
       ) noexcept(false) {
 
@@ -180,15 +233,15 @@ namespace libtempo::classifier::pf {
           throw std::logic_error("PF2018 must be trained first");
         }
         // Arg check
-        if (!dataset_shared_map->contains("default")) {
+        if (!test_dataset_shared_map->contains("default")) {
           throw std::invalid_argument("'default' transform not found in data_shared_map");
         }
-        if (!dataset_shared_map->contains("d1")) {
+        if (!test_dataset_shared_map->contains("d1")) {
           throw std::invalid_argument("'d1' transform not found in data_shared_map");
         }
 
         // Build state and forest trainer
-        return Classifier(seed, dataset_shared_map, trained_forest, do_instrumentation);
+        return Classifier(seed, train_dataset_shared_map, test_dataset_shared_map, trained_forest, do_instrumentation);
       }
 
     };
@@ -198,7 +251,15 @@ namespace libtempo::classifier::pf {
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
     // List of splitters. This one are shared amongst all PF instances.
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
+    template<typename D>
+    using SG1 = pf::SG_1NN<F, L, TrainState, TrainData, TestState, TestData, D>;
 
+
+    /// SQED
+    using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState>;
+    static inline std::shared_ptr<SG1<DA_t>> sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
+
+    /*
     /// ADTW
     static inline std::shared_ptr<pf::SG_1NN_ADTW<F, L, PFState, PFState>> sg_1nn_adtw =
       std::make_shared<pf::SG_1NN_ADTW<F, L, PFState, PFState>>(def, exp2, 2000, 20, 4);
@@ -246,17 +307,20 @@ namespace libtempo::classifier::pf {
     /// TWE
     static inline std::shared_ptr<pf::SG_1NN_TWE<F, L, PFState, PFState>> sg_1nn_twe =
       std::make_shared<pf::SG_1NN_TWE<F, L, PFState, PFState>>(def, twe_nus, twe_lambdas);
+      */
 
     /// Leaf generator
-    static inline std::shared_ptr<pf::SGLeaf_PureNode<F, L, PFState, PFState>> sgleaf_purenode =
-      std::make_shared<pf::SGLeaf_PureNode<F, L, PFState, PFState>>();
+    static inline std::shared_ptr<pf::SGLeaf_PureNode<L, TrainState, TrainData, TestState, TestData>> sgleaf_purenode =
+      std::make_shared<pf::SGLeaf_PureNode<L, TrainState, TrainData, TestState, TestData>>();
 
     /// Helper function building a tree trainer, combining a splitter chooser with a number of candidate and
     /// our leaf generator
-    static std::shared_ptr<pf::PFTreeTrainer<L, PFState, PFState>> tree_trainer(size_t nbc) {
-      auto chooser = std::make_shared<pf::SG_chooser<L, PFState, PFState>>(
-        typename pf::SG_chooser<L, PFState, PFState>::SGVec_t(
+    static std::shared_ptr<pf::PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer(size_t nbc) {
+      auto chooser = std::make_shared<pf::SG_chooser<L, TrainState, TrainData, TestState, TestData>>(
+        typename pf::SG_chooser<L, TrainState, TrainData, TestState, TestData>::SGVec_t(
           {
+            sg_1nn_da
+            /*
             sg_1nn_da,
             sg_1nn_dtwf,
             sg_1nn_ddtwf,
@@ -268,17 +332,18 @@ namespace libtempo::classifier::pf {
             sg_1nn_lcss,
             sg_1nn_msm,
             sg_1nn_twe
+             */
           }
         ), nbc
       );
       // mk trainer
-      return std::make_shared<pf::PFTreeTrainer<L, PFState, PFState>>(sgleaf_purenode, std::move(chooser)
-      );
+      return std::make_shared<pf::PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>>(sgleaf_purenode
+                                                                                                , std::move(chooser));
     }
 
     size_t _nbtree;
     size_t _nbcandidate;
-    std::shared_ptr<pf::PFTreeTrainer<L, PFState, PFState>> _tree_trainer;
+    std::shared_ptr<pf::PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> _tree_trainer;
 
   public:
 
@@ -291,36 +356,37 @@ namespace libtempo::classifier::pf {
     /// Train the classifier
     Trained train(
       size_t seed,
-      std::shared_ptr<pf::DatasetMap_t<F, L>> dataset_shared_map,
+      std::shared_ptr<pf::DatasetMap_t<F, L>> train_dataset_shared_map,
       size_t nbthreads = 1,
       bool do_instrumentation = true
     ) noexcept(false) {
       const auto total_train_start = utils::now();
 
       // Arg check
-      if (!dataset_shared_map->contains("default")) {
+      if (!train_dataset_shared_map->contains("default")) {
         throw std::invalid_argument("'default' transform not found in data_shared_map");
       }
-      if (!dataset_shared_map->contains("d1")) {
+      if (!train_dataset_shared_map->contains("d1")) {
         throw std::invalid_argument("'d1' transform not found in data_shared_map");
       }
 
       // Build state and forest trainer
-      PFState train_state(do_instrumentation, seed, dataset_shared_map);
-      pf::PForestTrainer<L, PFState, PFState> forest_trainer(_tree_trainer, _nbtree);
+      TrainState train_state(do_instrumentation, seed);
+      TrainData train_data(train_dataset_shared_map);
+      pf::PForestTrainer<L, TrainState, TrainData, TestState, TestData> forest_trainer(_tree_trainer, _nbtree);
 
       // Build ByClassMap vector
-      auto train_dataset = dataset_shared_map->at("default");
-      auto[train_bcm, train_noclass] = train_dataset.header().get_BCM();
+      auto train_dataset = train_dataset_shared_map->at("default");
+      auto [train_bcm, train_noclass] = train_dataset.header().get_BCM();
       std::vector<ByClassMap<L>> train_bcmvec{train_bcm};
 
       // training...
-      auto[trained_states, trained_forest] = forest_trainer.train(train_state, train_bcmvec, nbthreads);
+      auto [trained_states, trained_forest] = forest_trainer.train(train_state, train_data, train_bcmvec, nbthreads);
 
       const auto total_train_delta = utils::now() - total_train_start;
       std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;
 
-      return Trained(std::move(trained_states), std::move(trained_forest));
+      return Trained( std::move(train_dataset_shared_map), std::move(trained_states), std::move(trained_forest) );
     }
 
   }; // End of struct PF2018

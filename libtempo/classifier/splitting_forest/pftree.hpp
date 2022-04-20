@@ -18,11 +18,11 @@ namespace libtempo::classifier::pf {
    * @tparam L         Label type
    * @tparam Stest     Test State type. Must contain the info required by the splitters.
    */
-  template<Label L, typename Stest>
+  template<Label L, typename TestState, typename TestData>
   struct PFTree {
-    using LeafSplitter = std::unique_ptr<IPF_LeafSplitter<L, Stest>>;
-    using InnerNodeSplitter = std::unique_ptr<IPF_NodeSplitter<L, Stest>>;
-    using Branches = std::vector<std::unique_ptr<PFTree<L, Stest>>>;
+    using LeafSplitter = std::unique_ptr<IPF_LeafSplitter<L, TestState, TestData>>;
+    using InnerNodeSplitter = std::unique_ptr<IPF_NodeSplitter<L, TestState, TestData>>;
+    using Branches = std::vector<std::unique_ptr<PFTree<L, TestState, TestData>>>;
 
     struct InnerNode {
       InnerNodeSplitter splitter;
@@ -38,18 +38,20 @@ namespace libtempo::classifier::pf {
      * Given a PFTree node 'pt', recursively call the splitters/follow the branches until reaching a leaf node.
      * @param pt            A node of the tree (initial call should be done on the root node)
      * @param state         Test time state
+     * @param data          Test time data
      * @param query_idx     Index of the exemplar in the test dataset
      * @return A vector of probabilities. See DatasetHeader.
      */
     [[nodiscard]]
-    static std::tuple<double, std::vector<double>> predict_proba(const PFTree& pt, Stest& state, size_t query_idx) {
+    static std::tuple<double, std::vector<double>>
+    predict_proba(const PFTree& pt, TestState& state, const TestData& data, size_t query_idx) {
       switch (pt.node.index()) {
-      case 0: { return std::get<0>(pt.node)->predict_proba(state, query_idx); }
+      case 0: { return std::get<0>(pt.node)->predict_proba(state, data, query_idx); }
       case 1: {
         const InnerNode& n = std::get<1>(pt.node);
-        size_t branch_idx = n.splitter->get_branch_index(state, query_idx);
+        size_t branch_idx = n.splitter->get_branch_index(state, data, query_idx);
         const auto& sub = n.branches.at(branch_idx);    // Use at because it is 'const', when [ ] is not
-        return predict_proba(*sub, state, query_idx);
+        return predict_proba(*sub, state, data, query_idx);
       }
       default: utils::should_not_happen();
       }
@@ -58,108 +60,114 @@ namespace libtempo::classifier::pf {
   public:
 
     /** Classification function
-     * @param state     Test time state. Must give access to the dataset and other info required by the splitters
+     * @param state     Test time state. Give access to a mutable state
+     * @param data      Test time data. Give access to read only data
      * @param index     Index of the query in the test dataset
      * @return  Vector of probability. See DatasetHeader.
      */
     [[nodiscard]]
-    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t index) const {
-      return predict_proba(*this, state, index);
+    std::tuple<double, std::vector<double>> predict_proba(TestState& state, const TestData& data, size_t index) const {
+      return predict_proba(*this, state, data, index);
     }
 
   }; // End of PTree
 
 
   /** Train time Proximity tree */
-  template<Label L, typename Strain, typename Stest>
+  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct PFTreeTrainer {
 
     // Shorthand for result type
-    using Result = std::variant<ResLeaf<L, Strain, Stest>, ResNode<L, Strain, Stest>>;
-    using LeafResult = typename IPF_LeafGenerator<L, Strain, Stest>::Result;
-    using NodeResult = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
+    using Leaf = ResLeaf<L, TestState, TestData>;
+    using Node = ResNode<L, TestState, TestData>;
+    using Result = std::variant<Leaf, Node>;
+
+    // BCM as vector
     using BCMVec = std::vector<ByClassMap<L>>;
 
-    std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>> leaf_generator;
-    std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator;
+    // Shorthands for Lead and Node generator types
+    using LGen = IPF_LeafGenerator<L, TrainState, TrainData, TestState, TestData>;
+    using NGen = IPF_NodeGenerator<L, TrainState, TrainData, TestState, TestData>;
+
+    // Shorthand for the final tree type
+    using PFTree_t = PFTree<L, TestState, TestData>;
+
+    std::shared_ptr<LGen> leaf_generator;
+    std::shared_ptr<NGen> node_generator;
 
     /// Build a proximity tree trainer with a leaf generator and a node generator
-    PFTreeTrainer(
-      std::shared_ptr<IPF_LeafGenerator<L, Strain, Stest>>
-      leaf_generator,
-      std::shared_ptr<IPF_NodeGenerator<L, Strain, Stest>> node_generator) :
+    PFTreeTrainer(std::shared_ptr<LGen> leaf_generator, std::shared_ptr<NGen> node_generator) :
       leaf_generator(leaf_generator), node_generator(node_generator) {}
 
   private:
 
     /** Generate a new splitter from a training state and the ByClassMap at the node.
     * @param state  Training state - mutable reference!
+    * @param data   Training data - read only reference
     * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
     * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
     */
-    Result generate(Strain& state, const BCMVec& bcmvec) const {
-      LeafResult oleaf = leaf_generator->generate(state, bcmvec);
+    Result generate(TrainState& state, const TrainData& data, const BCMVec& bcmvec) const {
+      std::optional<Leaf> oleaf = leaf_generator->generate(state, data, bcmvec);
       if (oleaf.has_value()) {
         return Result{std::move(oleaf.value())};
       } else {
-        return Result{node_generator->generate(state, bcmvec)};
+        return Result{node_generator->generate(state, data, bcmvec)};
       }
     }
 
   public:
 
     /// Train a tree
-    [[nodiscard]]
-    std::unique_ptr<PFTree<L, Stest>> train(Strain& strain, BCMVec bcmvec)
-    const requires std::derived_from<Strain, IState<L, Strain>> {
+    [[nodiscard]] std::unique_ptr<PFTree_t> train(TrainState& state, const TrainData& data, BCMVec bcmvec) const {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
       assert(bcm.nb_classes()>0);
       // Final return 'ret' variable
-      std::unique_ptr<PFTree<L, Stest>> ret;
+      std::unique_ptr<PFTree_t> ret;
 
       // Call the generator and analyse the result
-      Result result = generate(strain, bcmvec);
+      Result result = generate(state, data, bcmvec);
 
       switch (result.index()) {
       case 0: { // Leaf case - stop the recursion, build a leaf node
-        ResLeaf<L, Strain, Stest> leaf = std::get<0>(std::move(result));
-        // Node callback
-        leaf.callback(strain);
+        Leaf leaf = std::get<0>(std::move(result));
         // State callback
-        strain.on_leaf(bcmvec);
+        state.on_leaf(bcmvec);
         // Build the leaf node with the splitter
-        ret = std::unique_ptr<PFTree<L, Stest>>(new PFTree<L, Stest>{.node=std::move(leaf.splitter)});
+        ret = std::unique_ptr<PFTree_t>(new PFTree_t{.node=std::move(leaf.splitter)});
         break;
       }
       case 1: { // Inner node case: recursion per branch
-        ResNode<L, Strain, Stest> inner_node = std::get<1>(std::move(result));
-        // Train state callback
-        inner_node.callback(strain);
+        Node inner_node = std::get<1>(std::move(result));
         // Build subbranches, then we'll build the current node
         const size_t nbbranches = inner_node.branch_splits.size();
-        typename PFTree<L, Stest>::Branches subbranches;
+        typename PFTree_t::Branches subbranches;
         subbranches.reserve(nbbranches);
         for (size_t idx = 0; idx<nbbranches; ++idx) {
           // Clone state, push bcm
           bcmvec.template emplace_back(std::move(inner_node.branch_splits[idx]));
-          Strain sub_state = strain.branch_fork(idx);
+          TrainState sub_state = state.branch_fork(idx);
           // Sub branch
-          subbranches.push_back(train(sub_state, bcmvec));
+          subbranches.push_back(train(sub_state, data, bcmvec));
           // Merge state, pop bcm
-          strain.branch_merge(std::move(sub_state));
+          state.branch_merge(std::move(sub_state));
           bcmvec.pop_back();
         }
         // Now that we have all the subbranches, build the current node
-        ret = std::unique_ptr<PFTree<L, Stest>>
-          (new PFTree<L, Stest>{.node= typename PFTree<L, Stest>::InnerNode{
-             .splitter = std::move(inner_node.splitter),
-             .branches = std::move(subbranches)
-           }}
-          );
+        ret = std::unique_ptr<PFTree_t>(
+          new PFTree_t{
+            .node = typename PFTree_t::InnerNode{
+              .splitter = std::move(inner_node.splitter),
+              .branches = std::move(subbranches)
+            }
+          }
+        );
+
         break;
       }
+
       default: utils::should_not_happen();
       }
 
@@ -170,9 +178,9 @@ namespace libtempo::classifier::pf {
 
 
   /** Proximity Forest at test time */
-  template<Label L, typename Stest>
+  template<Label L, typename TestState, typename TestData>
   struct PForest {
-    using TreeVec = std::vector<std::unique_ptr<PFTree<L, Stest>>>;
+    using TreeVec = std::vector<std::unique_ptr<PFTree<L, TestState, TestData>>>;
 
     TreeVec forest;
     size_t nb_classes;
@@ -181,7 +189,8 @@ namespace libtempo::classifier::pf {
       forest(std::move(forest)), nb_classes(nb_classes) {}
 
     [[nodiscard]]
-    std::tuple<double, std::vector<double>> predict_proba(Stest& state, size_t instance_index, size_t nbthread) const {
+    std::tuple<double, std::vector<double>>
+    predict_proba(TestState& state, const TestData& data, size_t instance_index, size_t nbthread) const {
       const size_t nbtree = forest.size();
 
       // Result variables
@@ -189,14 +198,14 @@ namespace libtempo::classifier::pf {
       double total_weight = 0;
 
       // State vector
-      std::vector<std::unique_ptr<Stest>> states_vec;
+      std::vector<std::unique_ptr<TestState>> states_vec;
       states_vec.reserve(nbtree);
 
       // Multithreading control
       std::mutex mutex;
 
       auto test_task = [&](size_t tree_index) {
-        auto[weight, proba] = forest[tree_index]->predict_proba(state, instance_index);
+        auto [weight, proba] = forest[tree_index]->predict_proba(state, data, instance_index);
         { // Accumulate weighted probabilities
           std::lock_guard lock(mutex);
           for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
@@ -221,37 +230,40 @@ namespace libtempo::classifier::pf {
   };
 
   /** Proximity Forest at train time */
-  template<Label L, typename Strain, typename Stest>
+  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct PForestTrainer {
     using BCMVec = std::vector<ByClassMap<L>>;
 
-    std::shared_ptr<const PFTreeTrainer<L, Strain, Stest>> tree_trainer;
+    std::shared_ptr<const PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer;
     size_t nbtrees;
 
-    explicit PForestTrainer(std::shared_ptr<PFTreeTrainer<L, Strain, Stest>> tree_trainer, size_t nbtrees) :
+    PForestTrainer(
+      std::shared_ptr<PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer,
+      size_t nbtrees
+    ) :
       tree_trainer(std::move(tree_trainer)),
       nbtrees(nbtrees) {}
 
     /** Train the proximity forest */
     std::tuple<
-      std::vector<std::unique_ptr<Strain>>,
-      std::shared_ptr<PForest<L, Stest>>
-    > train(Strain& state, BCMVec bcmvec, size_t nbthread) {
+      std::vector<std::unique_ptr<TrainState>>,
+      std::shared_ptr<PForest<L, TestState, TestData>>
+    > train(TrainState& state, const TrainData& data, BCMVec bcmvec, size_t nbthread) {
 
       std::mutex mutex;
-      typename PForest<L, Stest>::TreeVec forest;
+      typename PForest<L, TestState, TestData>::TreeVec forest;
       forest.reserve(nbtrees);
 
-      std::vector<std::unique_ptr<Strain>> states_vec;
+      std::vector<std::unique_ptr<TrainState>> states_vec;
       states_vec.reserve(nbtrees);
 
-      auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, this](size_t tree_index) {
+      auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, &data, this](size_t tree_index) {
         { // Lock protecting the printing
           std::lock_guard lock(mutex);
           std::cout << "Start tree " << tree_index << std::endl;
         }
         auto start = libtempo::utils::now();
-        auto tree = this->tree_trainer->train(*states_vec[tree_index], bcmvec);
+        auto tree = this->tree_trainer->train(*states_vec[tree_index], data, bcmvec);
         auto delta = libtempo::utils::now() - start;
         {
           // Lock protecting the forest and out printing
@@ -275,11 +287,11 @@ namespace libtempo::classifier::pf {
       }
 
       p.execute(nbthread);
-      size_t nb_classes = state.get_header().nb_labels();
+      size_t nb_classes = data.get_header().nb_labels();
 
       return {
         std::move(states_vec),
-        std::make_shared<PForest<L, Stest>>(std::move(forest), nb_classes)
+        std::make_shared<PForest<L, TestState, TestData>>(std::move(forest), nb_classes)
       };
 
     }

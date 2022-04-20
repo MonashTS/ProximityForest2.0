@@ -47,7 +47,7 @@ namespace libtempo::classifier::pf {
     /** Implementation fo the generate function
      * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
      */
-    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+    Result generate(Strain& state, const BCMVec <L>& bcmvec) const override {
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<nb_candidates; ++i) {
@@ -78,7 +78,7 @@ namespace libtempo::classifier::pf {
     /** Implementation fo the generate function
      * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
      */
-    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+    Result generate(Strain& state, const BCMVec <L>& bcmvec) const override {
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<sgvec.size(); ++i) {
@@ -120,7 +120,7 @@ namespace libtempo::classifier::pf {
     };
 
     /// Override interface ISplitterGenerator
-    Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+    Result generate(Strain& state, const BCMVec <L>& bcmvec) const override {
       const auto& bcm = bcmvec.back();
       // Generate leaf on pure node
       if (bcm.nb_classes()==1) {
@@ -128,7 +128,11 @@ namespace libtempo::classifier::pf {
         std::string label = bcm.begin()->first;
         double weight = bcm.size();
         return {
-          Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<PureNode>(weight, header.label_to_index(), label)}}};
+          Result{
+            ResLeaf<L, Strain, Stest>{
+              .splitter = std::make_unique<PureNode>(weight, header.label_to_index(), label)}
+          }
+        };
       }
         // Else, return the empty option
       else { return {}; }
@@ -155,7 +159,7 @@ namespace libtempo::classifier::pf {
 
       DepthNode(double weight, std::vector<double>&& vec) :
         weight(weight),
-        proba(std::move(vec)){}
+        proba(std::move(vec)) {}
 
       std::tuple<double, std::vector<double>> predict_proba(Stest& /* state */ ,
                                                             size_t /* test_index */) const override {
@@ -164,7 +168,7 @@ namespace libtempo::classifier::pf {
     };
 
     /// Override interface ISplitterGenerator
-    Result generate(Strain& state, const std::vector<ByClassMap<L>> & bcmvec) const override {
+    Result generate(Strain& state, const BCMVec <L>& bcmvec) const override {
       const auto& bcm = bcmvec.back();
       // Generate leaf on pure node
       if (bcm.nb_classes()==1) {
@@ -175,21 +179,20 @@ namespace libtempo::classifier::pf {
         std::vector<double> proba(l_to_i.size(), 0.0);   // Allocate one per class
         size_t idx = l_to_i.at(label);
         proba[idx] = 1.0;
-        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+        return {Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
       }
       // Stop at a given depth
-      if (bcmvec.size() >= depth_cutoff) {
+      if (bcmvec.size()>=depth_cutoff) {
         const auto& header = state.get_header();
         double weight = bcm.size();
         auto l_to_i = header.label_to_index();
         std::vector<double> proba(l_to_i.size(), 0.0);   // Allocate one per class
-        for(const auto& [label, vec]: bcm){
+        for (const auto&[label, vec] : bcm) {
           size_t idx = l_to_i.at(label);
           proba[idx] = ((double)vec.size())/weight;
         }
-        return { Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
-      }
-      else { return {}; } // Else, return the empty option
+        return {Result{ResLeaf<L, Strain, Stest>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+      } else { return {}; } // Else, return the empty option
     }
   };
 

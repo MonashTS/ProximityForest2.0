@@ -12,17 +12,24 @@
 
 namespace libtempo::utils {
 
+  /** Pick a random item from a subscriptable type, from [0] to [size-1]*/
+  template<typename PRNG>
+  [[nodiscard]] inline
+  const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng){
+    if(size==1){
+      return collection[0];
+    } else if(size>1){
+      auto distribution = std::uniform_int_distribution<size_t>(0, size - 1);
+      return collection[distribution(prng)];
+    } else {
+      throw std::invalid_argument("Picking from an empty collection");
+    }
+  }
+
   /** Pick a random item from a vector. */
   template<typename T, typename PRNG>
   [[nodiscard]] const auto& pick_one(const std::vector<T>& v, PRNG& prng) {
-    if (v.size()==1) {
-      return v.back();
-    } else if (v.size()>1) {
-      auto distribution = std::uniform_int_distribution<int>(0, v.size() - 1);
-      return v[distribution(prng)];
-    } else {
-      throw std::invalid_argument("Picking from an empty vector");
-    }
+    return pick_one(v, v.size(), prng);
   }
 
 

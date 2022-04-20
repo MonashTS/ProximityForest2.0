@@ -16,43 +16,8 @@ namespace libtempo::classifier::pf {
     /// Pseudo Random Number Generator
     using PRNG = std::mt19937_64;
 
-    /// Exponents array for the cost function - always 2
-    inline static const auto exp2 = std::make_shared<std::vector<double>>(std::vector<double>{2});
-
-    /// Transformation name array - always "default"
-    inline static const auto def = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"default"});
-
-    /// Transformation name array - always "d1", the first derivative
-    inline static const auto d1 = std::make_shared<std::vector<std::string>>(std::vector<std::string>{"d1"});
-
-    /// List of MSM costs
-    inline static const auto msm_costs = std::make_shared<std::vector<double>>(
-      std::vector<double>{
-        0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
-        0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
-        0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
-        0.388, 0.424, 0.46, 0.496, 0.532, 0.568, 0.604, 0.64, 0.676, 0.712, 0.748, 0.784,
-        0.82, 0.856, 0.892, 0.928, 0.964, 1, 1.36, 1.72, 2.08, 2.44, 2.8, 3.16, 3.52, 3.88,
-        4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
-        9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
-        60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
-      }
-    );
-
-    /// TWE nu parameters
-    inline static const auto twe_nus = std::make_shared<std::vector<double>>(
-      std::vector<double>{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
-    );
-
-    /// TWE lambda parameters
-    inline static const auto twe_lambdas = std::make_shared<std::vector<double>>(
-      std::vector<double>{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444, 0.055555556, 0.066666667, 0.077777778,
-                          0.088888889, 0.1}
-    );
-
     /// Train time state structure
-    struct TrainState :
-      public pf::IState<L, TrainState> {
+    struct TrainState : public pf::IState<L, TrainState> {
 
       /// Track the depth of the tree; starts at 1
       size_t current_depth{1};
@@ -246,6 +211,44 @@ namespace libtempo::classifier::pf {
 
     };
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // PROXIMITY FOREST PARAMETERIZATION
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// Exponents array for the cost function - always 2
+    inline static const auto exp2 = [](TrainState& /* state */) { return 2; };
+
+    /// Transformation name array - always "default"
+    inline static const auto def = [](TrainState& /* state */ ){return "default"; };
+
+    /// Transformation name array - always "d1", the first derivative
+    inline static const auto d1 = [](TrainState& /* state */){return "d1"; };
+
+    /// List of MSM costs
+    inline static const auto msm_costs = std::make_shared<std::vector<double>>(
+      std::vector<double>{
+        0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
+        0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
+        0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
+        0.388, 0.424, 0.46, 0.496, 0.532, 0.568, 0.604, 0.64, 0.676, 0.712, 0.748, 0.784,
+        0.82, 0.856, 0.892, 0.928, 0.964, 1, 1.36, 1.72, 2.08, 2.44, 2.8, 3.16, 3.52, 3.88,
+        4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
+        9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
+        60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
+      }
+    );
+
+    /// TWE nu parameters
+    inline static const auto twe_nus = std::make_shared<std::vector<double>>(
+      std::vector<double>{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
+    );
+
+    /// TWE lambda parameters
+    inline static const auto twe_lambdas = std::make_shared<std::vector<double>>(
+      std::vector<double>{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444, 0.055555556, 0.066666667, 0.077777778,
+                          0.088888889, 0.1}
+    );
+
   private:
 
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
@@ -386,7 +389,7 @@ namespace libtempo::classifier::pf {
       const auto total_train_delta = utils::now() - total_train_start;
       std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;
 
-      return Trained( std::move(train_dataset_shared_map), std::move(trained_states), std::move(trained_forest) );
+      return Trained(std::move(train_dataset_shared_map), std::move(trained_states), std::move(trained_forest));
     }
 
   }; // End of struct PF2018

@@ -19,63 +19,71 @@
 
 namespace libtempo::classifier::pf {
 
-  /// Concept requiring the presence of the "distance(t1, t2, bsf)" function
-  template<typename Distance, typename F, typename L>
+  /// Distance Splitter concept. Act as a distance function while containing information about itself.
+  template<typename Dist, typename F, typename L>
   concept DistanceSplitter =
-  Float<F>&&Label<L>&&requires(const Distance& distance, const TSeries<F, L>& t1, const TSeries<F, L>& t2, F bsf){
+  Float<F>&&Label<L>&&requires(const Dist& distance, const TSeries<F, L>& t1, const TSeries<F, L>& t2, F bsf){
     { distance(t1, t2, bsf) } -> std::convertible_to<F>;
     { distance.transformation_name() } -> std::convertible_to<std::string>;
   };
 
-  /// Test Time 1NN Splitter
-  template<Float F, Label L, typename TestState, typename TestData, DistanceSplitter<F, L> Distance>
-  struct Splitter_1NN : public IPF_NodeSplitter<L, TestState, TestData> {
+  /// Distance Generator concept: produces a DistanceSplitter (see above).
+  template<typename DistGen, typename F, typename L, typename TrainState>
+  concept DistanceGenerator =requires(const DistGen& mk_distance, TrainState& state){
+    { mk_distance(state) } -> DistanceSplitter<F, L>;
+  };
 
-    IndexSet train_indexset;                 /// IndexSet of selected exemplar in the train
-    std::map<L, size_t> labels_to_index;     /// How to map label to index of branches
-    Distance distance;
+  namespace internal {
+    /// Test Time 1NN Splitter
+    template<Float F, Label L, typename TestState, typename TestData, DistanceSplitter<F, L> Distance>
+    struct Splitter_1NN : public IPF_NodeSplitter<L, TestState, TestData> {
 
-    /// Mixin construction: must provide basic components
-    Splitter_1NN(IndexSet is, std::map<L, size_t> m, Distance distance) :
-      train_indexset(std::move(is)),
-      labels_to_index(std::move(m)),
-      distance(std::move(distance)) {}
+      IndexSet train_indexset;                 /// IndexSet of selected exemplar in the train
+      std::map<L, size_t> labels_to_index;     /// How to map label to index of branches
+      Distance distance;
 
-    /// Interface override (Splitter Classification)
-    size_t get_branch_index(TestState& state, const TestData& data, size_t test_index) const override {
-      // State access
-      auto& prng = state.prng;
-      // Data access
-      const DTS<F, L>& test_dataset = data.get_test_dataset(distance.transformation_name());
-      const TSeries<F, L>& test_exemplar = test_dataset[test_index];
-      const DTS<F, L>& train_dataset = data.get_train_dataset(distance.transformation_name());
-      // NN1 test loop
-      F bsf = utils::PINF<F>;
-      std::vector<L> labels;
-      for (size_t train_idx : train_indexset) {
-        const auto& train_exemplar = train_dataset[train_idx];
-        F d = distance(train_exemplar, test_exemplar, bsf);
-        if (d<bsf) {
-          labels = {train_exemplar.label().value()};
-          bsf = d;
-        } else if (bsf==d) {
-          const auto& l = train_exemplar.label().value();
-          if (std::none_of(labels.begin(), labels.end(), [l](const auto& v) { return v==l; })) {
-            labels.emplace_back(l);
+      /// Mixin construction: must provide basic components
+      Splitter_1NN(IndexSet is, std::map<L, size_t> m, Distance distance) :
+        train_indexset(std::move(is)),
+        labels_to_index(std::move(m)),
+        distance(std::move(distance)) {}
+
+      /// Interface override (Splitter Classification)
+      size_t get_branch_index(TestState& state, const TestData& data, size_t test_index) const override {
+        // State access
+        auto& prng = state.prng;
+        // Data access
+        const DTS<F, L>& test_dataset = data.get_test_dataset(distance.transformation_name());
+        const TSeries<F, L>& test_exemplar = test_dataset[test_index];
+        const DTS<F, L>& train_dataset = data.get_train_dataset(distance.transformation_name());
+        // NN1 test loop
+        F bsf = utils::PINF<F>;
+        std::vector<L> labels;
+        for (size_t train_idx : train_indexset) {
+          const auto& train_exemplar = train_dataset[train_idx];
+          F d = distance(train_exemplar, test_exemplar, bsf);
+          if (d<bsf) {
+            labels = {train_exemplar.label().value()};
+            bsf = d;
+          } else if (bsf==d) {
+            const auto& l = train_exemplar.label().value();
+            if (std::none_of(labels.begin(), labels.end(), [l](const auto& v) { return v==l; })) {
+              labels.emplace_back(l);
+            }
           }
         }
-      }
-      // Return the branch matching the predicted label
-      L predicted_label = utils::pick_one(labels, *prng);
-      return labels_to_index.at(predicted_label);
-    } // End of function get_branch_index
+        // Return the branch matching the predicted label
+        L predicted_label = utils::pick_one(labels, *prng);
+        return labels_to_index.at(predicted_label);
+      } // End of function get_branch_index
 
-  }; // End of struct Mixin_1NN_TestTimeSplitter
+    }; // End of struct Mixin_1NN_TestTimeSplitter
+  } // End of namespace internal
 
   /// Train Time 1NN Splitter Generator
   template<
     Float F, Label L, typename TrainState, typename TrainData, typename TestState, typename TestData,
-    typename DistanceGenerator
+    DistanceGenerator<F, L, TrainState> DistanceGenerator
   >
   struct SG_1NN : public IPF_NodeGenerator<L, TrainState, TrainData, TestState, TestData> {
 
@@ -153,7 +161,7 @@ namespace libtempo::classifier::pf {
       // Build the splitter
       return Result{ResNode<L, TestState, TestData>{
         .branch_splits = std::move(v_bcm),
-        .splitter = std::make_unique<Splitter_1NN<F, L, TestState, TestData, Distance>>(
+        .splitter = std::make_unique<internal::Splitter_1NN<F, L, TestState, TestData, Distance>>(
           train_indexset, labels_to_index, distance
         )
       }};
@@ -173,13 +181,28 @@ namespace libtempo::classifier::pf {
   template<typename TrainState>
   using ExponentGetter = std::function<double(TrainState& train_state)>;
 
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Function used by all distances
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /// Distances need to know the transform on which they operate. We abstract this in this struct.
+  struct TName {
+    std::string tname;
+
+    explicit TName(std::string tname) : tname(std::move(tname)) {}
+
+    [[nodiscard]]
+    const std::string& transformation_name() const { return tname; }
+  };
+
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Splitters and Splitter Generators
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   /// 1NN Direct Alignment Splitter and Splitter Generator (as nested class)
   template<Float F, Label L>
-  struct Splitter_1NN_DA {
+  struct Splitter_1NN_DA : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState>
@@ -191,20 +214,7 @@ namespace libtempo::classifier::pf {
       Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
-      Generator(
-        const std::shared_ptr<std::vector<std::string>>& transformation_names,
-        const std::shared_ptr<std::vector<double>>& exponents
-      ) {
 
-        get_transform = [transformation_names](TrainState& state) {
-          return utils::pick_one(*transformation_names, *state.prng);
-        };
-
-        get_exponent = [exponents](TrainState& state) {
-          return utils::pick_one(*exponents, *state.prng);
-        };
-
-      }
 
       /// Mixin requirement: create a distance
       Splitter_1NN_DA operator ()(TrainState& state) const {
@@ -217,24 +227,19 @@ namespace libtempo::classifier::pf {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    /// Transformation
-    std::string tname;
-
     /// ADP cost function exponent
     double exponent;
 
     /// Constructor
-    Splitter_1NN_DA(std::string tname, double exponent) : tname(std::move(tname)), exponent(exponent) {}
+    Splitter_1NN_DA(std::string tname, double exponent) :
+      TName(std::move(tname)),
+      exponent(exponent) {}
 
     /// Concept Requirement: how to compute teh distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::directa(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), bsf);
     }
-
-    /// Concept Requirement: name of the distance
-    [[nodiscard]]
-    const std::string& transformation_name() const { return tname; }
 
   };
 

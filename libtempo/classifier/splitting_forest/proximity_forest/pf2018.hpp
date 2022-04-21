@@ -292,31 +292,17 @@ namespace libtempo::classifier::pf {
     using ERP_t = typename Splitter_1NN_ERP<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw));
 
-    /*
     /// LCSS with parametric window and epsilon value
-    using LCSS_t = typename Splitter_1NN_ERP<F, L>::template Generator<TrainState, TrainData>;
-    static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(ERP_t(def, getw));
-     */
-
-
+    using LCSS_t = typename Splitter_1NN_LCSS<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw));
 
     /*
-    /// ADTW
-    static inline std::shared_ptr<pf::SG_1NN_ADTW<F, L, PFState, PFState>> sg_1nn_adtw =
-      std::make_shared<pf::SG_1NN_ADTW<F, L, PFState, PFState>>(def, exp2, 2000, 20, 4);
+    /// MSM with parametric window and epsilon value
+    using MSM_t = typename Splitter_1NN_MSM<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, getw));
+*/
 
-    /// LCSS
-    static inline std::shared_ptr<pf::SG_1NN_LCSS<F, L, PFState, PFState>> sg_1nn_lcss =
-      std::make_shared<pf::SG_1NN_LCSS<F, L, PFState, PFState>>(def);
 
-    /// MSM
-    static inline std::shared_ptr<pf::SG_1NN_MSM<F, L, PFState, PFState>> sg_1nn_msm =
-      std::make_shared<pf::SG_1NN_MSM<F, L, PFState, PFState>>(def, msm_costs);
-
-    /// TWE
-    static inline std::shared_ptr<pf::SG_1NN_TWE<F, L, PFState, PFState>> sg_1nn_twe =
-      std::make_shared<pf::SG_1NN_TWE<F, L, PFState, PFState>>(def, twe_nus, twe_lambdas);
-      */
 
     /// Leaf generator
     static inline std::shared_ptr<pf::SGLeaf_PureNode<L, TrainState, TrainData, TestState, TestData>> sgleaf_purenode =
@@ -335,10 +321,9 @@ namespace libtempo::classifier::pf {
             sg_1nn_ddtwfull,
             sg_1nn_wdtw,
             sg_1nn_wddtw,
-            sg_1nn_erp
-            /*
             sg_1nn_erp,
-            sg_1nn_lcss,
+            sg_1nn_lcss
+            /*
             sg_1nn_msm,
             sg_1nn_twe
              */

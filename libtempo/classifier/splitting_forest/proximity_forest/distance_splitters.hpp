@@ -459,6 +459,60 @@ namespace libtempo::classifier::pf {
     }
   };
 
+  /// 1NN LCSS with parametric window and gap value, Splitter + Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_LCSS : public TName {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState, typename TrainData>
+    struct Generator {
+
+      TransformGetter <TrainState> get_transform;
+      WindowGetter<TrainState, TrainData> get_window;
+
+      Generator(
+        TransformGetter <TrainState> gt,
+        WindowGetter<TrainState, TrainData> gw
+      ) :
+        get_transform(std::move(gt)),
+        get_window(std::move(gw)) {}
+
+      /// Generator requirement: create a distance
+      Splitter_1NN_LCSS operator ()(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
+        std::string tn = get_transform(state);
+        size_t w = get_window(state, data);
+        // Epsilon value
+        const auto& train_dataset = data.get_train_dataset(tn);
+        auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
+        const F e = std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
+        //
+        return Splitter_1NN_LCSS(tn, w, e);
+      }
+
+    }; // End of struct Generator
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// PWarping Window
+    size_t window;
+
+    /// Gap value
+    F epsilon;
+
+    /// Constructor
+    Splitter_1NN_LCSS(std::string tname, size_t w, F epsilon) :
+      TName(std::move(tname)),
+      window(w),
+      epsilon(epsilon) {}
+
+    /// Concept Requirement: how to compute teh distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      return distance::lcss(t1, t2, distance::univariate::ad1<F, TSeries<F,L>>, window, epsilon, bsf);
+    }
+  };
+
+
 
 
 
@@ -684,53 +738,6 @@ namespace libtempo::classifier::pf {
 
   } // End of namespace internal
 
-
-  //   /** 1NN ERP Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_ERP : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     /// Exponent used in the cost function
-  //     std::shared_ptr<std::vector<double>> exponents;
-
-  //     SG_1NN_ERP(std::shared_ptr<std::vector<std::string>> transformation_names,
-  //                std::shared_ptr<std::vector<double>> exponents) :
-  //       transformation_names(std::move(transformation_names)),
-  //       exponents(std::move(exponents)) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-  //       double e = utils::pick_one(*exponents, *state.prng);
-
-  //       // Compute the window
-  //       const size_t win_top = (state.get_header().length_max() + 1)/4;
-  //       const auto w = std::uniform_int_distribution<size_t>(0, win_top)(*state.prng);
-
-  //       // Compute the gap value using the standard deviation of the data reaching this node
-  //       const auto& train_dataset_map = *state.dataset_shared_map;
-  //       const auto& train_dataset = train_dataset_map.at(tname);
-  //       auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
-  //       const double gv = std::uniform_real_distribution<double>(0.2*stddev_, stddev_)(*state.prng);
-
-  //       distance_t distance = [e, w, gv](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::erp(t1, t2, w, gv
-  //                              , distance::univariate::adegv<F, TSeries<F, L>>(e)
-  //                              , distance::univariate::ade<F, TSeries<F, L >>(e)
-  //                              , bsf
-  //         );
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("erp_" + tname); };
-
-  //       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
-  //     }
-  //   };
 
   //   /** 1NN LCSS Splitter Generator */
   //   template<Float F, Label L, typename Strain, typename Stest>

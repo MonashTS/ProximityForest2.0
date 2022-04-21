@@ -82,9 +82,6 @@ namespace libtempo::classifier::pf {
     using Node = ResNode<L, TrainState, TrainData, TestState, TestData>;
     using Result = std::variant<Leaf, Node>;
 
-    // BCM as vector
-    using BCMVec = std::vector<ByClassMap<L>>;
-
     // Shorthands for Lead and Node generator types
     using LGen = IPF_LeafGenerator<L, TrainState, TrainData, TestState, TestData>;
     using NGen = IPF_NodeGenerator<L, TrainState, TrainData, TestState, TestData>;
@@ -107,7 +104,7 @@ namespace libtempo::classifier::pf {
     * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
     * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
     */
-    Result generate(TrainState& state, const TrainData& data, const BCMVec& bcmvec) const {
+    Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
       std::optional<Leaf> oleaf = leaf_generator->generate(state, data, bcmvec);
       if (oleaf.has_value()) {
         return Result{std::move(oleaf.value())};
@@ -119,7 +116,7 @@ namespace libtempo::classifier::pf {
   public:
 
     /// Train a tree
-    [[nodiscard]] std::unique_ptr<PFTree_t> train(TrainState& state, const TrainData& data, BCMVec bcmvec) const {
+    [[nodiscard]] std::unique_ptr<PFTree_t> train(TrainState& state, const TrainData& data, BCMVec<L> bcmvec) const {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
@@ -133,6 +130,8 @@ namespace libtempo::classifier::pf {
       switch (result.index()) {
       case 0: { // Leaf case - stop the recursion, build a leaf node
         Leaf leaf = std::get<0>(std::move(result));
+        // Result callback
+        leaf.callback(state, data, bcmvec);
         // State callback
         state.on_leaf(bcmvec);
         // Build the leaf node with the splitter
@@ -141,6 +140,8 @@ namespace libtempo::classifier::pf {
       }
       case 1: { // Inner node case: recursion per branch
         Node inner_node = std::get<1>(std::move(result));
+        // Result callback
+        inner_node.callback(state, data, bcmvec);
         // Build subbranches, then we'll build the current node
         const size_t nbbranches = inner_node.branch_splits.size();
         typename PFTree_t::Branches subbranches;

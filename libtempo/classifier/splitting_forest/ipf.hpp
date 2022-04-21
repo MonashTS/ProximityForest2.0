@@ -9,8 +9,14 @@
 
 namespace libtempo::classifier::pf {
 
+  /// Shorthand for a vector of ByClassMap
   template<Label L>
   using BCMVec = std::vector<ByClassMap<L>>;
+
+  /// Result callback: when a node (leaf or internal) is generated, a result is produce.
+  /// This result have a callback of the following type, allowing it to update the state in an arbitrary way.
+  template<Label L, typename TrainState, typename TrainData>
+  using CallBack = std::function<void(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec)>;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- Leaf
@@ -37,6 +43,9 @@ namespace libtempo::classifier::pf {
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_LeafSplitter<L, TestState, TestData>> splitter;
 
+    /// Callback
+    CallBack<L, TrainState, TrainData> callback =
+      [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec){};
   };
 
   /// Train time interface: a leaf generator.
@@ -79,7 +88,9 @@ namespace libtempo::classifier::pf {
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_NodeSplitter<L, TestState, TestData>> splitter;
 
-
+    /// Callback
+    CallBack<L, TrainState, TrainData> callback =
+      [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec){};
 
   };
 

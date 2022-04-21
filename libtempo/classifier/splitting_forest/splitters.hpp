@@ -133,7 +133,7 @@ namespace libtempo::classifier::pf {
         double weight = bcm.size();
         return {
           Result{
-            ResLeaf<L, TrainState, TestState, TestData>{
+            ResLeaf<L, TrainState, TrainData, TestState, TestData>{
               .splitter = std::make_unique<PureNode>(weight, header.label_to_index(), label)}
           }
         };
@@ -186,9 +186,12 @@ namespace libtempo::classifier::pf {
         size_t idx = l_to_i.at(label);
         proba[idx] = 1.0;
         return {
-          Result{ResLeaf<L, TrainState, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(
-            proba
-          ))}}};
+          Result{
+            ResLeaf<L, TrainState, TrainData, TestState, TestData>{
+              .splitter = std::make_unique<DepthNode>(weight, std::move(proba))
+            }
+          }
+        };
       }
       // Stop at a given depth
       if (bcmvec.size()>=depth_cutoff) {
@@ -200,9 +203,12 @@ namespace libtempo::classifier::pf {
           size_t idx = l_to_i.at(label);
           proba[idx] = ((double)vec.size())/weight;
         }
-        return {Result{
-          ResLeaf<L, TrainState, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}
-        }};
+        return {
+          Result{
+            ResLeaf<L, TrainState, TrainData, TestState, TestData>{
+              .splitter = std::make_unique<DepthNode>(weight, std::move(proba))
+            }
+          }};
       } else { return {}; } // Else, return the empty option
     }
   };

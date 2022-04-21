@@ -31,7 +31,7 @@ namespace libtempo::classifier::pf {
   };
 
   /** Train time result type when generating a leaf */
-  template<Label L, typename TrainState, typename TestState, typename TestData>
+  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct ResLeaf {
 
     /// Resulting splitter to use at test time
@@ -42,7 +42,7 @@ namespace libtempo::classifier::pf {
   /// Train time interface: a leaf generator.
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct IPF_LeafGenerator {
-    using Result = std::optional<ResLeaf<L, TrainState, TestState, TestData>>;
+    using Result = std::optional<ResLeaf<L, TrainState, TrainData, TestState, TestData>>;
 
     /// Generate a leaf from a training state and the ByClassMap at the node.
     /// If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
@@ -67,7 +67,7 @@ namespace libtempo::classifier::pf {
   };
 
   /** Result type when generating an internal node */
-  template<Label L, typename TrainState, typename TestState, typename TestData>
+  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct ResNode {
 
     /// The actual split: the size of the vector tells us the number of branches
@@ -79,12 +79,14 @@ namespace libtempo::classifier::pf {
     /// Resulting splitter to use at test time
     std::unique_ptr<IPF_NodeSplitter<L, TestState, TestData>> splitter;
 
+
+
   };
 
   /** Train time interface: a node generator. */
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct IPF_NodeGenerator {
-    using Result = ResNode<L, TrainState, TestState, TestData>;
+    using Result = ResNode<L, TrainState, TrainData, TestState, TestData>;
 
     /** Generate a new splitter from a training state and the ByClassMap at the node. */
     virtual Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcm) const = 0;

@@ -300,7 +300,9 @@ namespace libtempo::classifier::pf {
     using MSM_t = typename Splitter_1NN_MSM<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, msm_cost));
 
-
+    /// TWE with parametric window and epsilon value
+    using TWE_t = typename Splitter_1NN_TWE<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_twe = std::make_shared<SG1<TWE_t>>(TWE_t(def, twe_nu, twe_lambda));
 
     /// Leaf generator
     static inline std::shared_ptr<pf::SGLeaf_PureNode<L, TrainState, TrainData, TestState, TestData>> sgleaf_purenode =
@@ -322,9 +324,7 @@ namespace libtempo::classifier::pf {
             sg_1nn_erp,
             sg_1nn_lcss,
             sg_1nn_msm,
-            /*
             sg_1nn_twe
-             */
           }
         ), nbc
       );

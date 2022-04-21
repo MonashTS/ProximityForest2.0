@@ -242,7 +242,7 @@ namespace libtempo::classifier::pf {
       TName(std::move(tname)),
       exponent(exponent) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::directa(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), bsf);
@@ -283,7 +283,7 @@ namespace libtempo::classifier::pf {
       TName(std::move(tname)),
       exponent(exponent) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), utils::NO_WINDOW, bsf);
@@ -303,11 +303,7 @@ namespace libtempo::classifier::pf {
       ExponentGetter<TrainState> get_exponent;
       WindowGetter<TrainState, TrainData> get_window;
 
-      Generator(
-        TransformGetter<TrainState> gt,
-        ExponentGetter<TrainState> ge,
-        WindowGetter<TrainState, TrainData> gw
-      ) :
+      Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge, WindowGetter<TrainState, TrainData> gw) :
         get_transform(std::move(gt)),
         get_exponent(std::move(ge)),
         get_window(std::move(gw)) {}
@@ -337,7 +333,7 @@ namespace libtempo::classifier::pf {
       exponent(exponent),
       window(window) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), window, bsf);
@@ -355,10 +351,7 @@ namespace libtempo::classifier::pf {
       TransformGetter<TrainState> get_transform;
       ExponentGetter<TrainState> get_exponent;
 
-      Generator(
-        TransformGetter<TrainState> gt,
-        ExponentGetter<TrainState> ge
-      ) :
+      Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
         get_transform(std::move(gt)),
         get_exponent(std::move(ge)) {}
 
@@ -389,7 +382,7 @@ namespace libtempo::classifier::pf {
       exponent(exponent),
       weights(std::move(weights)) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::wdtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), weights, bsf);
@@ -408,11 +401,7 @@ namespace libtempo::classifier::pf {
       ExponentGetter<TrainState> get_exponent;
       WindowGetter<TrainState, TrainData> get_window;
 
-      Generator(
-        TransformGetter<TrainState> gt,
-        ExponentGetter<TrainState> ge,
-        WindowGetter<TrainState, TrainData> gw
-      ) :
+      Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge, WindowGetter<TrainState, TrainData> gw) :
         get_transform(std::move(gt)),
         get_exponent(std::move(ge)),
         get_window(std::move(gw)) {}
@@ -450,7 +439,7 @@ namespace libtempo::classifier::pf {
       window(w),
       gv(gv) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       auto gvdist = distance::univariate::adegv<F, TSeries<F, L >>(exponent);
@@ -470,10 +459,7 @@ namespace libtempo::classifier::pf {
       TransformGetter<TrainState> get_transform;
       WindowGetter<TrainState, TrainData> get_window;
 
-      Generator(
-        TransformGetter<TrainState> gt,
-        WindowGetter<TrainState, TrainData> gw
-      ) :
+      Generator(TransformGetter<TrainState> gt, WindowGetter<TrainState, TrainData> gw) :
         get_transform(std::move(gt)),
         get_window(std::move(gw)) {}
 
@@ -505,7 +491,7 @@ namespace libtempo::classifier::pf {
       window(w),
       epsilon(epsilon) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::lcss(t1, t2, distance::univariate::ad1<F, TSeries<F, L>>, window, epsilon, bsf);
@@ -522,13 +508,10 @@ namespace libtempo::classifier::pf {
 
       using CostGetter = std::function<F(TrainState& state)>;
 
-      TransformGetter <TrainState> get_transform;
+      TransformGetter<TrainState> get_transform;
       CostGetter get_cost;
 
-      Generator(
-        TransformGetter <TrainState> gt,
-        CostGetter gc
-      ) :
+      Generator(TransformGetter<TrainState> gt, CostGetter gc) :
         get_transform(std::move(gt)),
         get_cost(std::move(gc)) {}
 
@@ -547,14 +530,62 @@ namespace libtempo::classifier::pf {
     F cost;
 
     /// Constructor
-    Splitter_1NN_MSM(std::string tname, F cost):
+    Splitter_1NN_MSM(std::string tname, F cost) :
       TName(std::move(tname)),
       cost(cost) {}
 
-    /// Concept Requirement: how to compute teh distance between two series
+    /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::univariate::msm(t1, t2, cost, bsf);
+    }
+  };
+
+  /// 1NN TWE with parametric window and gap value, Splitter + Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_TWE : public TName {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState, typename TrainData>
+    struct Generator {
+
+      using Getter = std::function<F(TrainState& state)>;
+
+      TransformGetter<TrainState> get_transform;
+      Getter get_nu;
+      Getter get_lambda;
+
+      Generator(TransformGetter<TrainState> gt, Getter g_nu, Getter g_lambda) :
+        get_transform(std::move(gt)),
+        get_nu(std::move(g_nu)),
+        get_lambda(std::move(g_lambda)) {}
+
+      /// Generator requirement: create a distance
+      Splitter_1NN_TWE operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
+        std::string tn = get_transform(state);
+        F n = get_nu(state);
+        F l = get_lambda(state);
+        return Splitter_1NN_TWE(tn, n, l);
+      }
+
+    }; // End of struct Generator
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// TWE Nu
+    F nu;
+
+    /// TWE Lamnda
+    F lambda;
+
+    /// Constructor
+    Splitter_1NN_TWE(std::string tname, F nu, F lambda) :
+      TName(std::move(tname)), nu(nu), lambda(lambda) {}
+
+    /// Concept Requirement: compute the distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      return distance::univariate::twe<F, TSeries<F, L>>(t1, t2, nu, lambda, bsf);
     }
   };
 
@@ -774,52 +805,7 @@ namespace libtempo::classifier::pf {
 
   } // End of namespace internal
 
-  //   /** 1NN TWE Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_TWE : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     /// Set of possible nu
-  //     std::shared_ptr<std::vector<double>> nus;
-
-  //     /// Set of possible lambda
-  //     std::shared_ptr<std::vector<double>> lambdas;
-
-  //     SG_1NN_TWE(
-  //       std::shared_ptr<std::vector<std::string>> transformation_names,
-  //       std::shared_ptr<std::vector<double>> nus,
-  //       std::shared_ptr<std::vector<double>> lambdas
-  //     ) :
-  //       transformation_names(std::move(transformation_names)),
-  //       nus(std::move(nus)),
-  //       lambdas(std::move(lambdas)) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-
-  //       // Pick nu and lambda
-  //       auto nu = utils::pick_one(*nus, *state.prng);
-  //       auto lambda = utils::pick_one(*lambdas, *state.prng);
-
-  //       distance_t distance = [nu, lambda](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::univariate::twe<F, TSeries<F, L>>(t1, t2, nu, lambda, bsf);
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("twe_" + tname); };
-
-  //       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
-  //     }
-  //   };
-
 }
-
-
 
 
 //   /** 1NN ADTW Splitter Generator */

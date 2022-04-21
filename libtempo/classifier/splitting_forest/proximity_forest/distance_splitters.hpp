@@ -200,7 +200,7 @@ namespace libtempo::classifier::pf {
   // Splitters and Splitter Generators
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// 1NN Direct Alignment Splitter and Splitter Generator (as nested class)
+  /// 1NN Direct Alignment Splitter with Splitter Generator as nested class
   template<Float F, Label L>
   struct Splitter_1NN_DA : public TName {
 
@@ -214,9 +214,7 @@ namespace libtempo::classifier::pf {
       Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
-
-
-      /// Mixin requirement: create a distance
+      /// Generator requirement: create a distance
       Splitter_1NN_DA operator ()(TrainState& state) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
@@ -242,6 +240,68 @@ namespace libtempo::classifier::pf {
     }
 
   };
+
+  /// 1NN DTW Full Window Splitter with Splitter Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_DTWFull : public TName {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState>
+    struct Generator {
+
+      TransformGetter<TrainState> get_transform;
+      ExponentGetter<TrainState> get_exponent;
+
+      Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
+        get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
+
+      /// Generator requirement: create a distance
+      Splitter_1NN_DTWFull operator ()(TrainState& state) const {
+        std::string tn = get_transform(state);
+        double e = get_exponent(state);
+        return Splitter_1NN_DTWFull(tn, e);
+      }
+
+    }; // End of struct Generator
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// ADP cost function exponent
+    double exponent;
+
+    /// Constructor
+    Splitter_1NN_DTWFull(std::string tname, double exponent) :
+      TName(std::move(tname)),
+      exponent(exponent) {}
+
+    /// Concept Requirement: how to compute teh distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), utils::NO_WINDOW, bsf);
+    }
+
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   /// Distance Splitter State components
   /// The forest train and test states must include a field "distance_splitter_state" of this type.

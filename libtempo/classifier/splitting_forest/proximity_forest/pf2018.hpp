@@ -219,14 +219,15 @@ namespace libtempo::classifier::pf {
     inline static const auto exp2 = [](TrainState& /* state */) { return 2; };
 
     /// Transformation name array - always "default"
-    inline static const auto def = [](TrainState& /* state */ ){return "default"; };
+    inline static const auto def = [](TrainState& /* state */ ) { return "default"; };
 
     /// Transformation name array - always "d1", the first derivative
-    inline static const auto d1 = [](TrainState& /* state */){return "d1"; };
+    inline static const auto d1 = [](TrainState& /* state */) { return "d1"; };
 
     /// List of MSM costs
-    inline static const auto msm_costs = std::make_shared<std::vector<double>>(
-      std::vector<double>{
+    inline static const auto msm_cost = [](TrainState& state) {
+      constexpr size_t N = 100;
+      double costs[N]{
         0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
         0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
         0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
@@ -235,19 +236,24 @@ namespace libtempo::classifier::pf {
         4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
         9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
         60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
-      }
-    );
+      };
+      return utils::pick_one(costs, N, *state.prng);
+    };
 
     /// TWE nu parameters
-    inline static const auto twe_nus = std::make_shared<std::vector<double>>(
-      std::vector<double>{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1}
-    );
+    inline static const auto twe_nu = [](TrainState& state) {
+      constexpr size_t N = 10;
+      double nus[N]{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
+      return utils::pick_one(nus, N, *state.prng);
+    };
 
     /// TWE lambda parameters
-    inline static const auto twe_lambdas = std::make_shared<std::vector<double>>(
-      std::vector<double>{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444, 0.055555556, 0.066666667, 0.077777778,
-                          0.088888889, 0.1}
-    );
+    inline static const auto twe_lambda = [](TrainState& state) {
+      constexpr size_t N = 10;
+      double lambdas[N] {0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
+                         0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
+      return utils::pick_one(lambdas, N, *state.prng);
+    };
 
   private:
 
@@ -257,10 +263,18 @@ namespace libtempo::classifier::pf {
     template<typename D>
     using SG1 = pf::SG_1NN<F, L, TrainState, TrainData, TestState, TestData, D>;
 
-
     /// SQED
     using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState>;
-    static inline std::shared_ptr<SG1<DA_t>> sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
+    static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
+
+    /// DTW Full windows
+    using DTWFull_t = typename Splitter_1NN_DTWFull<F, L>::template Generator<TrainState>;
+    static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
+
+
+
+
+
 
     /*
     /// ADTW

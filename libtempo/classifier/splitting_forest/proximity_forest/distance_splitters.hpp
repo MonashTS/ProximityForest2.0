@@ -29,8 +29,13 @@ namespace libtempo::classifier::pf {
 
   /// Distance Generator concept: produces a DistanceSplitter (see above).
   template<typename DistGen, typename F, typename L, typename TrainState, typename TrainData>
-  concept DistanceGenerator =requires(const DistGen& mk_distance, TrainState& state, const TrainData& data){
-    { mk_distance(state, data) } -> DistanceSplitter<F, L>;
+  concept DistanceGenerator = requires(
+    const DistGen& mk_distance,
+    TrainState& state,
+    const TrainData& data,
+    const BCMVec<L>& bcmvec
+  ){
+    { mk_distance(state, data, bcmvec) } -> DistanceSplitter<F, L>;
   };
 
   namespace internal {
@@ -100,7 +105,7 @@ namespace libtempo::classifier::pf {
     const override {
 
       // --- --- --- Generate splitter using Generator
-      auto distance = mk_distance(state, data);
+      auto distance = mk_distance(state, data, bcmvec);
       using Distance = decltype(distance);
 
       // --- --- --- Access BCM
@@ -219,7 +224,7 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_DA operator ()(TrainState& state, const TrainData&) const {
+      Splitter_1NN_DA operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return Splitter_1NN_DA(tn, e);
@@ -260,7 +265,7 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_DTWFull operator ()(TrainState& state, const TrainData&) const {
+      Splitter_1NN_DTWFull operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return Splitter_1NN_DTWFull(tn, e);
@@ -301,14 +306,14 @@ namespace libtempo::classifier::pf {
       Generator(
         TransformGetter<TrainState> gt,
         ExponentGetter<TrainState> ge,
-        WindowGetter <TrainState, TrainData> gw
+        WindowGetter<TrainState, TrainData> gw
       ) :
         get_transform(std::move(gt)),
         get_exponent(std::move(ge)),
         get_window(std::move(gw)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_DTW operator ()(TrainState& state, const TrainData& data) const {
+      Splitter_1NN_DTW operator ()(TrainState& state, const TrainData& data, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         size_t w = get_window(state, data);
@@ -339,7 +344,6 @@ namespace libtempo::classifier::pf {
     }
   };
 
-
   /// 1NN WDTW with parametric weights, Splitter + Generator as nested class
   template<Float F, Label L>
   struct Splitter_1NN_WDTW : public TName {
@@ -356,11 +360,10 @@ namespace libtempo::classifier::pf {
         ExponentGetter<TrainState> ge
       ) :
         get_transform(std::move(gt)),
-        get_exponent(std::move(ge))
-        {}
+        get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_WDTW operator ()(TrainState& state, const TrainData& data) const {
+      Splitter_1NN_WDTW operator ()(TrainState& state, const TrainData& data, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         //
@@ -390,6 +393,69 @@ namespace libtempo::classifier::pf {
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
       return distance::wdtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), weights, bsf);
+    }
+  };
+
+  /// 1NN ERP with parametric window and gap value, Splitter + Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_ERP : public TName {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState, typename TrainData>
+    struct Generator {
+
+      TransformGetter <TrainState> get_transform;
+      ExponentGetter<TrainState> get_exponent;
+      WindowGetter<TrainState, TrainData> get_window;
+
+      Generator(
+        TransformGetter <TrainState> gt,
+        ExponentGetter<TrainState> ge,
+        WindowGetter<TrainState, TrainData> gw
+      ) :
+        get_transform(std::move(gt)),
+        get_exponent(std::move(ge)),
+        get_window(std::move(gw)) {}
+
+      /// Generator requirement: create a distance
+      Splitter_1NN_ERP operator ()(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
+        std::string tn = get_transform(state);
+        double e = get_exponent(state);
+        size_t w = get_window(state, data);
+        // gap value
+        const auto& train_dataset = data.get_train_dataset(tn);
+        auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
+        const F g = std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
+        //
+        return Splitter_1NN_ERP(tn, e, w, g);
+      }
+
+    }; // End of struct Generator
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// ADP cost function exponent
+    double exponent;
+
+    /// PWarping Window
+    size_t window;
+
+    /// Gap value
+    F gv;
+
+    /// Constructor
+    Splitter_1NN_ERP(std::string tname, double exponent, size_t w, F gv) :
+      TName(std::move(tname)),
+      exponent(exponent),
+      window(w),
+      gv(gv) {}
+
+    /// Concept Requirement: how to compute teh distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      auto gvdist = distance::univariate::adegv<F, TSeries<F, L >>(exponent);
+      auto dist = distance::univariate::ade<F, TSeries<F, L >>(exponent);
+      return distance::erp(t1, t2, gvdist, dist, window, gv, bsf);
     }
   };
 
@@ -619,124 +685,6 @@ namespace libtempo::classifier::pf {
   } // End of namespace internal
 
 
-  // // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // // Elastic distance splitters generators
-  // // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-
-  //   /** 1NN ADTW Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_ADTW : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     /// Exponent used in the cost function
-  //     std::shared_ptr<std::vector<double>> exponents;
-
-  //     /// Mean direct alignment sampling size
-  //     size_t mean_da_sampling_size;
-
-  //     /// Herrmann Schedule - sampling size
-  //     size_t hs_sampling_size;
-
-  //     /// Herrmann Schedule - exponent
-  //     double hs_exp;
-
-  //     SG_1NN_ADTW(std::shared_ptr<std::vector<std::string>> transformation_names,
-  //                 std::shared_ptr<std::vector<double>> exponents,
-  //                 size_t mean_da_sampling_size,
-  //                 size_t hs_sampling_size,
-  //                 double hs_exp) :
-  //       transformation_names(std::move(transformation_names)),
-  //       exponents(std::move(exponents)),
-  //       mean_da_sampling_size(mean_da_sampling_size),
-  //       hs_sampling_size(hs_sampling_size),
-  //       hs_exp(hs_exp) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-  //       double e = utils::pick_one(*exponents, *state.prng);
-
-  //       auto dist = distance::univariate::ade<F, TSeries<F, L >>(e);
-
-  //       // --- --- --- Sampling
-  //       // lazy-shared, i.e. do not resample if already done at this node
-  //       if(!(bool)state.distance_splitter_state.ADTW_sampled_mean_da){
-  //         const auto& train_dataset_map = *state.dataset_shared_map;
-  //         const auto& train_dataset = train_dataset_map.at(tname);
-  //         utils::StddevWelford welford;
-  //         {
-  //           for (size_t i = 0; i<mean_da_sampling_size; ++i) {
-  //             const auto& q = utils::pick_one(train_dataset.data(), *state.prng);
-  //             const auto& s = utils::pick_one(train_dataset.data(), *state.prng);
-  //             const auto cost = distance::directa<F>(q, s, dist);
-  //             welford.update(cost);
-  //           }
-  //         }
-  //         state.distance_splitter_state.ADTW_sampled_mean_da = std::make_optional<double>(welford.get_mean());
-  //       }
-  //       double sampled_mean_da = state.distance_splitter_state.ADTW_sampled_mean_da.value();
-
-
-  //       // Get a x in [0, sampling_size]
-  //       const double x = std::uniform_int_distribution<int>(0, hs_sampling_size + 1)(*state.prng);
-  //       const double r = std::pow(x/(double)hs_sampling_size, hs_exp);
-  //       const double omega = r*sampled_mean_da;
-
-  //       distance_t distance = [e, omega, dist](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::adtw(t1, t2, dist, omega, bsf);
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("adtw_" + tname); };
-
-  //       auto sg = internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb);
-  //       return sg.generate(state, bcmvec);
-  //     }
-  //   };
-
-  //   /** 1NN WDTW Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_WDTW : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     /// Exponent used in the cost function
-  //     std::shared_ptr<std::vector<double>> exponents;
-
-  //     SG_1NN_WDTW(std::shared_ptr<std::vector<std::string>> transformation_names,
-  //                 std::shared_ptr<std::vector<double>> exponents) :
-  //       transformation_names(std::move(transformation_names)),
-  //       exponents(std::move(exponents)) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-
-  //       // Compute the weight vector
-  //       const F g = std::uniform_real_distribution<F>(0, 1)(*state.prng);
-  //       auto weights = std::make_shared<std::vector<F>>(distance::generate_weights(g, state.get_header().length_max()));
-
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-  //       double e = utils::pick_one(*exponents, *state.prng);
-
-  //       distance_t distance = [e, weights](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::wdtw(t1, t2, *weights, distance::univariate::ade<F, TSeries<F, L >>(e), bsf);
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("wdtw_" + tname); };
-
-  //       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
-  //     }
-  //   };
-
   //   /** 1NN ERP Splitter Generator */
   //   template<Float F, Label L, typename Strain, typename Stest>
   //   struct SG_1NN_ERP : public IPF_NodeGenerator<L, Strain, Stest> {
@@ -902,3 +850,81 @@ namespace libtempo::classifier::pf {
   //   };
 
 }
+
+
+
+
+//   /** 1NN ADTW Splitter Generator */
+//   template<Float F, Label L, typename Strain, typename Stest>
+//   struct SG_1NN_ADTW : public IPF_NodeGenerator<L, Strain, Stest> {
+//     // Type shorthands
+//     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
+//     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
+
+//     /// Transformation name
+//     std::shared_ptr<std::vector<std::string>> transformation_names;
+
+//     /// Exponent used in the cost function
+//     std::shared_ptr<std::vector<double>> exponents;
+
+//     /// Mean direct alignment sampling size
+//     size_t mean_da_sampling_size;
+
+//     /// Herrmann Schedule - sampling size
+//     size_t hs_sampling_size;
+
+//     /// Herrmann Schedule - exponent
+//     double hs_exp;
+
+//     SG_1NN_ADTW(std::shared_ptr<std::vector<std::string>> transformation_names,
+//                 std::shared_ptr<std::vector<double>> exponents,
+//                 size_t mean_da_sampling_size,
+//                 size_t hs_sampling_size,
+//                 double hs_exp) :
+//       transformation_names(std::move(transformation_names)),
+//       exponents(std::move(exponents)),
+//       mean_da_sampling_size(mean_da_sampling_size),
+//       hs_sampling_size(hs_sampling_size),
+//       hs_exp(hs_exp) {}
+
+//     /// Override interface ISplitterGenerator
+//     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
+//       std::string tname = utils::pick_one(*transformation_names, *state.prng);
+//       double e = utils::pick_one(*exponents, *state.prng);
+
+//       auto dist = distance::univariate::ade<F, TSeries<F, L >>(e);
+
+//       // --- --- --- Sampling
+//       // lazy-shared, i.e. do not resample if already done at this node
+//       if(!(bool)state.distance_splitter_state.ADTW_sampled_mean_da){
+//         const auto& train_dataset_map = *state.dataset_shared_map;
+//         const auto& train_dataset = train_dataset_map.at(tname);
+//         utils::StddevWelford welford;
+//         {
+//           for (size_t i = 0; i<mean_da_sampling_size; ++i) {
+//             const auto& q = utils::pick_one(train_dataset.data(), *state.prng);
+//             const auto& s = utils::pick_one(train_dataset.data(), *state.prng);
+//             const auto cost = distance::directa<F>(q, s, dist);
+//             welford.update(cost);
+//           }
+//         }
+//         state.distance_splitter_state.ADTW_sampled_mean_da = std::make_optional<double>(welford.get_mean());
+//       }
+//       double sampled_mean_da = state.distance_splitter_state.ADTW_sampled_mean_da.value();
+
+
+//       // Get a x in [0, sampling_size]
+//       const double x = std::uniform_int_distribution<int>(0, hs_sampling_size + 1)(*state.prng);
+//       const double r = std::pow(x/(double)hs_sampling_size, hs_exp);
+//       const double omega = r*sampled_mean_da;
+
+//       distance_t distance = [e, omega, dist](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
+//         return distance::adtw(t1, t2, dist, omega, bsf);
+//       };
+
+//       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("adtw_" + tname); };
+
+//       auto sg = internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb);
+//       return sg.generate(state, bcmvec);
+//     }
+//   };

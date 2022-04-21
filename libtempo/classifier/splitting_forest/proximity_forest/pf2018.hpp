@@ -273,21 +273,30 @@ namespace libtempo::classifier::pf {
     using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
 
-    /// DTW Full windows
+    /// DTW Full window
     using DTWFull_t = typename Splitter_1NN_DTWFull<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
     static inline auto sg_1nn_ddtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(d1, exp2));
 
-    /// DTW with parametric windows
+    /// DTW with parametric window
     using DTW_t = typename Splitter_1NN_DTW<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtw = std::make_shared<SG1<DTW_t>>(DTW_t(def, exp2, getw));
     static inline auto sg_1nn_ddtw = std::make_shared<SG1<DTW_t>>(DTW_t(d1, exp2, getw));
 
-    /// WDTW with parametric windows
+    /// WDTW with parametric window
     using WDTW_t = typename Splitter_1NN_WDTW<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_wdtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(def, exp2));
     static inline auto sg_1nn_wddtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(d1, exp2));
 
+    /// ERP with parametric window and gap value
+    using ERP_t = typename Splitter_1NN_ERP<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw));
+
+    /*
+    /// LCSS with parametric window and epsilon value
+    using LCSS_t = typename Splitter_1NN_ERP<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(ERP_t(def, getw));
+     */
 
 
 
@@ -295,10 +304,6 @@ namespace libtempo::classifier::pf {
     /// ADTW
     static inline std::shared_ptr<pf::SG_1NN_ADTW<F, L, PFState, PFState>> sg_1nn_adtw =
       std::make_shared<pf::SG_1NN_ADTW<F, L, PFState, PFState>>(def, exp2, 2000, 20, 4);
-
-    /// ERP
-    static inline std::shared_ptr<pf::SG_1NN_ERP<F, L, PFState, PFState>> sg_1nn_erp =
-      std::make_shared<pf::SG_1NN_ERP<F, L, PFState, PFState>>(def, exp2);
 
     /// LCSS
     static inline std::shared_ptr<pf::SG_1NN_LCSS<F, L, PFState, PFState>> sg_1nn_lcss =
@@ -330,6 +335,7 @@ namespace libtempo::classifier::pf {
             sg_1nn_ddtwfull,
             sg_1nn_wdtw,
             sg_1nn_wddtw,
+            sg_1nn_erp
             /*
             sg_1nn_erp,
             sg_1nn_lcss,

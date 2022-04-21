@@ -28,9 +28,9 @@ namespace libtempo::classifier::pf {
   };
 
   /// Distance Generator concept: produces a DistanceSplitter (see above).
-  template<typename DistGen, typename F, typename L, typename TrainState>
-  concept DistanceGenerator =requires(const DistGen& mk_distance, TrainState& state){
-    { mk_distance(state) } -> DistanceSplitter<F, L>;
+  template<typename DistGen, typename F, typename L, typename TrainState, typename TrainData>
+  concept DistanceGenerator =requires(const DistGen& mk_distance, TrainState& state, const TrainData& data){
+    { mk_distance(state, data) } -> DistanceSplitter<F, L>;
   };
 
   namespace internal {
@@ -83,7 +83,7 @@ namespace libtempo::classifier::pf {
   /// Train Time 1NN Splitter Generator
   template<
     Float F, Label L, typename TrainState, typename TrainData, typename TestState, typename TestData,
-    DistanceGenerator<F, L, TrainState> DistanceGenerator
+    DistanceGenerator<F, L, TrainState, TrainData> DistanceGenerator
   >
   struct SG_1NN : public IPF_NodeGenerator<L, TrainState, TrainData, TestState, TestData> {
 
@@ -100,7 +100,7 @@ namespace libtempo::classifier::pf {
     const override {
 
       // --- --- --- Generate splitter using Generator
-      auto distance = mk_distance(state);
+      auto distance = mk_distance(state, data);
       using Distance = decltype(distance);
 
       // --- --- --- Access BCM
@@ -181,6 +181,10 @@ namespace libtempo::classifier::pf {
   template<typename TrainState>
   using ExponentGetter = std::function<double(TrainState& train_state)>;
 
+  /// Generate a warping window
+  template<typename TrainState, typename TrainData>
+  using WindowGetter = std::function<size_t(TrainState& train_state, const TrainData& train_data)>;
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Function used by all distances
@@ -200,12 +204,12 @@ namespace libtempo::classifier::pf {
   // Splitters and Splitter Generators
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// 1NN Direct Alignment Splitter with Splitter Generator as nested class
+  /// 1NN Direct Alignment, Splitter + Generator as nested class
   template<Float F, Label L>
   struct Splitter_1NN_DA : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    template<typename TrainState>
+    template<typename TrainState, typename TrainData>
     struct Generator {
 
       TransformGetter<TrainState> get_transform;
@@ -215,7 +219,7 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_DA operator ()(TrainState& state) const {
+      Splitter_1NN_DA operator ()(TrainState& state, const TrainData&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return Splitter_1NN_DA(tn, e);
@@ -241,12 +245,12 @@ namespace libtempo::classifier::pf {
 
   };
 
-  /// 1NN DTW Full Window Splitter with Splitter Generator as nested class
+  /// 1NN DTW Full Window, Splitter + Generator as nested class
   template<Float F, Label L>
   struct Splitter_1NN_DTWFull : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    template<typename TrainState>
+    template<typename TrainState, typename TrainData>
     struct Generator {
 
       TransformGetter<TrainState> get_transform;
@@ -256,7 +260,7 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      Splitter_1NN_DTWFull operator ()(TrainState& state) const {
+      Splitter_1NN_DTWFull operator ()(TrainState& state, const TrainData&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return Splitter_1NN_DTWFull(tn, e);
@@ -282,26 +286,59 @@ namespace libtempo::classifier::pf {
 
   };
 
+  /// 1NN DTW with parametric window, Splitter + Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_DTW : public TName {
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState, typename TrainData>
+    struct Generator {
 
+      TransformGetter<TrainState> get_transform;
+      ExponentGetter<TrainState> get_exponent;
+      WindowGetter<TrainState, TrainData> get_window;
 
+      Generator(
+        TransformGetter<TrainState> gt,
+        ExponentGetter<TrainState> ge,
+        WindowGetter <TrainState, TrainData> gw
+      ) :
+        get_transform(std::move(gt)),
+        get_exponent(std::move(ge)),
+        get_window(std::move(gw)) {}
 
+      /// Generator requirement: create a distance
+      Splitter_1NN_DTW operator ()(TrainState& state, const TrainData& data) const {
+        std::string tn = get_transform(state);
+        double e = get_exponent(state);
+        size_t w = get_window(state, data);
 
+        return Splitter_1NN_DTW(tn, e, w);
+      }
 
+    }; // End of struct Generator
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+    /// ADP cost function exponent
+    double exponent;
 
+    /// Warping window
+    size_t window;
 
+    /// Constructor
+    Splitter_1NN_DTW(std::string tname, double exponent, size_t window) :
+      TName(std::move(tname)),
+      exponent(exponent),
+      window(window) {}
 
+    /// Concept Requirement: how to compute teh distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries<F, L >>(exponent), window, bsf);
+    }
 
-
-
-
-
-
-
-
-
+  };
 
   /// Distance Splitter State components
   /// The forest train and test states must include a field "distance_splitter_state" of this type.

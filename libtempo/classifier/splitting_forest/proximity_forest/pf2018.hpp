@@ -224,6 +224,12 @@ namespace libtempo::classifier::pf {
     /// Transformation name array - always "d1", the first derivative
     inline static const auto d1 = [](TrainState& /* state */) { return "d1"; };
 
+    /// Random window computation function
+    inline static const auto getw = [](TrainState& state, const TrainData& data) -> size_t {
+      const size_t win_top = (data.get_header().length_max() + 1)/4;
+      return std::uniform_int_distribution<size_t>(0, win_top)(*state.prng);
+    };
+
     /// List of MSM costs
     inline static const auto msm_cost = [](TrainState& state) {
       constexpr size_t N = 100;
@@ -250,8 +256,8 @@ namespace libtempo::classifier::pf {
     /// TWE lambda parameters
     inline static const auto twe_lambda = [](TrainState& state) {
       constexpr size_t N = 10;
-      double lambdas[N] {0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
-                         0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
+      double lambdas[N]{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
+                        0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
       return utils::pick_one(lambdas, N, *state.prng);
     };
 
@@ -264,13 +270,16 @@ namespace libtempo::classifier::pf {
     using SG1 = pf::SG_1NN<F, L, TrainState, TrainData, TestState, TestData, D>;
 
     /// SQED
-    using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState>;
+    using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
 
     /// DTW Full windows
-    using DTWFull_t = typename Splitter_1NN_DTWFull<F, L>::template Generator<TrainState>;
+    using DTWFull_t = typename Splitter_1NN_DTWFull<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
 
+    /// DTW with parametric windows
+    using DTW_t = typename Splitter_1NN_DTW<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_dtw = std::make_shared<SG1<DTW_t>>(DTW_t(def, exp2, getw));
 
 
 
@@ -336,7 +345,8 @@ namespace libtempo::classifier::pf {
       auto chooser = std::make_shared<pf::SG_chooser<L, TrainState, TrainData, TestState, TestData>>(
         typename pf::SG_chooser<L, TrainState, TrainData, TestState, TestData>::SGVec_t(
           {
-            sg_1nn_da
+            sg_1nn_da,
+            sg_1nn_dtwfull
             /*
             sg_1nn_da,
             sg_1nn_dtwf,

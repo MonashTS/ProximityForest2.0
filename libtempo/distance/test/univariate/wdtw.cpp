@@ -10,6 +10,9 @@ using namespace libtempo::distance;
 using namespace libtempo::distance::univariate;
 constexpr size_t nbitems = 500;
 constexpr size_t nbweights = 5;
+constexpr double INF = libtempo::utils::PINF<double>;
+// Using ad2 as the distance - same is used ("sqdist") in the reference code
+constexpr auto dist = univariate::ad2<double, std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -105,7 +108,7 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
         const double dtw_ref_v = reference::wdtw_matrix(s, s, weights);
         REQUIRE(dtw_ref_v==0);
 
-        const auto dtw_v = wdtw<double>(s, s, weights);
+        const auto dtw_v = wdtw<double>(s.size(), s.size(), dist(s, s), weights, INF);
         REQUIRE(dtw_v==0);
       }
     }
@@ -122,7 +125,7 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
         const double dtw_ref_v = reference::wdtw_matrix(s1, s2, weights);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo = wdtw<double>(s1, s2, weights);
+        const auto dtw_tempo = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, INF);
         REQUIRE(dtw_ref_v==dtw_tempo);
       }
     }
@@ -159,7 +162,7 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(s1, s2, weights);
+          const auto v = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, INF);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -168,7 +171,7 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(s1, s2, weights, bsf_tempo);
+          const auto v_tempo = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;
@@ -196,7 +199,7 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
         const double dtw_ref_v = reference::wdtw_matrix(s, s, weights);
         REQUIRE(dtw_ref_v==0);
 
-        const auto dtw_v = wdtw<double>(s, s, weights);
+        const auto dtw_v = wdtw<double>(s.size(), s.size(), dist(s, s), weights, INF);
         REQUIRE(dtw_v==0);
       }
     }
@@ -212,7 +215,7 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
         const double dtw_ref_v = reference::wdtw_matrix(s1, s2, weights);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo_v = wdtw<double>(s1, s2, weights);
+        const auto dtw_tempo_v = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, INF);
         REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
     }
@@ -250,7 +253,7 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(s1, s2, weights);
+          const auto v = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, INF);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -259,7 +262,7 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
           REQUIRE(idx_ref==idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(s1, s2, weights, bsf_tempo);
+          const auto v_tempo = wdtw<double>(s1.size(), s2.size(), dist(s1, s2), weights, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;

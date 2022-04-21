@@ -73,8 +73,8 @@ namespace libtempo::distance {
     [[nodiscard]] inline F wdtw(
       const size_t nblines,
       const size_t nbcols,
-      const Subscriptable auto& weights,
       CFun <F> auto dist,
+      const Subscriptable auto& weights,
       F cutoff,
       std::vector<F>& buffers_v
     ) {
@@ -209,8 +209,8 @@ namespace libtempo::distance {
   template<Float F>
   [[nodiscard]]
   F wdtw(size_t nblines, size_t nbcols,
-         const Subscriptable auto& weights,
          CFun <F> auto dist,
+         const Subscriptable auto& weights,
          F ub,
          std::vector<F>& buffer_v
   ) {
@@ -238,17 +238,18 @@ namespace libtempo::distance {
         }
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed
-      return internal::wdtw<F>(nblines, nbcols, weights, dist, ub, buffer_v);
+      return internal::wdtw<F>(nblines, nbcols, dist, weights, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
   template<Float F>
   [[nodiscard]] inline F wdtw(size_t nblines, size_t nbcols,
+                              CFun <F> auto dist,
                               const Subscriptable auto& weights,
-                              CFun <F> auto dist, F ub) {
+                              F ub) {
     std::vector<F> v;
-    return wdtw(nblines, nbcols, weights, dist, ub, v);
+    return wdtw(nblines, nbcols, dist, weights, ub, v);
   }
 
   /// Helper for TSLike, without having to provide a buffer
@@ -256,41 +257,15 @@ namespace libtempo::distance {
   [[nodiscard]] inline F
   wdtw(const T& lines,
        const T& cols,
-       const std::vector<F>& weights,
        CFunBuilder<T> auto mkdist,
+       const std::vector<F>& weights,
        F ub = utils::PINF<F>) {
     const auto ls = lines.length();
     const auto cs = cols.length();
     const CFun <F> auto dist = mkdist(lines, cols);
     std::vector<F> v;
-    return wdtw<F>(ls, cs, weights, dist, ub, v);
+    return wdtw<F>(ls, cs, dist, weights, ub, v);
   }
 
-  namespace univariate {
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F wdtw(
-      const std::vector<F>& lines, const std::vector<F>& cols, const std::vector<F>& weights,
-      CFunBuilder <std::vector<F>> auto mkdist, F ub = utils::PINF<F>) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun <F> auto dist = mkdist(lines, cols);
-      return libtempo::distance::wdtw<F>(ls, cs, weights, dist, ub);
-    }
-
-    /// Specific overload for univariate vector with AD2 cost function
-    template<Float F>
-    [[nodiscard]]
-    inline F wdtw(
-      const std::vector<F>& lines,
-      const std::vector<F>& cols,
-      const std::vector<F>& weights,
-      F ub = utils::PINF<F>
-    ) {
-      return wdtw<F>(lines, cols, weights, ad2<F, std::vector<F>>, ub);
-    }
-
-  }
 
 } // End of namespace libtempo::distance

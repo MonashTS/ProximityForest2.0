@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cmath>
 
+#include "../concepts.hpp"
 #include "partasks.hpp"
 #include "progressmonitor.hpp"
 #include "stats.hpp"

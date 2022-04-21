@@ -233,7 +233,6 @@ namespace libtempo::classifier::pf {
   /** Proximity Forest at train time */
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct PForestTrainer {
-    using BCMVec = std::vector<ByClassMap<L>>;
 
     std::shared_ptr<const PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer;
     size_t nbtrees;
@@ -249,7 +248,7 @@ namespace libtempo::classifier::pf {
     std::tuple<
       std::vector<std::unique_ptr<TrainState>>,
       std::shared_ptr<PForest<L, TestState, TestData>>
-    > train(TrainState& state, const TrainData& data, BCMVec bcmvec, size_t nbthread) {
+    > train(TrainState& state, const TrainData& data, BCMVec<L> bcmvec, size_t nbthread) {
 
       std::mutex mutex;
       typename PForest<L, TestState, TestData>::TreeVec forest;

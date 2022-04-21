@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
   // --------------------------------------------------------------------------------------------------------------
 
 
-  size_t nbt = 100;
+  size_t nbt = 8;
   size_t nbc = 5;
   size_t nbthread = 8;
 
@@ -124,9 +124,12 @@ int main(int argc, char **argv) {
     }
 
     // Report on selected distances
+    std::cout << "Selected distances:" << std::endl;
     for (const auto&[n, c] : distance_splitter_state.selected_distances) {
-      std::cout << n << ": " << c << std::endl;
+      std::cout << "  " << n << ": " << c << std::endl;
     }
+
+
     // Report on depth
     double ad = 0;
     for (auto d : depths) {

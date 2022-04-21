@@ -45,7 +45,7 @@ namespace libtempo::classifier::pf {
 
     /// Callback
     CallBack<L, TrainState, TrainData> callback =
-      [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec){};
+      [](TrainState& /* state */ , const TrainData& /* data */, const BCMVec<L>& /* bcmvec */){};
   };
 
   /// Train time interface: a leaf generator.
@@ -55,7 +55,7 @@ namespace libtempo::classifier::pf {
 
     /// Generate a leaf from a training state and the ByClassMap at the node.
     /// If no leaf is to be generated, return the empty option, which will trigger the call of a NodeGenerator */
-    virtual Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcm) const = 0;
+    virtual Result generate(TrainState& state , const TrainData& data, const BCMVec<L>& bcm) const = 0;
 
     virtual ~IPF_LeafGenerator() = default;
   };
@@ -90,7 +90,7 @@ namespace libtempo::classifier::pf {
 
     /// Callback
     CallBack<L, TrainState, TrainData> callback =
-      [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec){};
+      [](TrainState& /* state */, const TrainData& /* data */, const BCMVec<L>& /* bcmvec */){};
 
   };
 

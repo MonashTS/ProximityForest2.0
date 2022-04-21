@@ -404,12 +404,12 @@ namespace libtempo::classifier::pf {
     template<typename TrainState, typename TrainData>
     struct Generator {
 
-      TransformGetter <TrainState> get_transform;
+      TransformGetter<TrainState> get_transform;
       ExponentGetter<TrainState> get_exponent;
       WindowGetter<TrainState, TrainData> get_window;
 
       Generator(
-        TransformGetter <TrainState> gt,
+        TransformGetter<TrainState> gt,
         ExponentGetter<TrainState> ge,
         WindowGetter<TrainState, TrainData> gw
       ) :
@@ -467,11 +467,11 @@ namespace libtempo::classifier::pf {
     template<typename TrainState, typename TrainData>
     struct Generator {
 
-      TransformGetter <TrainState> get_transform;
+      TransformGetter<TrainState> get_transform;
       WindowGetter<TrainState, TrainData> get_window;
 
       Generator(
-        TransformGetter <TrainState> gt,
+        TransformGetter<TrainState> gt,
         WindowGetter<TrainState, TrainData> gw
       ) :
         get_transform(std::move(gt)),
@@ -493,7 +493,7 @@ namespace libtempo::classifier::pf {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    /// PWarping Window
+    /// Warping Window
     size_t window;
 
     /// Gap value
@@ -508,19 +508,55 @@ namespace libtempo::classifier::pf {
     /// Concept Requirement: how to compute teh distance between two series
     [[nodiscard]]
     F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
-      return distance::lcss(t1, t2, distance::univariate::ad1<F, TSeries<F,L>>, window, epsilon, bsf);
+      return distance::lcss(t1, t2, distance::univariate::ad1<F, TSeries<F, L>>, window, epsilon, bsf);
     }
   };
 
+  /// 1NN MSM with parametric window and gap value, Splitter + Generator as nested class
+  template<Float F, Label L>
+  struct Splitter_1NN_MSM : public TName {
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    template<typename TrainState, typename TrainData>
+    struct Generator {
 
+      using CostGetter = std::function<F(TrainState& state)>;
 
+      TransformGetter <TrainState> get_transform;
+      CostGetter get_cost;
 
+      Generator(
+        TransformGetter <TrainState> gt,
+        CostGetter gc
+      ) :
+        get_transform(std::move(gt)),
+        get_cost(std::move(gc)) {}
 
+      /// Generator requirement: create a distance
+      Splitter_1NN_MSM operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
+        std::string tn = get_transform(state);
+        F c = get_cost(state);
+        return Splitter_1NN_MSM(tn, c);
+      }
 
+    }; // End of struct Generator
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+    /// Cost
+    F cost;
 
+    /// Constructor
+    Splitter_1NN_MSM(std::string tname, F cost):
+      TName(std::move(tname)),
+      cost(cost) {}
+
+    /// Concept Requirement: how to compute teh distance between two series
+    [[nodiscard]]
+    F operator ()(const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) const {
+      return distance::univariate::msm(t1, t2, cost, bsf);
+    }
+  };
 
   /// Distance Splitter State components
   /// The forest train and test states must include a field "distance_splitter_state" of this type.
@@ -737,81 +773,6 @@ namespace libtempo::classifier::pf {
     // };
 
   } // End of namespace internal
-
-
-  //   /** 1NN LCSS Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_LCSS : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     explicit SG_1NN_LCSS(std::shared_ptr<std::vector<std::string>> transformation_names) :
-  //       transformation_names(std::move(transformation_names)) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-
-  //       // Compute the window
-  //       const size_t win_top = (state.get_header().length_max() + 1)/4;
-  //       const auto w = std::uniform_int_distribution<size_t>(0, win_top)(*state.prng);
-
-  //       // Compute the epsilon value using the standard deviation of the data reaching this node
-  //       const auto& train_dataset_map = *state.dataset_shared_map;
-  //       const auto& train_dataset = train_dataset_map.at(tname);
-  //       auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
-  //       const double epsilon = std::uniform_real_distribution<double>(0.2*stddev_, stddev_)(*state.prng);
-
-  //       distance_t distance = [w, epsilon](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::univariate::lcss(t1, t2, w, epsilon, bsf);
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("lcss_" + tname); };
-
-  //       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
-  //     }
-  //   };
-
-  //   /** 1NN MSM Splitter Generator */
-  //   template<Float F, Label L, typename Strain, typename Stest>
-  //   struct SG_1NN_MSM : public IPF_NodeGenerator<L, Strain, Stest> {
-  //     // Type shorthands
-  //     using Result = typename IPF_NodeGenerator<L, Strain, Stest>::Result;
-  //     using distance_t = typename internal::TestSplitter_1NN<F, L, Stest>::distance_t;
-
-  //     /// Transformation name
-  //     std::shared_ptr<std::vector<std::string>> transformation_names;
-
-  //     /// Set of possible costs
-  //     std::shared_ptr<std::vector<double>> costs;
-
-  //     SG_1NN_MSM(
-  //       std::shared_ptr<std::vector<std::string>> transformation_names,
-  //       std::shared_ptr<std::vector<double>> costs
-  //     ) :
-  //       transformation_names(std::move(transformation_names)),
-  //       costs(std::move(costs)) {}
-
-  //     /// Override interface ISplitterGenerator
-  //     Result generate(Strain& state, const std::vector<ByClassMap<L>>& bcmvec) const override {
-  //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
-
-  //       // Compute the cost
-  //       auto c = utils::pick_one(*costs, *state.prng);
-
-  //       distance_t distance = [c](const TSeries<F, L>& t1, const TSeries<F, L>& t2, double bsf) {
-  //         return distance::univariate::msm(t1, t2, c, bsf);
-  //       };
-
-  //       auto cb = [tname](Strain& strain) { strain.distance_splitter_state.update("msm_" + tname); };
-
-  //       return internal::TrainSplitter_1NN<F, L, Strain, Stest>(distance, tname, cb).generate(state, bcmvec);
-  //     }
-  //   };
 
   //   /** 1NN TWE Splitter Generator */
   //   template<Float F, Label L, typename Strain, typename Stest>

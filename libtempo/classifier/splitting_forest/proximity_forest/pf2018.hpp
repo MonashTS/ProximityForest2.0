@@ -296,11 +296,9 @@ namespace libtempo::classifier::pf {
     using LCSS_t = typename Splitter_1NN_LCSS<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw));
 
-    /*
     /// MSM with parametric window and epsilon value
     using MSM_t = typename Splitter_1NN_MSM<F, L>::template Generator<TrainState, TrainData>;
-    static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, getw));
-*/
+    static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, msm_cost));
 
 
 
@@ -322,9 +320,9 @@ namespace libtempo::classifier::pf {
             sg_1nn_wdtw,
             sg_1nn_wddtw,
             sg_1nn_erp,
-            sg_1nn_lcss
-            /*
+            sg_1nn_lcss,
             sg_1nn_msm,
+            /*
             sg_1nn_twe
              */
           }

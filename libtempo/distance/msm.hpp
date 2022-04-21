@@ -194,7 +194,7 @@ namespace libtempo::distance {
 
 
 
-  /** Edit Distance with Real Penalty (MSM), with cut-off point for early abandoning and pruning.
+  /** Move Split Merge (MSM), with cut-off point for early abandoning and pruning.
    *  Double buffered implementation using O(n) space.
    *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
    *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.

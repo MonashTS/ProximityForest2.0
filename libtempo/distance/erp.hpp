@@ -14,6 +14,12 @@ namespace libtempo::distance {
     { fun(i) }->std::same_as<R>;
   };
 
+  /// CVFunGVBuilder: Function creating a CFunGV based on a series and a gap value
+  template<typename T, typename D, typename F>
+  concept CFunGVBuilder = Float<F>&&requires(T builder, const D& s, const F gv){
+    builder(s, gv);
+  };
+
   namespace internal {
 
     /* The gap value function must implement something like this for Previous (gv_cols) and Above (gv_lines)
@@ -245,9 +251,7 @@ namespace libtempo::distance {
    *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
    *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
    *  Actual implementation assuming that some pre-conditions are fulfilled.
-   * @tparam FloatType  The floating number type used to represent the series.
-   * @tparam D          Type of underlying collection - given to dist
-   * @tparam FDist      Distance computation function, must be a (const D&, size_t, constD&, size_t)->FloatType
+   * @tparam F          The floating number type used to represent the series.
    * @param series1     Data for the first series
    * @param length1     Length of the first series.
    * @param series2     Data for the second series
@@ -312,12 +316,6 @@ namespace libtempo::distance {
     std::vector<F> v;
     return erp(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, v);
   }
-
-  /// CVFunGVBuilder: Function creating a CFunGV based on a series and a gap value
-  template<typename T, typename D, typename F>
-  concept CFunGVBuilder = Float<F>&&requires(T builder, const D& s, const F gv){
-    builder(s, gv);
-  };
 
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>

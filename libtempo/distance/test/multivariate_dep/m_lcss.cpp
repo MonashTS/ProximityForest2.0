@@ -128,7 +128,7 @@ TEST_CASE("Multivariate Dependent LCSS Fixed length", "[lcss][multivariate]") {
           const double lcss_ref_v = lcss_matrix(s, s, ndim, e, w);
           REQUIRE(lcss_ref_v == 0);
 
-          const auto lcss_v = lcss<double>(l, l, w, simN(s, s, ndim, e), INF);
+          const auto lcss_v = lcss<double>(l, l, simN(s, s, ndim, e), w, INF);
           REQUIRE(lcss_v == 0);
         }
       }
@@ -147,7 +147,7 @@ TEST_CASE("Multivariate Dependent LCSS Fixed length", "[lcss][multivariate]") {
             {
               const double lcss_ref_v = lcss_matrix(s1, s2, 1, e, w);
               const double lcss_ref_uni_v = lcss_matrix_uni(s1, s2, e, w);
-              const auto lcss_tempo_v = lcss<double>(l1, l1, w, simN(s1, s2, 1, e), INF);
+              const auto lcss_tempo_v = lcss<double>(l1, l1, simN(s1, s2, 1, e), w, INF);
               REQUIRE(lcss_ref_v == lcss_ref_uni_v);
               REQUIRE(lcss_ref_v == lcss_tempo_v);
             }
@@ -156,7 +156,7 @@ TEST_CASE("Multivariate Dependent LCSS Fixed length", "[lcss][multivariate]") {
             {
               const double lcss_ref_v = lcss_matrix(s1, s2, ndim, e, w);
               INFO("Exact same operation order. Expect exact floating point equality.")
-              const auto lcss_tempo_v = lcss<double>(l, l, w, simN(s1, s2, ndim, e), INF);
+              const auto lcss_tempo_v = lcss<double>(l, l, simN(s1, s2, ndim, e), w, INF);
               REQUIRE(lcss_ref_v == lcss_tempo_v);
             }
           }
@@ -193,14 +193,14 @@ TEST_CASE("Multivariate Dependent LCSS Fixed length", "[lcss][multivariate]") {
                 bsf_ref = v_ref;
               }
               // --- --- --- --- --- --- --- --- --- --- --- ---
-              const auto v = lcss<double>(l, l, w, simN(s1, s2, ndim, e), INF);
+              const auto v = lcss<double>(l, l, simN(s1, s2, ndim, e), w, INF);
               if (v < bsf) {
                 idx = j;
                 bsf = v;
               }
               REQUIRE(idx_ref == idx);
               // --- --- --- --- --- --- --- --- --- --- --- ---
-              const auto v_tempo = lcss<double>(l, l, w, simN(s1, s2, ndim, e), bsf_tempo);
+              const auto v_tempo = lcss<double>(l, l, simN(s1, s2, ndim, e), w, bsf_tempo);
               if (v_tempo < bsf_tempo) {
                 idx_tempo = j;
                 bsf_tempo = v_tempo;
@@ -232,7 +232,7 @@ TEST_CASE("Multivariate Dependent LCSS Variable length", "[lcss][multivariate]")
           const auto w = (size_t) (wr * (s.size()));
           const double lcss_ref_v = lcss_matrix(s, s, ndim, e, w);
           REQUIRE(lcss_ref_v == 0);
-          const auto lcss_v = lcss<double>(ld(s), ld(s), w, simN(s, s, ndim, e), INF);
+          const auto lcss_v = lcss<double>(ld(s), ld(s), simN(s, s, ndim, e), w, INF);
           REQUIRE(lcss_v == 0);
         }
       }
@@ -251,7 +251,7 @@ TEST_CASE("Multivariate Dependent LCSS Variable length", "[lcss][multivariate]")
           {
             const double lcss_ref_v = lcss_matrix(s1, s2, 1, e, w);
             const double lcss_ref_uni_v = lcss_matrix_uni(s1, s2, e, w);
-            const auto lcss_tempo_v = lcss<double>(s1.size(), s2.size(), w, simN(s1, s2, 1, e), INF);
+            const auto lcss_tempo_v = lcss<double>(s1.size(), s2.size(), simN(s1, s2, 1, e), w, INF);
             REQUIRE(lcss_ref_v == lcss_ref_uni_v);
             REQUIRE(lcss_ref_v == lcss_tempo_v);
           }
@@ -261,7 +261,7 @@ TEST_CASE("Multivariate Dependent LCSS Variable length", "[lcss][multivariate]")
             const double lcss_ref_v = lcss_matrix(s1, s2, ndim, e, w);
             INFO("Exact same operation order. Expect exact floating point equality.")
 
-            const auto lcss_tempo_v = lcss<double>(ld(s1), ld(s2), w, simN(s1, s2, ndim, e), INF);
+            const auto lcss_tempo_v = lcss<double>(ld(s1), ld(s2), simN(s1, s2, ndim, e), w, INF);
             REQUIRE(lcss_ref_v == lcss_tempo_v);
           }
         }
@@ -301,7 +301,7 @@ TEST_CASE("Multivariate Dependent LCSS Variable length", "[lcss][multivariate]")
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = lcss<double>(ld(s1), ld(s2), w, simN(s1, s2, ndim, e), INF);
+            const auto v = lcss<double>(ld(s1), ld(s2), simN(s1, s2, ndim, e), w, INF);
             if (v < bsf) {
               idx = j;
               bsf = v;
@@ -309,7 +309,7 @@ TEST_CASE("Multivariate Dependent LCSS Variable length", "[lcss][multivariate]")
             REQUIRE(idx_ref == idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = lcss<double>(ld(s1), ld(s2), w, simN(s1, s2, ndim, e), bsf_tempo);
+            const auto v_tempo = lcss<double>(ld(s1), ld(s2), simN(s1, s2, ndim, e), w, bsf_tempo);
             if (v_tempo < bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

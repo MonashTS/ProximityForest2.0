@@ -6,8 +6,12 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance::univariate;
+using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
+constexpr double INF = libtempo::utils::PINF<double>;
+constexpr double QNAN = libtempo::utils::QNAN<double>;
+// LCSS by default is using |a-b|, i.e. ad1
+constexpr auto dist = univariate::ad1<double, std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -80,7 +84,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
           const double lcss_ref_v = reference::lcss_matrix(s, s, w, e);
           REQUIRE(lcss_ref_v==0);
 
-          const auto lcss_v = lcss<double>(s, s, w, e);
+          const auto lcss_v = lcss<double>(s.size(), s.size(), dist(s, s), w, e, INF);
           REQUIRE(lcss_v==0);
         }
       }
@@ -96,7 +100,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
           const auto w = (size_t) (wr*mocker._fixl);
           const double lcss_ref_v = reference::lcss_matrix(s1, s2, w, e);
           INFO("Exact same operation order. Expect exact floating point equality.")
-          const auto lcss_tempo = lcss<double>(s1, s2, w, e);
+          const auto lcss_tempo = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e);
           REQUIRE(lcss_ref_v==lcss_tempo);
         }
       }
@@ -134,7 +138,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = lcss<double>(s1, s2, w, e);
+            const auto v = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -143,7 +147,7 @@ TEST_CASE("Univariate LCSS Fixed length", "[lcss][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = lcss<double>(s1, s2, w, e, bsf_tempo);
+            const auto v_tempo = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;
@@ -172,7 +176,7 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
           const auto w = (size_t) (wr*(s.size()));
           const double lcss_ref_v = reference::lcss_matrix(s, s, w, e);
           REQUIRE(lcss_ref_v==0);
-          const auto lcss_v = lcss<double>(s, s, w, e);
+          const auto lcss_v = lcss<double>(s.size(), s.size(), dist(s, s), w, e, INF);
           REQUIRE(lcss_v==0);
         }
       }
@@ -191,7 +195,7 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
           const double lcss_ref_v = reference::lcss_matrix(s1, s2, w, e);
           INFO("Exact same operation order. Expect exact floating point equality.")
           INFO(i << " " << ie << " " << iw)
-          const auto lcss_tempo_v = lcss<double>(s1, s2, w, e);
+          const auto lcss_tempo_v = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e);
           REQUIRE(lcss_ref_v==lcss_tempo_v);
         }
       }
@@ -227,14 +231,14 @@ TEST_CASE("Univariate LCSS Variable length", "[lcss][univariate]") {
               bsf_ref = v_ref;
             }
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = lcss<double>(s1, s2, w, e);
+            const auto v = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e);
             if (v<bsf) {
               idx = j;
               bsf = v;
             }
             REQUIRE(idx_ref==idx);
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = lcss<double>(s1, s2, w, e, bsf_tempo);
+            const auto v_tempo = lcss<double>(s1.size(), s2.size(), dist(s1, s2), w, e, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

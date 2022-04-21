@@ -34,8 +34,8 @@ namespace libtempo::distance {
   [[nodiscard]] F lcss(
     const size_t nblines,
     const size_t nbcols,
-    const size_t w,
     CFunSim auto sim,
+    const size_t w,
     F ub
   ) {
     using namespace utils;
@@ -107,48 +107,23 @@ namespace libtempo::distance {
     }
   }
 
+  /// Helper with a similarity function based on epsilon (dist(a,b)<e)
+  template<Float F>
+  [[nodiscard]] inline F
+  lcss(size_t nblines, size_t nbcols, CFun<F> auto dist, const size_t w, const F e, F ub = utils::PINF<F>) {
+    CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
+    return lcss<F>(nblines, nbcols, sim, w, ub);
+  }
 
-
-  namespace univariate {
-
-    /// Helper for TSLike, with a similarity function based on epsilon (dist(a,b)<e)
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F
-    lcss(const T& lines, const T& cols, const size_t w, const F e,
-      CFunBuilder<T> auto mkdist,
-      F ub = utils::PINF<F>) {
-      const auto ls = lines.length();
-      const auto cs = cols.length();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
-      return libtempo::distance::lcss<F>(ls, cs, w, sim, ub);
-    }
-
-    /// Default LCSS using |a-b|<e
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F lcss(const T& lines, const T& cols, const size_t w, const F e, F ub = utils::PINF<F>) {
-      return lcss<F, T>(lines, cols, w, e, ad1<F, T>, ub);
-    }
-
-    /// Specific overload for univariate vector with dist(a,b)<e
-    template<Float F>
-    [[nodiscard]] inline F
-    lcss(const std::vector<F>& lines, const std::vector<F>& cols, const size_t w, const F e,
-      CFunBuilder<std::vector<F>> auto mkdist, F ub = utils::PINF<F>) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
-      return libtempo::distance::lcss<F>(ls, cs, w, sim, ub);
-    }
-
-    /// Specific overload for univariate vector using |a-b|<e
-    template<Float F>
-    [[nodiscard]] inline F
-    lcss(const std::vector<F>& lines, const std::vector<F>& cols, const size_t w, const F e, F ub = utils::PINF<F>) {
-      return lcss(lines, cols, w, e, ad1<F, std::vector<F>>, ub);
-    }
-
+  /// Helper for TSLike, with a similarity function based on epsilon (dist(a,b)<e)
+  template<Float F, TSLike T>
+  [[nodiscard]] inline F
+  lcss(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, const size_t w, const F e, F ub = utils::PINF<F>) {
+    const auto ls = lines.length();
+    const auto cs = cols.length();
+    const CFun<F> auto dist = mkdist(lines, cols);
+    CFunSim auto sim = [dist, e](size_t i, size_t j) { return dist(i, j)<e; };
+    return lcss<F>(ls, cs, sim, w, ub);
   }
 
 

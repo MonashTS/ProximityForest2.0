@@ -10,7 +10,7 @@ namespace libtempo::distance {
   /// to the "gap value".
   /// Both the series and the gap values must be captured
   template<typename Fun, typename R>
-  concept CFunGV = Float<R> && requires(Fun fun, size_t i){
+  concept CFunGV = Float<R>&&requires(Fun fun, size_t i){
     { fun(i) }->std::same_as<R>;
   };
 
@@ -46,10 +46,10 @@ namespace libtempo::distance {
     [[nodiscard]] inline F erp(
       const size_t nblines,
       const size_t nbcols,
-      const size_t w,
       CFunGV<F> auto dist_gv_lines,
       CFunGV<F> auto dist_gv_cols,
       CFun<F> auto dist,
+      const size_t w,
       const F cutoff,
       std::vector<F>& buffer_v
     ) {
@@ -67,19 +67,19 @@ namespace libtempo::distance {
       // Then, subtract the cost of the last alignment.
       const F ub = utils::initBlock {
         const auto la = min(
-          dist_gv_cols(nbcols-1),      // Previous (col)
-          dist(nblines-1, nbcols-1),   // Diagonal
-          dist_gv_lines(nblines-1)     // Above    (line)
+          dist_gv_cols(nbcols - 1),      // Previous (col)
+          dist(nblines - 1, nbcols - 1),   // Diagonal
+          dist_gv_lines(nblines - 1)     // Above    (line)
         );
-        return nextafter(cutoff, PINF)-la;
+        return nextafter(cutoff, PINF) - la;
       };
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Double buffer allocation, init to +INF.
       // Base indices for the 'c'urrent row and the 'p'revious row. Account for the extra cell (+1 and +2)
-      buffer_v.assign((1+nbcols)*2, PINF);
-      auto* buffer = buffer_v.data();
-      size_t c{0+1}, p{nbcols+2};
+      buffer_v.assign((1 + nbcols)*2, PINF);
+      auto *buffer = buffer_v.data();
+      size_t c{0 + 1}, p{nbcols + 2};
 
       // Line & column counters
       size_t i{0}, j{0};
@@ -94,11 +94,11 @@ namespace libtempo::distance {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Initialisation of the top border
       {   // Matrix Border - Top diagonal
-        buffer[c-1] = 0;
+        buffer[c - 1] = 0;
         // Matrix Border - First line
         const size_t jStop = cap_stop_index_to_window_or_end(0, w, nbcols);
-        for (j = 0; buffer[c+j-1]<=ub && j<jStop; ++j) {
-          buffer[c+j] = buffer[c+j-1]+dist_gv_cols(j); // Previous
+        for (j = 0; buffer[c + j - 1]<=ub&&j<jStop; ++j) {
+          buffer[c + j] = buffer[c + j - 1] + dist_gv_cols(j); // Previous
         }
         // Pruning point set to first +INF value (or out of bound)
         prev_pp = j;
@@ -118,11 +118,11 @@ namespace libtempo::distance {
           // --- --- --- Stage 0: Initialise the left border
           {
             // We haven't swap yet, so the 'top' cell is still indexed by 'c-1'.
-            cost = buffer[c-1]+dist_gv_lines(i);
+            cost = buffer[c - 1] + dist_gv_lines(i);
             if (cost>ub) { break; }
             else {
               std::swap(c, p);
-              buffer[c-1] = cost;
+              buffer[c - 1] = cost;
             }
           }
           // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
@@ -130,28 +130,28 @@ namespace libtempo::distance {
           // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
           for (; j<prev_pp; ++j) {
             cost = min(
-              cost+dist_gv_cols(j),           // Previous
-              buffer[p+j-1]+dist(i, j),       // Diagonal
-              buffer[p+j]+dist_gv_lines(i)    // Above
+              cost + dist_gv_cols(j),           // Previous
+              buffer[p + j - 1] + dist(i, j),       // Diagonal
+              buffer[p + j] + dist_gv_lines(i)    // Above
             );
-            buffer[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; }
+            buffer[c + j] = cost;
+            if (cost<=ub) { curr_pp = j + 1; }
           }
           // --- --- --- Stage 3: At the previous pruning point. Check if we are within bounds.
           if (j<jStop) { // Possible path in previous cells: left and diag.
             cost = std::min(
-              cost+dist_gv_cols(j),       // Previous
-              buffer[p+j-1]+dist(i, j)    // Diagonal
+              cost + dist_gv_cols(j),       // Previous
+              buffer[p + j - 1] + dist(i, j)    // Diagonal
             );
-            buffer[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; }
+            buffer[c + j] = cost;
+            if (cost<=ub) { curr_pp = j + 1; }
             ++j;
           }
           // --- --- --- Stage 4: After the previous pruning point: only prev.
           // Go on while we advance the curr_pp; if it did not advance, the rest of the line is guaranteed to be > ub.
-          for (; j==curr_pp && j<jStop; ++j) {
-            cost = cost+dist_gv_cols(j);  // Previous
-            buffer[c+j] = cost;
+          for (; j==curr_pp&&j<jStop; ++j) {
+            cost = cost + dist_gv_cols(j);  // Previous
+            buffer[c + j] = cost;
             if (cost<=ub) { ++curr_pp; }
           }
           // --- --- ---
@@ -173,58 +173,58 @@ namespace libtempo::distance {
           // --- --- --- Stage 0: Initialise the left border
           {
             cost = PINF;
-            buffer[c+jStart-1] = cost;
+            buffer[c + jStart - 1] = cost;
           }
           // --- --- --- Stage 1: Up to the previous pruning point while advancing next_start: diag and top
-          for (; j==next_start && j<prev_pp; ++j) {
+          for (; j==next_start&&j<prev_pp; ++j) {
             cost = std::min(
-              buffer[p+j-1]+dist(i, j),       // Diagonal
-              buffer[p+j]+dist_gv_lines(i)    // Above
+              buffer[p + j - 1] + dist(i, j),       // Diagonal
+              buffer[p + j] + dist_gv_lines(i)    // Above
             );
-            buffer[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; } else { ++next_start; }
+            buffer[c + j] = cost;
+            if (cost<=ub) { curr_pp = j + 1; } else { ++next_start; }
           }
           // --- --- --- Stage 2: Up to the previous pruning point without advancing next_start: left, diag and top
           for (; j<prev_pp; ++j) {
             cost = min(
-              cost+dist_gv_cols(j),         // Previous
-              buffer[p+j-1]+dist(i, j),     // Diagonal
-              buffer[p+j]+dist_gv_lines(i)  // Above
+              cost + dist_gv_cols(j),         // Previous
+              buffer[p + j - 1] + dist(i, j),     // Diagonal
+              buffer[p + j] + dist_gv_lines(i)  // Above
             );
-            buffer[c+j] = cost;
-            if (cost<=ub) { curr_pp = j+1; }
+            buffer[c + j] = cost;
+            if (cost<=ub) { curr_pp = j + 1; }
           }
           // --- --- --- Stage 3: At the previous pruning point. Check if we are within bounds.
           if (j<jStop) { // If so, two cases.
             if (j==next_start) { // Case 1: Advancing next start: only diag.
-              cost = buffer[p+j-1]+dist(i, j);     // Diagonal
-              buffer[c+j] = cost;
-              if (cost<=ub) { curr_pp = j+1; }
+              cost = buffer[p + j - 1] + dist(i, j);     // Diagonal
+              buffer[c + j] = cost;
+              if (cost<=ub) { curr_pp = j + 1; }
               else {
                 // Special case if we are on the last alignment: return the actual cost if we are <= cutoff
-                if (i==nblines-1 && j==nbcols-1 && cost<=cutoff) { return cost; } else { return PINF; }
+                if (i==nblines - 1&&j==nbcols - 1&&cost<=cutoff) { return cost; } else { return PINF; }
               }
             } else { // Case 2: Not advancing next start: possible path in previous cells: left and diag.
               cost = std::min(
-                cost+dist_gv_cols(j),     // Previous
-                buffer[p+j-1]+dist(i, j)  // Diagonal
+                cost + dist_gv_cols(j),     // Previous
+                buffer[p + j - 1] + dist(i, j)  // Diagonal
               );
-              buffer[c+j] = cost;
-              if (cost<=ub) { curr_pp = j+1; }
+              buffer[c + j] = cost;
+              if (cost<=ub) { curr_pp = j + 1; }
             }
             ++j;
           } else { // Previous pruning point is out of bound: exit if we extended next start up to here.
             if (j==next_start) {
               // But only if we are above the original UB
               // Else set the next starting point to the last valid column
-              if (cost>cutoff) { return PINF; } else { next_start = nbcols-1; }
+              if (cost>cutoff) { return PINF; } else { next_start = nbcols - 1; }
             }
           }
           // --- --- --- Stage 4: After the previous pruning point: only prev.
           // Go on while we advance the curr_pp; if it did not advance, the rest of the line is guaranteed to be > ub.
-          for (; j==curr_pp && j<jStop; ++j) {
-            cost = cost+dist_gv_cols(j);
-            buffer[c+j] = cost;
+          for (; j==curr_pp&&j<jStop; ++j) {
+            cost = cost + dist_gv_cols(j);
+            buffer[c + j] = cost;
             if (cost<=ub) { ++curr_pp; }
           }
           // --- --- ---
@@ -235,7 +235,7 @@ namespace libtempo::distance {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Finalisation
       // Check for last alignment (i==nblines implied, Stage 4 implies j<=nbcols). Cost must be <= original bound.
-      if (j==nbcols && cost<=cutoff) { return cost; } else { return PINF; }
+      if (j==nbcols&&cost<=cutoff) { return cost; } else { return PINF; }
     }
 
   } // End of namespace internal
@@ -267,66 +267,73 @@ namespace libtempo::distance {
   [[nodiscard]] F erp(
     const size_t nblines,
     const size_t nbcols,
-    const size_t w,
     CFunGV<F> auto dist_gv_lines,
     CFunGV<F> auto dist_gv_cols,
     CFun<F> auto dist,
+    const size_t w,
     F ub,
     std::vector<F>& buffer_v
   ) {
     constexpr F INF = utils::PINF<F>;
-    if (nblines==0 && nbcols==0) { return 0; }
+    if (nblines==0&&nbcols==0) { return 0; }
     else if ((nblines==0)!=(nbcols==0)) { return INF; }
     else {
       // Check that the window allows for an alignment
       // If this is accepted, we do not need to check the window when computing a new UB
       const auto m = std::min(nblines, nbcols);
       const auto M = std::max(nblines, nbcols);
-      if (M-m>w) { return INF; }
+      if (M - m>w) { return INF; }
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
         ub = 0;
         // Cover diagonal
-        for (size_t i{0}; i<m; ++i) { ub = ub+dist(i, i); }
+        for (size_t i{0}; i<m; ++i) { ub = ub + dist(i, i); }
         // Fewer line than columns: complete the last line (advancing in the columns)
-        if (nblines<nbcols) { for (size_t i{nblines}; i<nbcols; ++i) { ub = ub+dist_gv_cols(i); }}
+        if (nblines<nbcols) { for (size_t i{nblines}; i<nbcols; ++i) { ub = ub + dist_gv_cols(i); }}
           // Fewer columns than lines: complete the last column (advancing in the lines)
-        else if (nbcols<nblines) { for (size_t i{nbcols}; i<nblines; ++i) { ub = ub+dist_gv_lines(i); }}
+        else if (nbcols<nblines) { for (size_t i{nbcols}; i<nblines; ++i) { ub = ub + dist_gv_lines(i); }}
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed
-      return internal::erp<F>(nblines, nbcols, w, dist_gv_lines, dist_gv_cols, dist, ub, buffer_v);
+      return internal::erp<F>(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
   template<Float F>
   [[nodiscard]] inline F erp(
-    const size_t nblines, const size_t nbcols, const size_t w,
+    const size_t nblines,
+    const size_t nbcols,
     CFunGV<F> auto dist_gv_lines,
-    CFunGV<F> auto dist_gv_cols, CFun<F> auto dist, F ub) {
+    CFunGV<F> auto dist_gv_cols,
+    CFun<F> auto dist,
+    const size_t w,
+    F ub
+  ) {
     std::vector<F> v;
-    return erp(nblines, nbcols, w, dist_gv_lines, dist_gv_cols, dist, ub, v);
+    return erp(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, v);
   }
 
   /// CVFunGVBuilder: Function creating a CFunGV based on a series and a gap value
   template<typename T, typename D, typename F>
-  concept CFunGVBuilder = Float<F> && requires(T builder, const D& s, const F gv){
+  concept CFunGVBuilder = Float<F>&&requires(T builder, const D& s, const F gv){
     builder(s, gv);
   };
 
   /// Helper for TSLike, without having to provide a buffer
   template<Float F, TSLike T>
   [[nodiscard]] inline F
-  erp(const T& lines, const T& cols, const size_t w, const F gv,
-    CFunGVBuilder<T, F> auto mkdist_gv,
-    CFunBuilder<T> auto mkdist,
-    F ub = utils::PINF<F>) {
+  erp(const T& lines, const T& cols,
+      CFunGVBuilder<T, F> auto mkdist_gv,
+      CFunBuilder <T> auto mkdist,
+      const size_t w, const F gv,
+      F ub = utils::PINF<F>
+  ) {
     const auto ls = lines.length();
     const auto cs = cols.length();
     const CFunGV<F> auto lines_gv = mkdist_gv(lines, gv);
     const CFunGV<F> auto cols_gv = mkdist_gv(cols, gv);
     const CFun<F> auto dist = mkdist(lines, cols);
-    return erp<F>(ls, cs, w, lines_gv, cols_gv, dist, ub);
+    return erp<F>(ls, cs, lines_gv, cols_gv, dist, w, ub);
   }
 
   namespace univariate {
@@ -335,7 +342,7 @@ namespace libtempo::distance {
     template<Float F, Subscriptable D>
     auto ad1gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
-        const F d = series[i]-gv;
+        const F d = series[i] - gv;
         return std::abs(d);
       };
     }
@@ -344,7 +351,7 @@ namespace libtempo::distance {
     template<Float F, Subscriptable D>
     auto inline ad2gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
-        const F d = series[i]-gv;
+        const F d = series[i] - gv;
         return d*d;
       };
     }
@@ -353,61 +360,33 @@ namespace libtempo::distance {
     template<Float F, Subscriptable D>
     auto inline adegv(const F e) {
       return [e](const D& series, F gv) {
-        return [&, gv, e](size_t i){
-          const F d = series[i]-gv;
+        return [&, gv, e](size_t i) {
+          const F d = series[i] - gv;
           return std::pow(d, e);
         };
       };
     }
-
-    /// Default ERP using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F erp(const T& lines, const T& cols, const size_t w, const F gv, F ub = utils::PINF<F>) {
-      return erp(lines, cols, w, gv, ad2gv<F, T>, ad2<F, T>, ub);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F erp(const std::vector<F>& lines, const std::vector<F>& cols,
-      const size_t w, const F gv,
-      CFunGVBuilder<std::vector<F>, F> auto mkdist_gv,
-      CFunBuilder<std::vector<F>> auto mkdist,
-      F ub = utils::PINF<F>) {
-      const auto ls = lines.size();
-      const auto cs = cols.size();
-      const CFun<F> auto dist = mkdist(lines, cols);
-      const CFunGV<F> auto lines_gv = mkdist_gv(lines, gv);
-      const CFunGV<F> auto cols_gv = mkdist_gv(cols, gv);
-      std::vector<F> v;
-      return libtempo::distance::erp<F>(ls, cs, w, lines_gv, cols_gv, dist, ub, v);
-    }
-
-    /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F
-    erp(const std::vector<F>& lines, const std::vector<F>& cols, const size_t w, const F gv, F ub = utils::PINF<F>) {
-      return erp<F>(lines, cols, w, gv, ad2gv<F, std::vector<F>>, ad2<F, std::vector<F>>, ub);
-    }
   }
+
 
 
   namespace multivariate {
 
-  /// WARP distance based on the squared absolute difference and a vector for gv
-  /// Dimension is the same as the size of gv (all dimensions used)
-  template<Float F, Subscriptable D>
-  inline auto ad2gv(const D &series, const std::vector<F> &gv) {
-    const auto ndim = gv.size();
-    return [&, ndim](size_t i) {
-      const size_t offset = i * ndim;
-      F acc{0};
-      for (size_t k{0}; k < ndim; ++k) {
-        const F d = series[offset + k] - gv[k];
-        acc += d * d;
-      }
-      return acc;
+    /// WARP distance based on the squared absolute difference and a vector for gv
+    /// Dimension is the same as the size of gv (all dimensions used)
+    template<Float F, Subscriptable D>
+    inline auto ad2gv(const D& series, const std::vector<F>& gv) {
+      const auto ndim = gv.size();
+      return [&, ndim](size_t i) {
+        const size_t offset = i*ndim;
+        F acc{0};
+        for (size_t k{0}; k<ndim; ++k) {
+          const F d = series[offset + k] - gv[k];
+          acc += d*d;
+        }
+        return acc;
+      };
     };
-  };
 
-      }
+  }
 } // End of namespace libtempo::distance

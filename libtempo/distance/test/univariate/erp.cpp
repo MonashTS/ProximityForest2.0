@@ -6,8 +6,13 @@
 #include <mock/mockseries.hpp>
 
 using namespace mock;
-using namespace libtempo::distance::univariate;
+using namespace libtempo::distance;
 constexpr size_t nbitems = 500;
+constexpr double INF = libtempo::utils::PINF<double>;
+constexpr double QNAN = libtempo::utils::QNAN<double>;
+constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr auto gvdist = univariate::ad2gv<double, std::vector<double>>;
+
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
@@ -93,7 +98,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
           const double erp_ref_v = reference::erp_matrix(s, s, w, gv);
           REQUIRE(erp_ref_v==0);
 
-          const auto erp_v = erp<double>(s, s, w, gv);
+          const auto erp_v = erp<double>(s.size(), s.size(), gvdist(s, gv), gvdist(s, gv), dist(s, s), w, INF);
           REQUIRE(erp_v==0);
         }
       }
@@ -113,7 +118,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
           const double erp_ref_v = reference::erp_matrix(s1, s2, w, gv);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto erp_tempo = erp<double>(s1, s2, w, gv);
+          const auto erp_tempo = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, INF);
           REQUIRE(erp_ref_v==erp_tempo);
         }
       }
@@ -131,8 +136,8 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
       size_t idx = 0;
       double bsf = lu::PINF<double>;
       // EAP Variables
-      size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      size_t idx_eap = 0;
+      double bsf_eap = lu::PINF<double>;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -152,7 +157,7 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(s1, s2, w, gv);
+            const auto v = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, INF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -161,13 +166,13 @@ TEST_CASE("Univariate ERP Fixed length", "[erp][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = erp<double>(s1, s2, w, gv, bsf_tempo);
-            if (v_tempo<bsf_tempo) {
-              idx_tempo = j;
-              bsf_tempo = v_tempo;
+            const auto v_eap = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, bsf_eap);
+            if (v_eap<bsf_eap) {
+              idx_eap = j;
+              bsf_eap = v_eap;
             }
 
-            REQUIRE(idx_ref==idx_tempo);
+            REQUIRE(idx_ref==idx_eap);
           }
         }
       }
@@ -192,7 +197,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
           const double erp_ref_v = reference::erp_matrix(s, s, w, gv);
           REQUIRE(erp_ref_v==0);
 
-          const auto erp_v = erp<double>(s, s, w, gv);
+          const auto erp_v = erp<double>(s.size(), s.size(), gvdist(s, gv), gvdist(s, gv), dist(s, s), w, INF);
           REQUIRE(erp_v==0);
         }
       }
@@ -209,8 +214,8 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
           const double erp_ref_v = reference::erp_matrix(s1, s2, w, gv);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto erp_tempo_v = erp<double>(s1, s2, w, gv, libtempo::utils::QNAN<double>);
-          REQUIRE(erp_ref_v==erp_tempo_v);
+          const auto v_tempo = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, QNAN);
+          REQUIRE(erp_ref_v==v_tempo);
         }
       }
     }
@@ -249,7 +254,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(s1, s2, w, gv);
+            const auto v = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, INF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -258,7 +263,7 @@ TEST_CASE("Univariate ERP Variable length", "[erp][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = erp<double>(s1, s2, w, gv, bsf_tempo);
+            const auto v_tempo = erp<double>(s1.size(), s2.size(), gvdist(s1, gv), gvdist(s2, gv), dist(s1, s2), w, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

@@ -162,7 +162,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
           const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
           REQUIRE(erp_ref_v == 0);
 
-          const auto erp_v = erp<double>(l, l, w, ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), INF);
+          const auto erp_v = erp<double>(l, l, ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), w, INF);
           REQUIRE(erp_v == 0);
         }
       }
@@ -184,7 +184,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
           {
             const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
             const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
-            const auto erp_tempo_uni_v = erp<double>(l1, l1, w, univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), INF);
+            const auto erp_tempo_uni_v = erp<double>(l1, l1, univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), w, INF);
             REQUIRE(erp_ref_v == erp_ref_uni_v);
             REQUIRE(erp_ref_v == erp_tempo_uni_v);
           }
@@ -194,7 +194,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
             const double erp_ref_v = erp_matrix(s1, s2, ndim, gv, w);
             INFO("Exact same operation order. Expect exact floating point equality.")
 
-            const auto erp_tempo_v = erp<double>(l, l, w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), INF);
+            const auto erp_tempo_v = erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
             REQUIRE(erp_ref_v==erp_tempo_v);
           }
 
@@ -237,7 +237,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(l, l, w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), INF);
+            const auto v = erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -246,7 +246,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo =erp<double>(l, l, w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), bsf_tempo);
+            const auto v_tempo =erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;
@@ -282,7 +282,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
           const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
           REQUIRE(erp_ref_v == 0);
 
-          const auto erp_v = erp<double>(ld(s), ld(s), w, ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), INF);
+          const auto erp_v = erp<double>(ld(s), ld(s), ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), w, INF);
           REQUIRE(erp_v == 0);
         }
       }
@@ -304,7 +304,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
           {
             const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
             const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
-            const auto erp_tempo_uni_v = erp<double>(s1.size(), s2.size(), w, univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), INF);
+            const auto erp_tempo_uni_v = erp<double>(s1.size(), s2.size(), univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), w, INF);
             REQUIRE(erp_ref_v==erp_ref_uni_v);
             REQUIRE(erp_ref_uni_v==erp_tempo_uni_v);
           }
@@ -314,7 +314,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
             const double erp_ref_v = erp_matrix(s1, s2, ndim, gv, w);
             INFO("Exact same operation order. Expect exact floating point equality.")
 
-            const auto erp_tempo_v = erp<double>(ld(s1), ld(s2), w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), INF);
+            const auto erp_tempo_v = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
             REQUIRE(erp_ref_v==erp_tempo_v);
           }
 
@@ -357,7 +357,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(ld(s1), ld(s2), w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), INF);
+            const auto v = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -366,7 +366,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = erp<double>(ld(s1), ld(s2), w, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), bsf_tempo);
+            const auto v_tempo = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

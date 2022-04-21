@@ -35,7 +35,7 @@ namespace libtempo::classifier::pf {
     const TrainData& data,
     const BCMVec<L>& bcmvec
   ){
-    { std::get<0>(mk_distance(state, data, bcmvec)) } -> DistanceSplitter <F, L>;
+    { std::get<0>(mk_distance(state, data, bcmvec)) } -> DistanceSplitter<F, L>;
     { std::get<1>(mk_distance(state, data, bcmvec)) } -> std::convertible_to<CallBack<L, TrainState, TrainData>>;
   };
 
@@ -130,6 +130,11 @@ namespace libtempo::classifier::pf {
   template<typename TrainState, typename TrainData>
   using WindowGetter = std::function<size_t(TrainState& train_state, const TrainData& train_data)>;
 
+  /// ERP and LCSS: generate a random value (requires state) based on the dataset
+  /// (requires 'data' and the dataset name, and 'bcmvec' for the local subset)
+  template<Float F, Label L, typename TrainState, typename TrainData>
+  using StatGetter = std::function<F(TrainState& state, const TrainData& data,
+                                     const BCMVec<L>& bcmvec, const std::string& tn)>;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Function used by all distances
@@ -151,7 +156,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN Direct Alignment, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_DA : public TName {
+  struct DComp_DA : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -164,14 +169,14 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance and a callback
-      std::tuple<Splitter_1NN_DA, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_DA, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return {
-          Splitter_1NN_DA(tn, e),
+          DComp_DA(tn, e),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("da_"+tn);
+            state.distance_splitter_state.update("da_" + tn);
           }
         };
       }
@@ -184,7 +189,7 @@ namespace libtempo::classifier::pf {
     double exponent;
 
     /// Constructor
-    Splitter_1NN_DA(std::string tname, double exponent) :
+    DComp_DA(std::string tname, double exponent) :
       TName(std::move(tname)),
       exponent(exponent) {}
 
@@ -198,7 +203,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN DTW Full Window, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_DTWFull : public TName {
+  struct DComp_DTWFull : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -211,14 +216,14 @@ namespace libtempo::classifier::pf {
         get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_DTWFull, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_DTWFull, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         return {
-          Splitter_1NN_DTWFull(tn, e),
+          DComp_DTWFull(tn, e),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("dtwfull_"+tn);
+            state.distance_splitter_state.update("dtwfull_" + tn);
           }
         };
       }
@@ -231,7 +236,7 @@ namespace libtempo::classifier::pf {
     double exponent;
 
     /// Constructor
-    Splitter_1NN_DTWFull(std::string tname, double exponent) :
+    DComp_DTWFull(std::string tname, double exponent) :
       TName(std::move(tname)),
       exponent(exponent) {}
 
@@ -245,7 +250,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN DTW with parametric window, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_DTW : public TName {
+  struct DComp_DTW : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -261,16 +266,16 @@ namespace libtempo::classifier::pf {
         get_window(std::move(gw)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_DTW, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_DTW, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData& data, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         size_t w = get_window(state, data);
 
         return {
-          Splitter_1NN_DTW(tn, e, w),
+          DComp_DTW(tn, e, w),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("dtw_"+tn);
+            state.distance_splitter_state.update("dtw_" + tn);
           }
         };
       }
@@ -286,7 +291,7 @@ namespace libtempo::classifier::pf {
     size_t window;
 
     /// Constructor
-    Splitter_1NN_DTW(std::string tname, double exponent, size_t window) :
+    DComp_DTW(std::string tname, double exponent, size_t window) :
       TName(std::move(tname)),
       exponent(exponent),
       window(window) {}
@@ -300,7 +305,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN WDTW with parametric weights, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_WDTW : public TName {
+  struct DComp_WDTW : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -314,7 +319,7 @@ namespace libtempo::classifier::pf {
         get_exponent(std::move(ge)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_WDTW, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_WDTW, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData& data, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
@@ -323,9 +328,9 @@ namespace libtempo::classifier::pf {
         auto w = std::vector<F>(distance::generate_weights(g, data.get_header().length_max()));
         //
         return {
-          Splitter_1NN_WDTW(tn, e, std::move(w)),
+          DComp_WDTW(tn, e, std::move(w)),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("wdtw_"+tn);
+            state.distance_splitter_state.update("wdtw_" + tn);
           }
         };
       }
@@ -341,7 +346,7 @@ namespace libtempo::classifier::pf {
     std::vector<F> weights;
 
     /// Constructor
-    Splitter_1NN_WDTW(std::string tname, double exponent, std::vector<F>&& weights) :
+    DComp_WDTW(std::string tname, double exponent, std::vector<F>&& weights) :
       TName(std::move(tname)),
       exponent(exponent),
       weights(std::move(weights)) {}
@@ -355,7 +360,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN ERP with parametric window and gap value, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_ERP : public TName {
+  struct DComp_ERP : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -364,27 +369,29 @@ namespace libtempo::classifier::pf {
       TransformGetter<TrainState> get_transform;
       ExponentGetter<TrainState> get_exponent;
       WindowGetter<TrainState, TrainData> get_window;
+      StatGetter<F, L, TrainState, TrainData> get_gv;
 
-      Generator(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge, WindowGetter<TrainState, TrainData> gw) :
+      Generator(TransformGetter<TrainState> gt,
+                ExponentGetter<TrainState> ge,
+                WindowGetter<TrainState, TrainData> gw,
+                StatGetter<F, L, TrainState, TrainData> ggv
+      ) :
         get_transform(std::move(gt)),
         get_exponent(std::move(ge)),
-        get_window(std::move(gw)) {}
+        get_window(std::move(gw)),
+        get_gv(std::move(ggv)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_ERP, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_ERP, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
         std::string tn = get_transform(state);
         double e = get_exponent(state);
         size_t w = get_window(state, data);
-        // gap value
-        const auto& train_dataset = data.get_train_dataset(tn);
-        auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
-        const F g = std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
-        //
+        F g = get_gv(state, data, bcmvec, tn);
         return {
-          Splitter_1NN_ERP(tn, e, w, g),
+          DComp_ERP(tn, e, w, g),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("erp_"+tn);
+            state.distance_splitter_state.update("erp_" + tn);
           }
         };
       }
@@ -403,7 +410,7 @@ namespace libtempo::classifier::pf {
     F gv;
 
     /// Constructor
-    Splitter_1NN_ERP(std::string tname, double exponent, size_t w, F gv) :
+    DComp_ERP(std::string tname, double exponent, size_t w, F gv) :
       TName(std::move(tname)),
       exponent(exponent),
       window(w),
@@ -420,7 +427,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN LCSS with parametric window and gap value, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_LCSS : public TName {
+  struct DComp_LCSS : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -428,25 +435,26 @@ namespace libtempo::classifier::pf {
 
       TransformGetter<TrainState> get_transform;
       WindowGetter<TrainState, TrainData> get_window;
+      StatGetter<F, L, TrainState, TrainData> get_epsilon;
 
-      Generator(TransformGetter<TrainState> gt, WindowGetter<TrainState, TrainData> gw) :
+      Generator(TransformGetter<TrainState> gt,
+                WindowGetter<TrainState, TrainData> gw,
+                StatGetter<F, L, TrainState, TrainData> get_epsilon
+      ) :
         get_transform(std::move(gt)),
-        get_window(std::move(gw)) {}
+        get_window(std::move(gw)),
+        get_epsilon(std::move(get_epsilon)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_LCSS, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_LCSS, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
         std::string tn = get_transform(state);
         size_t w = get_window(state, data);
-        // Epsilon value
-        const auto& train_dataset = data.get_train_dataset(tn);
-        auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
-        const F e = std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
-        //
+        const F e = get_epsilon(state, data, bcmvec, tn);
         return {
-          Splitter_1NN_LCSS(tn, w, e),
+          DComp_LCSS(tn, w, e),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("lcss_"+tn);
+            state.distance_splitter_state.update("lcss_" + tn);
           }
         };
       }
@@ -462,7 +470,7 @@ namespace libtempo::classifier::pf {
     F epsilon;
 
     /// Constructor
-    Splitter_1NN_LCSS(std::string tname, size_t w, F epsilon) :
+    DComp_LCSS(std::string tname, size_t w, F epsilon) :
       TName(std::move(tname)),
       window(w),
       epsilon(epsilon) {}
@@ -476,7 +484,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN MSM with parametric window and gap value, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_MSM : public TName {
+  struct DComp_MSM : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -492,12 +500,12 @@ namespace libtempo::classifier::pf {
         get_cost(std::move(gc)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_MSM, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_MSM, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         F c = get_cost(state);
         return {
-          Splitter_1NN_MSM(tn, c),
+          DComp_MSM(tn, c),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
             state.distance_splitter_state.update("msm_" + tn);
           }
@@ -512,7 +520,7 @@ namespace libtempo::classifier::pf {
     F cost;
 
     /// Constructor
-    Splitter_1NN_MSM(std::string tname, F cost) :
+    DComp_MSM(std::string tname, F cost) :
       TName(std::move(tname)),
       cost(cost) {}
 
@@ -525,7 +533,7 @@ namespace libtempo::classifier::pf {
 
   /// 1NN TWE with parametric window and gap value, Splitter + Generator as nested class
   template<Float F, Label L>
-  struct Splitter_1NN_TWE : public TName {
+  struct DComp_TWE : public TName {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     template<typename TrainState, typename TrainData>
@@ -543,15 +551,15 @@ namespace libtempo::classifier::pf {
         get_lambda(std::move(g_lambda)) {}
 
       /// Generator requirement: create a distance
-      std::tuple<Splitter_1NN_TWE, CallBack<L, TrainState, TrainData>>
+      std::tuple<DComp_TWE, CallBack<L, TrainState, TrainData>>
       operator ()(TrainState& state, const TrainData&, const BCMVec<L>&) const {
         std::string tn = get_transform(state);
         F n = get_nu(state);
         F l = get_lambda(state);
         return {
-          Splitter_1NN_TWE(tn, n, l),
+          DComp_TWE(tn, n, l),
           [=](TrainState& state, const TrainData&, const BCMVec<L>&) {
-            state.distance_splitter_state.update("twe_"+tn);
+            state.distance_splitter_state.update("twe_" + tn);
           }
         };
       }
@@ -567,7 +575,7 @@ namespace libtempo::classifier::pf {
     F lambda;
 
     /// Constructor
-    Splitter_1NN_TWE(std::string tname, F nu, F lambda) :
+    DComp_TWE(std::string tname, F nu, F lambda) :
       TName(std::move(tname)), nu(nu), lambda(lambda) {}
 
     /// Concept Requirement: compute the distance between two series
@@ -584,7 +592,7 @@ namespace libtempo::classifier::pf {
 
   namespace internal {
     /// Test Time 1NN Splitter
-    template<Float F, Label L, typename TestState, typename TestData, DistanceSplitter <F, L> Distance>
+    template<Float F, Label L, typename TestState, typename TestData, DistanceSplitter<F, L> Distance>
     struct Splitter_1NN : public IPF_NodeSplitter<L, TestState, TestData> {
 
       IndexSet train_indexset;                 /// IndexSet of selected exemplar in the train

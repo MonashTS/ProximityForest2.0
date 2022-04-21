@@ -230,6 +230,15 @@ namespace libtempo::classifier::pf {
       return std::uniform_int_distribution<size_t>(0, win_top)(*state.prng);
     };
 
+    /// ERP Gap Value AND LCSS epsilon. Requires the name of the dataset.
+    /// Random fraction of the dataset standard deviation, within [stddev/5, stddev[
+    inline static const auto frac_stddev =
+      [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec, const std::string& tn) -> double {
+      const auto& train_dataset = data.get_train_dataset(tn);
+      auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
+      return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
+    };
+
     /// List of MSM costs
     inline static const auto msm_cost = [](TrainState& state) {
       constexpr size_t N = 100;
@@ -270,38 +279,38 @@ namespace libtempo::classifier::pf {
     using SG1 = pf::SG_1NN<F, L, TrainState, TrainData, TestState, TestData, D>;
 
     /// SQED
-    using DA_t = typename Splitter_1NN_DA<F, L>::template Generator<TrainState, TrainData>;
+    using DA_t = typename DComp_DA<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
 
     /// DTW Full window
-    using DTWFull_t = typename Splitter_1NN_DTWFull<F, L>::template Generator<TrainState, TrainData>;
+    using DTWFull_t = typename DComp_DTWFull<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
     static inline auto sg_1nn_ddtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(d1, exp2));
 
     /// DTW with parametric window
-    using DTW_t = typename Splitter_1NN_DTW<F, L>::template Generator<TrainState, TrainData>;
+    using DTW_t = typename DComp_DTW<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtw = std::make_shared<SG1<DTW_t>>(DTW_t(def, exp2, getw));
     static inline auto sg_1nn_ddtw = std::make_shared<SG1<DTW_t>>(DTW_t(d1, exp2, getw));
 
     /// WDTW with parametric window
-    using WDTW_t = typename Splitter_1NN_WDTW<F, L>::template Generator<TrainState, TrainData>;
+    using WDTW_t = typename DComp_WDTW<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_wdtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(def, exp2));
     static inline auto sg_1nn_wddtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(d1, exp2));
 
     /// ERP with parametric window and gap value
-    using ERP_t = typename Splitter_1NN_ERP<F, L>::template Generator<TrainState, TrainData>;
-    static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw));
+    using ERP_t = typename DComp_ERP<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw, frac_stddev));
 
     /// LCSS with parametric window and epsilon value
-    using LCSS_t = typename Splitter_1NN_LCSS<F, L>::template Generator<TrainState, TrainData>;
-    static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw));
+    using LCSS_t = typename DComp_LCSS<F, L>::template Generator<TrainState, TrainData>;
+    static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw, frac_stddev));
 
     /// MSM with parametric window and epsilon value
-    using MSM_t = typename Splitter_1NN_MSM<F, L>::template Generator<TrainState, TrainData>;
+    using MSM_t = typename DComp_MSM<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, msm_cost));
 
     /// TWE with parametric window and epsilon value
-    using TWE_t = typename Splitter_1NN_TWE<F, L>::template Generator<TrainState, TrainData>;
+    using TWE_t = typename DComp_TWE<F, L>::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_twe = std::make_shared<SG1<TWE_t>>(TWE_t(def, twe_nu, twe_lambda));
 
     /// Leaf generator

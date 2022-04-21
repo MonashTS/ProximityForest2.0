@@ -50,7 +50,7 @@ namespace libtempo::classifier::pf {
     /** Implementation fo the generate function
      * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
      */
-    Result generate(TrainState& state, const TrainData& data, const BCMVec <L>& bcmvec) const override {
+    Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const override {
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<nb_candidates; ++i) {
@@ -81,7 +81,7 @@ namespace libtempo::classifier::pf {
     /** Implementation fo the generate function
      * Randomly generate 'nb_candidates', evaluate them, keep the best (the lowest score is best)
      */
-    Result generate(TrainState& state, const TrainData& data, const BCMVec <L>& bcmvec) const override {
+    Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const override {
       Result best_result{};
       double best_score = utils::PINF<double>;
       for (size_t i = 0; i<sgvec.size(); ++i) {
@@ -124,7 +124,7 @@ namespace libtempo::classifier::pf {
     };
 
     /// Override interface ISplitterGenerator
-    Result generate(TrainState& /* state */, const TrainData& data, const BCMVec <L>& bcmvec) const override {
+    Result generate(TrainState& /* state */, const TrainData& data, const BCMVec<L>& bcmvec) const override {
       const auto& bcm = bcmvec.back();
       // Generate leaf on pure node
       if (bcm.nb_classes()==1) {
@@ -133,7 +133,7 @@ namespace libtempo::classifier::pf {
         double weight = bcm.size();
         return {
           Result{
-            ResLeaf<L, TestState, TestData>{
+            ResLeaf<L, TrainState, TestState, TestData>{
               .splitter = std::make_unique<PureNode>(weight, header.label_to_index(), label)}
           }
         };
@@ -174,7 +174,7 @@ namespace libtempo::classifier::pf {
     };
 
     /// Override interface ISplitterGenerator
-    Result generate(TrainState& state, const TestData& data, const BCMVec <L>& bcmvec) const override {
+    Result generate(TrainState& state, const TestData& data, const BCMVec<L>& bcmvec) const override {
       const auto& bcm = bcmvec.back();
       // Generate leaf on pure node
       if (bcm.nb_classes()==1) {
@@ -186,7 +186,9 @@ namespace libtempo::classifier::pf {
         size_t idx = l_to_i.at(label);
         proba[idx] = 1.0;
         return {
-          Result{ResLeaf<L, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+          Result{ResLeaf<L, TrainState, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(
+            proba
+          ))}}};
       }
       // Stop at a given depth
       if (bcmvec.size()>=depth_cutoff) {
@@ -198,8 +200,9 @@ namespace libtempo::classifier::pf {
           size_t idx = l_to_i.at(label);
           proba[idx] = ((double)vec.size())/weight;
         }
-        return {
-          Result{ResLeaf<L, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}}};
+        return {Result{
+          ResLeaf<L, TrainState, TestState, TestData>{.splitter = std::make_unique<DepthNode>(weight, std::move(proba))}
+        }};
       } else { return {}; } // Else, return the empty option
     }
   };

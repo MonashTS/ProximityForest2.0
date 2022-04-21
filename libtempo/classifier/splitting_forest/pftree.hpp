@@ -78,8 +78,8 @@ namespace libtempo::classifier::pf {
   struct PFTreeTrainer {
 
     // Shorthand for result type
-    using Leaf = ResLeaf<L, TestState, TestData>;
-    using Node = ResNode<L, TestState, TestData>;
+    using Leaf = ResLeaf<L, TrainState, TestState, TestData>;
+    using Node = ResNode<L, TrainState, TestState, TestData>;
     using Result = std::variant<Leaf, Node>;
 
     // BCM as vector

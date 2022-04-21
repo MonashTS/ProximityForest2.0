@@ -164,7 +164,7 @@ namespace libtempo::classifier::pf {
         v_bcm.emplace_back(std::move(result_bcmvec[idx]));
       }
       // Build the splitter
-      return Result{ResNode<L, TestState, TestData>{
+      return Result{ResNode<L, TrainState, TestState, TestData>{
         .branch_splits = std::move(v_bcm),
         .splitter = std::make_unique<internal::Splitter_1NN<F, L, TestState, TestData, Distance>>(
           train_indexset, labels_to_index, distance

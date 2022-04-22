@@ -1,9 +1,0 @@
-prefix=/home/matthieu/.Sync/private/any/Projects/Monash2020/tempo_dev.git/third_party/eigen-3.4.0/_install
-exec_prefix=${prefix}
-
-Name: Eigen3
-Description: A C++ template library for linear algebra: vectors, matrices, and related algorithms
-Requires:
-Version: 3.4.0
-Libs:
-Cflags: -I${prefix}/include/eigen3

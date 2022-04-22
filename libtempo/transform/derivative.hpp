@@ -49,7 +49,7 @@ namespace libtempo::transform {
         const auto& ts = input[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
-        derive<F>(ts.rm_data(), l, d.data());
+        derive<F>(ts.rawdata(), l, d.data());
         series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
       }
 
@@ -64,7 +64,7 @@ namespace libtempo::transform {
         const auto& ts = result.back()[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
-        derive<F>(ts.rm_data(), l, d.data());
+        derive<F>(ts.rawdata(), l, d.data());
         series.push_back(TSeries<F,L>::mk_rowmajor(ts, std::move(d)));
       }
 

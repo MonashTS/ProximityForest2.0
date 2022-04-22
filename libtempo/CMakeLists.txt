@@ -23,11 +23,12 @@ add_subdirectory(utils EXCLUDE_FROM_ALL)
 # libtempo library
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 add_library(libtempo)
+set_target_properties(libtempo PROPERTIES LINKER_LANGUAGE CXX)
 target_sources(libtempo INTERFACE concepts.hpp)
 target_link_libraries(libtempo INTERFACE libtempo::classifier)
 target_link_libraries(libtempo INTERFACE libtempo::distance)
 target_link_libraries(libtempo INTERFACE libtempo::transform)
-target_link_libraries(libtempo INTERFACE libtempo::tseries)
+#target_link_libraries(libtempo INTERFACE libtempo::tseries)
 target_link_libraries(libtempo PUBLIC libtempo::reader)
 target_link_libraries(libtempo INTERFACE libtempo::utils)
 

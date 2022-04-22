@@ -26,7 +26,17 @@ endif()
 # Load subprojects
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 add_subdirectory(third_party/catch)
+
+# Armadillo
+# --- Declare as "SYSTEM" to avoid its warning
+# --- in RELEASE, do not check bounds (ARMA_NO_DEBUG)
+add_subdirectory(third_party/armadillo-11.0.1)
+get_target_property(_inc armadillo INTERFACE_INCLUDE_DIRECTORIES)
+target_include_directories(armadillo SYSTEM INTERFACE ${_inc})
+add_compile_definitions(armadillo INTERFACE $<$<CONFIG:RELEASE>:ARMA_NO_DEBUG>)
+
 add_subdirectory(libtempo)
+
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Load executable

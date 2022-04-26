@@ -491,7 +491,7 @@ namespace libtempo {
       _min = stat.min();
       _max = stat.max();
       _mean = stat.mean();
-      _stddev = stat.stddev(0);
+      _stddev = stat.stddev(0); // norm_type=0 performs normalisation using N-1 (N=number of samples)
     }
 
   };

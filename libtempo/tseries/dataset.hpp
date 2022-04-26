@@ -469,18 +469,38 @@ namespace libtempo {
   template<Float F, Label L>
   using DTS = Dataset<L, TSeries<F, L>>;
 
-  /// Helper for Dataset of univariate time series: Get standard deviation
+  /// Helper for a DTS (Dataset of Time Series), computing statistics per dimension
+  template<Float F, Label L>
+  struct DTS_Stats {
+    arma::Col<F> _min;
+    arma::Col<F> _max;
+    arma::Col<F> _mean;
+    arma::Col<F> _stddev;
+
+    DTS_Stats(const DTS<F,L>& dts, const IndexSet& is) {
+
+      arma::running_stat_vec<arma::Col<F>> stat;
+      for(const auto i: is){
+        const TSeries<F,L>& s = dts[i];
+        const arma::Mat<F> mat = s.data();
+        for(size_t c=0; c<mat.n_cols; ++c){
+          stat(mat.col(c));
+        }
+      }
+
+      _min = stat.min();
+      _max = stat.max();
+      _mean = stat.mean();
+      _stddev = stat.stddev(0);
+    }
+
+  };
+
+  /// Helper for univariate DTS
   template<Float F, Label L>
   F stddev(const DTS<F, L>& dts, const IndexSet& is) {
-    utils::StddevWelford s;
-    for (auto i:is) {
-      const auto& ts = dts[i];
-      assert(ts.nvar() == 1);
-      for (size_t j{0}; j<ts.length(); ++j) {
-        s.update(ts[j]);
-      }
-    }
-    return s.get_stddev_p();
+    DTS_Stats<F,L> stat(dts, is);
+    return stat._stddev[0];
   }
 
 }

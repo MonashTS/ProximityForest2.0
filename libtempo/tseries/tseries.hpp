@@ -20,8 +20,6 @@ namespace libtempo {
 
   template<Float F, Label L>
   class TSeries {
-    using MAT = arma::Mat<F>;
-
     /// Missing data in the time series? We use a floating point type, so should be represented by "nan"
     bool _missing{false};
 
@@ -35,14 +33,21 @@ namespace libtempo {
     F const *_rawdata{nullptr};
 
     /// Representation of the matrix - by default, 1 line (univariate), 0 cols (empty)
-    MAT _matrix{1, 0};
+    arma::Mat<F> _matrix{1, 0};
+
+    // --- Statistics
+    arma::Col<F> _min;        /// Min value per dimension
+    arma::Col<F> _max;        /// Max value per dimension
+    arma::Col<F> _mean;       /// Mean value per dimension
+    arma::Col<F> _median;     /// Median value per dimension
+    arma::Col<F> _stddev;     /// Standard deviation per dimension
 
     /// Private "moving-in" constructor
     TSeries(
       // Column major data
       lu::Capsule&& c,
       F const *p,
-      MAT&& m,
+      arma::Mat<F>&& m,
       // Other
       std::optional<L> olabel,
       bool has_missing
@@ -51,7 +56,18 @@ namespace libtempo {
       _olabel(olabel),
       _capsule(std::move(c)),
       _rawdata(p),
-      _matrix(std::move(m)) {}
+      _matrix(std::move(m)) {
+
+      // Statistics (matrix, 1==along the row)
+      // Doing the statistics along the rows restul in a column vector, with statistics per dimension.
+      arma::Col<F> minv = arma::min(_matrix, 1);
+      arma::Col<F> maxv = arma::max(_matrix, 1);
+      arma::Col<F> mean = arma::mean(_matrix, 1);
+      arma::Col<F> median = arma::median(_matrix, 1);
+      // Note:  Second argument is norm_type = 1: performs normalisation using N (population instead of sample)
+      //        Third argument means "along the row"
+      arma::Col<F> stddev = arma::stddev(_matrix, 1, 1);
+    }
 
   public:
 
@@ -59,7 +75,7 @@ namespace libtempo {
     // Construction
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    /** Default constructor: create an univaraite empty time series */
+    /** Default constructor: create an univariate empty time series */
     TSeries() = default;
 
     /** Default move constructor */
@@ -95,7 +111,7 @@ namespace libtempo {
       // This transposition **will** change the underlying vector, which is fine.
       F *rawptr = lu::get_capsule_ptr<vector<F>>(capsule)->data();
       // Invert line/column here: we get the "right" matrix after transposition
-      MAT matrix(rawptr, nb_cols, nb_lines,
+      arma::Mat<F> matrix(rawptr, nb_cols, nb_lines,
                  false,   // copy_aux_mem = false: use the auxiliary memory (i.e. no copying)
                  true     // struct = true: matrix bounds to the auxiliary memory for its lifetime; can't be resized
       );
@@ -159,9 +175,27 @@ namespace libtempo {
     [[nodiscard]] inline const F* rawdata() const { return _rawdata; }
 
     /// Matrix access (li, co)
-    [[nodiscard]] inline const MAT& data() const { return _matrix; }
+    [[nodiscard]] inline const arma::Mat<F>& data() const { return _matrix; }
 
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Statistic access
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// Minimum value per dimension
+    [[nodiscard]] inline const arma::Col<F>& min() const {return _min; };
+
+    /// Maximum value per dimension
+    [[nodiscard]] inline const arma::Col<F>& max() const {return _max; };
+
+    /// Mean value per dimension
+    [[nodiscard]] inline const arma::Col<F>& mean() const {return _mean; };
+
+    /// Median value per dimension
+    [[nodiscard]] inline const arma::Col<F>& median() const {return _median; };
+
+    /// Standard deviation per dimension
+    [[nodiscard]] inline const arma::Col<F>& stddev() const {return _stddev; };
 
   }; // End of class TSeries
 

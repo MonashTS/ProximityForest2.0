@@ -64,9 +64,9 @@ namespace libtempo {
       arma::Col<F> maxv = arma::max(_matrix, 1);
       arma::Col<F> mean = arma::mean(_matrix, 1);
       arma::Col<F> median = arma::median(_matrix, 1);
-      // Note:  Second argument is norm_type = 1: performs normalisation using N (population instead of sample)
+      // Note:  Second argument is norm_type = 0: performs normalisation using N-1 (signal sampled in the "population")
       //        Third argument means "along the row"
-      arma::Col<F> stddev = arma::stddev(_matrix, 1, 1);
+      arma::Col<F> stddev = arma::stddev(_matrix, 0, 1);
     }
 
   public:

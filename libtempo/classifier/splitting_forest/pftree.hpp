@@ -27,12 +27,36 @@ namespace libtempo::classifier::pf {
     struct InnerNode {
       InnerNodeSplitter splitter;
       Branches branches;
+      std::vector<arma::Col<size_t>> cardinalities;
     };
 
     /** Leaf Node xor Inner Node */
     std::variant<LeafSplitter, InnerNode> node;
 
   private:
+
+    static void predict_cardinality(const PFTree& pt,
+                                TestState& state,
+                                const TestData& data,
+                                size_t query_idx,
+                                std::vector<arma::Col<size_t>>& out) {
+      switch (pt.node.index()) {
+      case 0: {
+        const LeafSplitter& node = std::get<0>(pt.node);
+        out.push_back(node->predict_cardinality(state, data, query_idx));
+        break;
+      }
+      case 1: {
+        const InnerNode& n = std::get<1>(pt.node);
+        size_t branch_idx = n.splitter->get_branch_index(state, data, query_idx);
+        out.push_back(n.cardinalities[branch_idx]);
+        const auto& sub = n.branches.at(branch_idx);    // Use at because it is 'const', when [ ] is not
+        predict_cardinality(*sub, state, data, query_idx, out);
+        break;
+      }
+      default: utils::should_not_happen();
+      }
+    }
 
     /** Main stateless classification function.
      * Given a PFTree node 'pt', recursively call the splitters/follow the branches until reaching a leaf node.
@@ -68,6 +92,14 @@ namespace libtempo::classifier::pf {
     [[nodiscard]]
     std::tuple<double, std::vector<double>> predict_proba(TestState& state, const TestData& data, size_t index) const {
       return predict_proba(*this, state, data, index);
+    }
+
+    [[nodiscard]]
+    std::vector<arma::Col<size_t>>
+    predict_cardinality( TestState& state, const TestData& data, size_t query_index) const {
+      std::vector<arma::Col<size_t>> out;
+      predict_cardinality(*this, state, data, query_index, out);
+      return out;
     }
 
   }; // End of PTree
@@ -146,11 +178,22 @@ namespace libtempo::classifier::pf {
         const size_t nbbranches = inner_node.branch_splits.size();
         typename PFTree_t::Branches subbranches;
         subbranches.reserve(nbbranches);
+        // Also build the cardinalities
+        std::vector<arma::Col<size_t>> cardinalities;
+        cardinalities.reserve(nbbranches);
+        // We need the label to index mapping to build the by class cardinalities
+        const std::map<L, size_t>& label_to_index = data.get_header().label_to_index();
+        // Building loop
         for (size_t idx = 0; idx<nbbranches; ++idx) {
           // Clone state, push bcm
           bcmvec.template emplace_back(std::move(inner_node.branch_splits[idx]));
+          // Cardinalities
+          const auto& bcm = bcmvec.back();
+          arma::Col<size_t> card(label_to_index.size(), arma::fill::zeros);
+          for(const auto& [label, vec]: bcm){ card[label_to_index.at(label)] = vec.size(); }
+          cardinalities.push_back(std::move(card));
+          // For skate and train sub tree
           TrainState sub_state = state.branch_fork(idx);
-          // Sub branch
           subbranches.push_back(train(sub_state, data, bcmvec));
           // Merge state, pop bcm
           state.branch_merge(std::move(sub_state));
@@ -161,7 +204,8 @@ namespace libtempo::classifier::pf {
           new PFTree_t{
             .node = typename PFTree_t::InnerNode{
               .splitter = std::move(inner_node.splitter),
-              .branches = std::move(subbranches)
+              .branches = std::move(subbranches),
+              .cardinalities = std::move(cardinalities)
             }
           }
         );
@@ -205,12 +249,23 @@ namespace libtempo::classifier::pf {
       // Multithreading control
       std::mutex mutex;
 
+      /*
       auto test_task = [&](size_t tree_index) {
         auto [weight, proba] = forest[tree_index]->predict_proba(state, data, instance_index);
         { // Accumulate weighted probabilities
           std::lock_guard lock(mutex);
           for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
           total_weight += weight;
+        }
+      };
+       */
+
+      auto test_task = [&](size_t tree_index) {
+        std::vector<arma::Col<size_t>> out = forest[tree_index]->predict_cardinality(state, data, instance_index);
+        { // Accumulate weighted probabilities
+          std::lock_guard lock(mutex);
+          for (size_t j = 0; j<nb_classes; ++j) { result[j] += out.back()[j]; }
+          total_weight += arma::sum(out.back());
         }
       };
 

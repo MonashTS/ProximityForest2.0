@@ -22,21 +22,20 @@ namespace libtempo::classifier::pf {
   // --- Leaf
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /** Test Time Interface: trained leaf node - classifier */
+  /// Test Time Interface: trained leaf node - classifier
   template<Label L, typename TestState, typename TestData>
   struct IPF_LeafSplitter {
 
-    /** Predict the probability of a classes at the leaf.
+    /** Give the class cardinality per class at the leaf.
      *  Order must respect the 'label_to_index' order from DatasetHeader.
-     *  The 1st component of the tuple is an associated weight used when ensembling; Set it to 1.0 to ignore its effect.
      */
-    virtual std::tuple<double, std::vector<double>>
-    predict_proba(TestState& state, const TestData& data, size_t test_index) const = 0;
+     virtual arma::Col<size_t>
+     predict_cardinality(TestState& state, const TestData& data, size_t test_index) const = 0;
 
     virtual ~IPF_LeafSplitter() = default;
   };
 
-  /** Train time result type when generating a leaf */
+  /// Train time result type when generating a leaf
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct ResLeaf {
 
@@ -65,7 +64,7 @@ namespace libtempo::classifier::pf {
   // --- Internal node
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /** Test Time Interface: trained internal node - split between branches */
+  /// Test Time Interface: trained internal node - split between branches
   template<Label L, typename TestState, typename TestData>
   struct IPF_NodeSplitter {
 
@@ -75,7 +74,7 @@ namespace libtempo::classifier::pf {
     virtual ~IPF_NodeSplitter() = default;
   };
 
-  /** Result type when generating an internal node */
+  /// Result type when generating an internal node
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct ResNode {
 
@@ -94,12 +93,12 @@ namespace libtempo::classifier::pf {
 
   };
 
-  /** Train time interface: a node generator. */
+  /// Train time interface: a node generator.
   template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct IPF_NodeGenerator {
     using Result = ResNode<L, TrainState, TrainData, TestState, TestData>;
 
-    /** Generate a new splitter from a training state and the ByClassMap at the node. */
+    /// Generate a new splitter from a training state and the ByClassMap at the node.
     virtual Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcm) const = 0;
 
     virtual ~IPF_NodeGenerator() = default;
@@ -138,7 +137,7 @@ namespace libtempo::classifier::pf {
   };
    */
 
-  /** Interface for both the train and the test state */
+  /// Interface for both the train and the test state
   template<Label L, typename Derived>
   struct IState {
 
@@ -157,10 +156,9 @@ namespace libtempo::classifier::pf {
     virtual ~IState() = default;
   };
 
-  /** Helper for state components.
-   *  We do not differentiate between branch and forest levels.
-   *  Do not use when dealing with "resources", e.g. a random number generator with internal state.
-   */
+  ///  Helper for state components.
+  ///  We do not differentiate between branch and forest levels.
+  ///  Do not use when dealing with "resources", e.g. a random number generator with internal state.
   template<Label L, typename DerivedComp>
   struct IStateComp {
 

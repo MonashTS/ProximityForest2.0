@@ -503,4 +503,12 @@ namespace libtempo {
     return stat._stddev[0];
   }
 
+  /// Helper providing the by class cardinality in Col vector
+  template<Label L>
+  arma::Col<size_t> get_class_cardinalities(const DatasetHeader<L>& header, const ByClassMap<L>& bcm){
+    const auto& label_to_index = header.label_to_index();
+    arma::Col<size_t> result(label_to_index.size(), arma::fill::zeros);
+    for(const auto&[l,v]: bcm){ result[label_to_index.at(l)] = v.size(); }
+    return result;
+  }
 }

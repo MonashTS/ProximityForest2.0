@@ -150,17 +150,11 @@ int main(int argc, char **argv) {
   size_t correct = 0;
 
   for (size_t i = 0; i<test_top; ++i) {
-    auto[weight, proba] = classifier.predict_proba(i, nbthread);
+    arma::Col<double> proba = classifier.predict_proba(i, nbthread);
     size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
     std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
     std::string true_l = test_dataset.header().labels()[i].value();
     if (predicted_l==true_l) { correct++; }
-    //std::cout << "Test instance " << i << " Weight: " << weight << " Proba:";
-    //for (const auto p : proba) { std::cout << " " << p; }
-    //std::cout << std::endl;
-    //std::cout << "  Predicted index = " << predicted_idx;
-    //std::cout << "  Predicted class = '" << predicted_l << "'";
-    //std::cout << "  True class = '" << true_l << "'" << std::endl;
   }
 
   std::cout << "Result with " << nbt << " trees:" << std::endl;

@@ -163,9 +163,14 @@ namespace libtempo::classifier::pf {
 
       /// Classifier interface
       [[nodiscard]]
-      std::tuple<double, std::vector<double>>
+      arma::Col<double>
       predict_proba(size_t index, size_t nbthread) {
-        return forest->predict_proba(test_state, test_data, index, nbthread);
+        // Get cardinalities as double
+        arma::Col<double> cards =
+          arma::conv_to<arma::Col<double>>::from(forest->predict_cardinality(test_state, test_data, index, nbthread));
+        // Sum and return as proba
+        double sum = arma::sum(cards);
+        return cards/sum;
       }
 
     };
@@ -234,10 +239,10 @@ namespace libtempo::classifier::pf {
     /// Random fraction of the dataset standard deviation, within [stddev/5, stddev[
     inline static const auto frac_stddev =
       [](TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec, const std::string& tn) -> double {
-      const auto& train_dataset = data.get_train_dataset(tn);
-      auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
-      return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
-    };
+        const auto& train_dataset = data.get_train_dataset(tn);
+        auto stddev_ = stddev(train_dataset, IndexSet(bcmvec.back()));
+        return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
+      };
 
     /// List of MSM costs
     inline static const auto msm_cost = [](TrainState& state) {
@@ -338,8 +343,8 @@ namespace libtempo::classifier::pf {
         ), nbc
       );
       // mk trainer
-      return std::make_shared<pf::PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>>(sgleaf_purenode
-                                                                                                , std::move(chooser));
+      return std::make_shared<pf::PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>>(sgleaf_purenode,
+                                                                                                std::move(chooser));
     }
 
     size_t _nbtree;
@@ -379,10 +384,9 @@ namespace libtempo::classifier::pf {
       // Build ByClassMap vector
       auto train_dataset = train_dataset_shared_map->at("default");
       auto [train_bcm, train_noclass] = train_dataset.header().get_BCM();
-      std::vector<ByClassMap<L>> train_bcmvec{train_bcm};
 
       // training...
-      auto [trained_states, trained_forest] = forest_trainer.train(train_state, train_data, train_bcmvec, nbthreads);
+      auto [trained_states, trained_forest] = forest_trainer.train(train_state, train_data, train_bcm, nbthreads);
 
       const auto total_train_delta = utils::now() - total_train_start;
       std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;

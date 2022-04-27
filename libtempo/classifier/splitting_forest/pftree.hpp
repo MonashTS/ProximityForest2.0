@@ -178,19 +178,17 @@ namespace libtempo::classifier::pf {
         const size_t nbbranches = inner_node.branch_splits.size();
         typename PFTree_t::Branches subbranches;
         subbranches.reserve(nbbranches);
-        // Also build the cardinalities
+        // Also build the cardinalities -- requires access to the header
         std::vector<arma::Col<size_t>> cardinalities;
         cardinalities.reserve(nbbranches);
-        // We need the label to index mapping to build the by class cardinalities
-        const std::map<L, size_t>& label_to_index = data.get_header().label_to_index();
+        const auto& header = data.get_header();
         // Building loop
         for (size_t idx = 0; idx<nbbranches; ++idx) {
           // Clone state, push bcm
           bcmvec.template emplace_back(std::move(inner_node.branch_splits[idx]));
           // Cardinalities
           const auto& bcm = bcmvec.back();
-          arma::Col<size_t> card(label_to_index.size(), arma::fill::zeros);
-          for(const auto& [label, vec]: bcm){ card[label_to_index.at(label)] = vec.size(); }
+          arma::Col<size_t> card = get_class_cardinalities(header, bcm);
           cardinalities.push_back(std::move(card));
           // For skate and train sub tree
           TrainState sub_state = state.branch_fork(idx);
@@ -199,7 +197,6 @@ namespace libtempo::classifier::pf {
           state.branch_merge(std::move(sub_state));
           bcmvec.pop_back();
         }
-        // Now that we have all the subbranches, build the current node
         ret = std::unique_ptr<PFTree_t>(
           new PFTree_t{
             .node = typename PFTree_t::InnerNode{
@@ -228,19 +225,18 @@ namespace libtempo::classifier::pf {
     using TreeVec = std::vector<std::unique_ptr<PFTree<L, TestState, TestData>>>;
 
     TreeVec forest;
-    size_t nb_classes;
+    arma::Col<size_t> train_class_cardinalities;
 
-    PForest(TreeVec&& forest, size_t nb_classes) :
-      forest(std::move(forest)), nb_classes(nb_classes) {}
+    PForest(TreeVec&& forest, arma::Col<size_t> cardinaliaties) :
+      forest(std::move(forest)), train_class_cardinalities(std::move(cardinaliaties)){}
 
     [[nodiscard]]
-    std::tuple<double, std::vector<double>>
-    predict_proba(TestState& state, const TestData& data, size_t instance_index, size_t nbthread) const {
+    arma::Col<size_t>
+    predict_cardinality(TestState& state, const TestData& data, size_t instance_index, size_t nbthread) const {
       const size_t nbtree = forest.size();
 
       // Result variables
-      std::vector<double> result(nb_classes);
-      double total_weight = 0;
+      arma::Col<size_t> result(train_class_cardinalities.size());
 
       // State vector
       std::vector<std::unique_ptr<TestState>> states_vec;
@@ -249,23 +245,11 @@ namespace libtempo::classifier::pf {
       // Multithreading control
       std::mutex mutex;
 
-      /*
-      auto test_task = [&](size_t tree_index) {
-        auto [weight, proba] = forest[tree_index]->predict_proba(state, data, instance_index);
-        { // Accumulate weighted probabilities
-          std::lock_guard lock(mutex);
-          for (size_t j = 0; j<nb_classes; ++j) { result[j] += weight*proba[j]; }
-          total_weight += weight;
-        }
-      };
-       */
-
       auto test_task = [&](size_t tree_index) {
         std::vector<arma::Col<size_t>> out = forest[tree_index]->predict_cardinality(state, data, instance_index);
         { // Accumulate weighted probabilities
           std::lock_guard lock(mutex);
-          for (size_t j = 0; j<nb_classes; ++j) { result[j] += out.back()[j]; }
-          total_weight += arma::sum(out.back());
+          result += out.back();
         }
       };
 
@@ -278,10 +262,7 @@ namespace libtempo::classifier::pf {
 
       p.execute(nbthread);
 
-      // Final divisions
-      for (size_t j = 0; j<nb_classes; ++j) { result[j] /= total_weight; }
-
-      return {total_weight, result};
+      return result;
     }
   };
 
@@ -303,9 +284,14 @@ namespace libtempo::classifier::pf {
     std::tuple<
       std::vector<std::unique_ptr<TrainState>>,
       std::shared_ptr<PForest<L, TestState, TestData>>
-    > train(TrainState& state, const TrainData& data, BCMVec<L> bcmvec, size_t nbthread) {
+    > train(TrainState& state, const TrainData& data, ByClassMap<L> bcm, size_t nbthread) {
 
       std::mutex mutex;
+
+      BCMVec<L> bcmvec{bcm};
+      const auto& header = data.get_header();
+      arma::Col<size_t> cardinalities = get_class_cardinalities(header, bcm);
+
       typename PForest<L, TestState, TestData>::TreeVec forest;
       forest.reserve(nbtrees);
 
@@ -342,11 +328,10 @@ namespace libtempo::classifier::pf {
       }
 
       p.execute(nbthread);
-      size_t nb_classes = data.get_header().nb_labels();
 
       return {
         std::move(states_vec),
-        std::make_shared<PForest<L, TestState, TestData>>(std::move(forest), nb_classes)
+        std::make_shared<PForest<L, TestState, TestData>>(std::move(forest), cardinalities)
       };
 
     }

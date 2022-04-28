@@ -1,6 +1,6 @@
 #pragma once
 
-#include <libtempo/utils/capsule.hpp>
+#include <libtempo/utils/utils.hpp>
 #include <libtempo/concepts.hpp>
 
 #include <armadillo>

@@ -2,11 +2,13 @@
 
 #include "../concepts.hpp"
 
+#include <any>
 #include <cassert>
 #include <chrono>
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <queue>
 #include <sstream>
@@ -135,6 +137,26 @@ namespace libtempo::utils {
 
 #define initBlockStatic initBlock_detail::tag{} + []() -> decltype(auto)
 
+
+  // --- --- --- --- --- ---
+  // --- Capsule
+  // --- --- --- --- --- ---
+
+  /// Capsule
+  using Capsule = std::shared_ptr<std::any>;
+
+  /// Capsule builder helper
+  template<typename T, typename... Args>
+  inline Capsule make_capsule(Args&& ... args) {
+    return std::make_shared<std::any>(std::make_any<T>(args...));
+  }
+
+  /// Capsule pointer accessor
+  template<typename T>
+  inline T *get_capsule_ptr(const std::shared_ptr<std::any>& capsule) {
+    return std::any_cast<T>(capsule.get());
+  }
+
 }
 
 // --- --- --- --- --- ---
@@ -220,3 +242,22 @@ namespace libtempo::utils {
   };
 
 } // end of namespace libtempo::utils
+
+
+// --- --- --- --- --- ---
+// --- Progress Monitor
+// --- --- --- --- --- ---
+
+namespace libtempo::utils {
+
+  struct ProgressMonitor {
+
+    size_t total;
+
+    explicit ProgressMonitor(size_t max);
+
+    /// Print progress
+    void print_progress(std::ostream& out, size_t nbdone);
+  };
+
+}

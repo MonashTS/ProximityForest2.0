@@ -303,9 +303,9 @@ namespace libtempo::classifier::pf {
           std::lock_guard lock(mutex);
           std::cout << "Start tree " << tree_index << std::endl;
         }
-        auto start = libtempo::utils::now();
+        auto start = libtempo::utils::timing::now();
         auto tree = this->tree_trainer->train(*states_vec[tree_index], data, bcmvec);
-        auto delta = libtempo::utils::now() - start;
+        auto delta = libtempo::utils::timing::now() - start;
         {
           // Lock protecting the forest and out printing
           std::lock_guard lock(mutex);
@@ -314,7 +314,7 @@ namespace libtempo::classifier::pf {
           std::cout << std::setfill('0');
           std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
           std::cout.fill(cf);
-          std::cout << " timing: " << libtempo::utils::as_string(delta) << std::endl;
+          std::cout << " timing: " << libtempo::utils::timing::as_string(delta) << std::endl;
           // --- Add in the forest
           forest.push_back(std::move(tree));
         }

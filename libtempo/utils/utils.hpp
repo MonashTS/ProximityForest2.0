@@ -1,25 +1,26 @@
 #pragma once
 
-#include <stdexcept>
-#include <limits>
-#include <cassert>
-#include <cmath>
-
 #include "../concepts.hpp"
-#include "partasks.hpp"
-#include "progressmonitor.hpp"
-#include "stats.hpp"
-#include "timing.hpp"
+
+#include <cassert>
+#include <chrono>
+#include <cmath>
+#include <functional>
+#include <limits>
+#include <optional>
+#include <queue>
+#include <sstream>
+#include <stdexcept>
+#include <thread>
+#include <vector>
 
 namespace libtempo::utils {
 
-  /** Pick a random item from a subscriptable type, from [0] to [size-1]*/
+  /// Pick a random item from a subscriptable type, from [0] to [size-1]
   template<typename PRNG>
-  [[nodiscard]] inline
-  const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng){
-    if(size==1){
-      return collection[0];
-    } else if(size>1){
+  inline const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng) {
+    if (size==1) { return collection[0]; }
+    else if (size>1) {
       auto distribution = std::uniform_int_distribution<size_t>(0, size - 1);
       return collection[distribution(prng)];
     } else {
@@ -27,9 +28,9 @@ namespace libtempo::utils {
     }
   }
 
-  /** Pick a random item from a vector. */
-  template<typename T, typename PRNG>
-  [[nodiscard]] const auto& pick_one(const std::vector<T>& v, PRNG& prng) {
+  /// Pick a random item for a vector like type.
+  template<typename VecLike, typename PRNG>
+  inline const auto& pick_one(const VecLike& v, PRNG& prng) {
     return pick_one(v, v.size(), prng);
   }
 
@@ -60,16 +61,16 @@ namespace libtempo::utils {
 
 
   // --- --- --- --- --- ---
-  // --- Tooling
+  // --- Simple Tooling
   // --- --- --- --- --- ---
 
   /// Minimum of 3 values using std::min<T>
   template<typename T>
-  [[nodiscard]] inline T min(T a, T b, T c) { return std::min<T>(a, std::min<T>(b, c)); }
+  inline T min(T a, T b, T c) { return std::min<T>(a, std::min<T>(b, c)); }
 
   /// Maximum of 3 values using std::min<T>
   template<typename T>
-  [[nodiscard]] inline T max(T a, T b, T c) { return std::max<T>(a, std::max<T>(b, c)); }
+  inline T max(T a, T b, T c) { return std::max<T>(a, std::max<T>(b, c)); }
 
 
 
@@ -78,7 +79,7 @@ namespace libtempo::utils {
   // --- --- --- --- --- ---
 
   /// Throw an exception "should not happen". Used as default case in switches.
-  [[noreturn]] void inline should_not_happen() { throw std::logic_error("Should not happen"); }
+  void inline should_not_happen() { throw std::logic_error("Should not happen"); }
 
 
 
@@ -87,30 +88,27 @@ namespace libtempo::utils {
   // --- --- --- --- --- ---
 
 
-  /** Unsigned arithmetic:
-   * Given an 'index' and a 'window', get the start index corresponding to std::max(0, index-window) */
-  [[nodiscard]] inline size_t cap_start_index_to_window(size_t index, size_t window) {
+  /// Unsigned arithmetic: Given an 'index' and a 'window',
+  /// get the start index corresponding to std::max(0, index-window)
+  inline size_t cap_start_index_to_window(size_t index, size_t window) {
     if (index>window) { return index - window; } else { return 0; }
   }
 
-  /** Unsigned arithmetic:
-   * Given an 'index', a 'window' and an 'end', get the stop index corresponding to std::min(end, index+window+1).
-   * The expression index+window+1 is illegal for any index>0 as window could be MAX-1
-   * */
-  [[nodiscard]] inline size_t
-  cap_stop_index_to_window_or_end(size_t index, size_t window, size_t end) {
+  /// Unsigned arithmetic:
+  ///  Given an 'index', a 'window' and an 'end', get the stop index corresponding to std::min(end, index+window+1).
+  ///  The expression index+window+1 is illegal for any index>0 as window could be MAX-1
+  inline size_t cap_stop_index_to_window_or_end(size_t index, size_t window, size_t end) {
     // end-window is valid when window<end
     if (window<end&&index + 1<end - window) { return index + window + 1; } else { return end; }
   }
 
-  /** Absolute value for any comparable and subtractive type, without overflowing risk for unsigned types.
-   *  Also work for signed type. */
-  template<typename T>
-  [[nodiscard]] inline T absdiff(T a, T b) { return (a>b) ? a - b : b - a; }
+  /// Absolute value for any comparable and subtractive type, without overflowing risk for unsigned types.
+  template<std::unsigned_integral T>
+  inline T absdiff(T a, T b) { return (a>b) ? a - b : b - a; }
 
-  /** From unsigned to signed for integral types*/
+  /// From unsigned to signed for integral types
   template<typename UIType>
-  [[nodiscard]] inline typename std::make_signed_t<UIType> to_signed(UIType ui) {
+  inline typename std::make_signed_t<UIType> to_signed(UIType ui) {
     static_assert(std::is_unsigned_v<UIType>, "Template parameter must be an unsigned type");
     using SIType = std::make_signed_t<UIType>;
     if (ui>(UIType)(std::numeric_limits<SIType>::max())) {
@@ -136,5 +134,89 @@ namespace libtempo::utils {
 #define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
 
 #define initBlockStatic initBlock_detail::tag{} + []() -> decltype(auto)
+
+}
+
+// --- --- --- --- --- ---
+// --- Timing
+// --- --- --- --- --- ---
+
+namespace libtempo::utils::timing {
+
+  using myclock_t = std::chrono::steady_clock;
+  using duration_t = myclock_t::duration;
+  using time_point_t = myclock_t::time_point;
+
+  /** Create a time point for "now" */
+  time_point_t now();
+
+  /** Print a duration in a human readable form (from nanoseconds to hours) in an output stream. */
+  void printDuration(std::ostream& out, const duration_t& elapsed);
+
+  /** Shortcut to print in a string */
+  std::string as_string(const duration_t& elapsed);
+
+  /** Shortcut for the above function, converting two time points into a duration. */
+  void printExecutionTime(std::ostream& out, time_point_t start_time, time_point_t end_time);
+
+  /** Shortcut to print in a string */
+  std::string as_string(time_point_t start_time, time_point_t end_time);
+
+} // End of namespace libtempo::utils::timing
+
+
+// --- --- --- --- --- ---
+// --- Parallel tasks
+// --- --- --- --- --- ---
+
+namespace libtempo::utils {
+
+  /// Helper class to execute several tasks in parallel.
+  /// Tasks must be prepared (with push_task) before being executed.
+  /// The 'execute' method waits for all task to be completed.
+  /// If the number of thread required is <= 1, the current thread is used.
+  /// Else, the requested number of threads are spawned, and the current thread waits for their completion.
+  class ParTasks {
+
+  public:
+    using task_t = std::function<void()>;
+    using taskgen_t = std::function<std::optional<task_t>()>;
+
+  private:
+    std::mutex mtx;
+    std::vector<std::thread> threads;
+    std::queue<task_t> tasklist;
+
+  public:
+
+    ParTasks() = default;
+
+    /// Non thread safe! Add all the task before calling "execute"
+    void push_task(task_t func);
+
+    /// Template version
+    template<class F, class... Args>
+    void push_task(F&& f, Args&& ... args) {
+      tasklist.emplace(std::move(std::bind(std::forward<F>(f), std::forward<Args...>(args...))));
+    }
+
+    /// Blocking call
+    void execute(int nbthreads);
+
+    /// Blocking call
+    void execute(int nbthreads, int nbtask);
+
+    /// Blocking call using a task generator
+    void execute(int nbthread, taskgen_t tgenerator);
+
+  private:
+
+    void run_thread();
+
+    void run_thread(size_t nbtask);
+
+    void run_thread_generator(taskgen_t& tgenerator);
+
+  };
 
 } // end of namespace libtempo::utils

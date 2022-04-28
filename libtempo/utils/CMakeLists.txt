@@ -2,11 +2,12 @@
 # Create a libtempo::utils component
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 
-add_library(libtempo-utils INTERFACE
+add_library(libtempo-utils SHARED
         capsule.hpp
         jsonvalue.hpp
         uncopyable.hpp
         utils.hpp
+        utils.cpp
         stats.hpp
         partasks.hpp
         progressmonitor.hpp

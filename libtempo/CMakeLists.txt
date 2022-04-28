@@ -30,7 +30,7 @@ target_link_libraries(libtempo INTERFACE libtempo::distance)
 target_link_libraries(libtempo INTERFACE libtempo::transform)
 #target_link_libraries(libtempo INTERFACE libtempo::tseries)
 target_link_libraries(libtempo PUBLIC libtempo::reader)
-target_link_libraries(libtempo INTERFACE libtempo::utils)
+target_link_libraries(libtempo PUBLIC libtempo::utils)
 
 
 

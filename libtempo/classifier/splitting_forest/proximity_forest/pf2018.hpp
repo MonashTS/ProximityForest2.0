@@ -366,7 +366,7 @@ namespace libtempo::classifier::pf {
       size_t nbthreads = 1,
       bool do_instrumentation = true
     ) noexcept(false) {
-      const auto total_train_start = utils::now();
+      const auto total_train_start = utils::timing::now();
 
       // Arg check
       if (!train_dataset_shared_map->contains("default")) {
@@ -388,8 +388,8 @@ namespace libtempo::classifier::pf {
       // training...
       auto [trained_states, trained_forest] = forest_trainer.train(train_state, train_data, train_bcm, nbthreads);
 
-      const auto total_train_delta = utils::now() - total_train_start;
-      std::cout << "Total train time = " << utils::as_string(total_train_delta) << std::endl;
+      const auto total_train_delta = utils::timing::now() - total_train_start;
+      std::cout << "Total train time = " << utils::timing::as_string(total_train_delta) << std::endl;
 
       return Trained(std::move(train_dataset_shared_map), std::move(trained_states), std::move(trained_forest));
     }

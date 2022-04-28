@@ -68,26 +68,26 @@ int main(int argc, char **argv) {
   fs::path adiac_train = dirpath/(name + "_TRAIN.ts");
   fs::path adiac_test = dirpath/(name + "_TEST.ts");
 
-  const auto total_load_start = utils::now();
+  const auto total_load_start = utils::timing::now();
   auto train_dataset = load_dataset(adiac_train);
   auto test_dataset = load_dataset(adiac_test);
-  const auto total_load_delta = utils::now() - total_load_start;
-  std::cout << "Total load time = " << utils::as_string(total_load_delta) << std::endl;
+  const auto total_load_delta = utils::timing::now() - total_load_start;
+  std::cout << "Total load time = " << utils::timing::as_string(total_load_delta) << std::endl;
 
-  const auto total_derive_start = utils::now();
+  const auto total_derive_start = utils::timing::now();
   auto train_derives = transform::derive(train_dataset, 2);
   auto train_d1 = std::move(train_derives[0]);
   auto train_d2 = std::move(train_derives[1]);
   auto test_derives = transform::derive(test_dataset, 2);
   auto test_d1 = std::move(test_derives[0]);
   auto test_d2 = std::move(test_derives[1]);
-  const auto total_derive_delta = utils::now() - total_derive_start;
+  const auto total_derive_delta = utils::timing::now() - total_derive_start;
 
   cout << train_d1.name() << endl;
   cout << train_d2.name() << endl;
   cout << test_d1.name() << endl;
   cout << test_d2.name() << endl;
-  std::cout << "Total derive time = " << utils::as_string(total_derive_delta) << std::endl;
+  std::cout << "Total derive time = " << utils::timing::as_string(total_derive_delta) << std::endl;
 
   // --------------------------------------------------------------------------------------------------------------
 

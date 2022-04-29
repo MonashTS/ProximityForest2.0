@@ -35,6 +35,11 @@ get_target_property(_inc armadillo INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(armadillo SYSTEM INTERFACE ${_inc})
 add_compile_definitions(armadillo INTERFACE $<$<CONFIG:RELEASE>:ARMA_NO_DEBUG>)
 
+# Json
+# Turn off library's tests
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+add_subdirectory(third_party/json-3.10.5)
+
 add_subdirectory(libtempo)
 
 

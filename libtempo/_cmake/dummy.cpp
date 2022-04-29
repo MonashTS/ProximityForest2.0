@@ -1,17 +1,12 @@
-#include <memory>
 #include <libtempo/tseries/tseries.hpp>
 #include <libtempo/reader/ts/ts.hpp>
 #include <libtempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
-#include <libtempo/tseries/dataset.hpp>
 #include <libtempo/transform/derivative.hpp>
 
-#include <cmath>
 #include <filesystem>
-#include <fstream>
-#include <memory>
-#include <utility>
 #include <vector>
 #include <iostream>
+
 
 namespace fs = std::filesystem;
 using namespace std;
@@ -52,7 +47,6 @@ int main(int argc, char **argv) {
 
   namespace pf = libtempo::classifier::pf;
   using F = double;
-  using L = std::string;
 
   // --- --- --- Reading of a time series
   if (argc!=3) {
@@ -87,16 +81,18 @@ int main(int argc, char **argv) {
   cout << train_d2.name() << endl;
   cout << test_d1.name() << endl;
   cout << test_d2.name() << endl;
-  std::cout << "Total derive time = " << utils::timing::as_string(total_derive_delta) << std::endl;
+  std::cout << "Total derive time == " << utils::timing::as_string(total_derive_delta) << std::endl;
 
   // --------------------------------------------------------------------------------------------------------------
+
+  std::cout << train_dataset.header().to_json() << std::endl;
 
 
   size_t nbt = 100;
   size_t nbc = 5;
   size_t nbthread = 8;
 
-  pf::PF2018<L> pf2018(nbt, nbc);
+  pf::PF2018 pf2018(nbt, nbc);
 
 
 
@@ -105,12 +101,12 @@ int main(int argc, char **argv) {
   std::random_device rd;
   size_t seed = rd();
 
-  auto transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
+  auto transformations = std::make_shared<classifier::pf::DatasetMap_t<F>>();
   transformations->insert({"default", train_dataset});
   transformations->insert({"d1", train_d1});
   transformations->insert({"d2", train_d2});
 
-  auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F, L>>();
+  auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<F>>();
   test_transformations->insert({"default", test_dataset});
   test_transformations->insert({"d1", test_d1});
   test_transformations->insert({"d2", test_d2});
@@ -122,7 +118,7 @@ int main(int argc, char **argv) {
   if constexpr(B) {
 
     std::vector<size_t> depths;
-    pf::DistanceSplitterState<L> distance_splitter_state(B);
+    pf::DistanceSplitterState distance_splitter_state(B);
 
     for (const auto& s : trained_forest.trained_states) {
       distance_splitter_state.merge(s->distance_splitter_state);

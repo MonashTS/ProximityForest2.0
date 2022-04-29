@@ -19,7 +19,7 @@ namespace libtempo::reader {
   public:
     using FloatType = double;
     using LabelType = std::string;
-    using TS = libtempo::TSeries<FloatType, LabelType>;
+    using TS = libtempo::TSeries<FloatType>;
 
     // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
     // Fields:
@@ -83,7 +83,7 @@ namespace libtempo::reader {
      */
     static std::variant<
       std::string,
-      Dataset<std::string, TSeries<double, std::string>>
+      Dataset<TSeries<double>>
     > read(std::istream& input);
 
   private:

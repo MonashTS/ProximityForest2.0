@@ -18,13 +18,13 @@ namespace libtempo {
     namespace lu = libtempo::utils;
   }
 
-  template<Float F, Label L>
+  template<Float F>
   class TSeries {
     /// Missing data in the time series? We use a floating point type, so should be represented by "nan"
     bool _missing{false};
 
     /// Optional label
-    std::optional<L> _olabel{};
+    std::optional<std::string> _olabel{};
 
     /// Capsule: used when we own the data
     lu::Capsule _capsule;
@@ -49,7 +49,7 @@ namespace libtempo {
       F const *p,
       arma::Mat<F>&& m,
       // Other
-      std::optional<L> olabel,
+      std::optional<std::string> olabel,
       bool has_missing
     ) :
       _missing(has_missing),
@@ -88,7 +88,7 @@ namespace libtempo {
     [[nodiscard]] static TSeries mk_rowmajor(
       std::vector<F>&& v,
       size_t nbvar,
-      std::optional<L> olabel,
+      std::optional<std::string> olabel,
       std::optional<bool> omissing
     ) {
       using namespace std;
@@ -162,7 +162,7 @@ namespace libtempo {
     [[nodiscard]] inline bool missing() const { return _missing; }
 
     /// Get the label (perform a copy)
-    [[nodiscard]] inline std::optional<L> label() const { return _olabel; }
+    [[nodiscard]] inline std::optional<std::string> label() const { return _olabel; }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Data access

@@ -5,10 +5,6 @@
 
 namespace libtempo {
 
-  /// Label: must be copyable and comparable with ==
-  template<typename L>
-  concept Label = std::copyable<L> && std::equality_comparable<L>;
-
   /// Floating point values used to represent data. For now, an alias for std::floating_point
   template<typename F>
   concept Float = std::floating_point<F>;

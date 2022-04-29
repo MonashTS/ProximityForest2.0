@@ -15,14 +15,13 @@ namespace libtempo::classifier::pf {
   /** Proximity Tree at test time
    *  Use an instance of PFTreeTrainer to obtain a trained PFTree, which can then be used to classify instances.
    *  Note: This class implements a node. A tree is represented by the root node.
-   * @tparam L         Label type
    * @tparam Stest     Test State type. Must contain the info required by the splitters.
    */
-  template<Label L, typename TestState, typename TestData>
+  template<typename TestState, typename TestData>
   struct PFTree {
-    using LeafSplitter = std::unique_ptr<IPF_LeafSplitter<L, TestState, TestData>>;
-    using InnerNodeSplitter = std::unique_ptr<IPF_NodeSplitter<L, TestState, TestData>>;
-    using Branches = std::vector<std::unique_ptr<PFTree<L, TestState, TestData>>>;
+    using LeafSplitter = std::unique_ptr<IPF_LeafSplitter<TestState, TestData>>;
+    using InnerNodeSplitter = std::unique_ptr<IPF_NodeSplitter<TestState, TestData>>;
+    using Branches = std::vector<std::unique_ptr<PFTree<TestState, TestData>>>;
 
     struct InnerNode {
       InnerNodeSplitter splitter;
@@ -36,10 +35,10 @@ namespace libtempo::classifier::pf {
   private:
 
     static void predict_cardinality(const PFTree& pt,
-                                TestState& state,
-                                const TestData& data,
-                                size_t query_idx,
-                                std::vector<arma::Col<size_t>>& out) {
+                                    TestState& state,
+                                    const TestData& data,
+                                    size_t query_idx,
+                                    std::vector<arma::Col<size_t>>& out) {
       switch (pt.node.index()) {
       case 0: {
         const LeafSplitter& node = std::get<0>(pt.node);
@@ -96,7 +95,7 @@ namespace libtempo::classifier::pf {
 
     [[nodiscard]]
     std::vector<arma::Col<size_t>>
-    predict_cardinality( TestState& state, const TestData& data, size_t query_index) const {
+    predict_cardinality(TestState& state, const TestData& data, size_t query_index) const {
       std::vector<arma::Col<size_t>> out;
       predict_cardinality(*this, state, data, query_index, out);
       return out;
@@ -106,20 +105,20 @@ namespace libtempo::classifier::pf {
 
 
   /** Train time Proximity tree */
-  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
+  template<typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct PFTreeTrainer {
 
     // Shorthand for result type
-    using Leaf = ResLeaf<L, TrainState, TrainData, TestState, TestData>;
-    using Node = ResNode<L, TrainState, TrainData, TestState, TestData>;
+    using Leaf = ResLeaf<TrainState, TrainData, TestState, TestData>;
+    using Node = ResNode<TrainState, TrainData, TestState, TestData>;
     using Result = std::variant<Leaf, Node>;
 
     // Shorthands for Lead and Node generator types
-    using LGen = IPF_LeafGenerator<L, TrainState, TrainData, TestState, TestData>;
-    using NGen = IPF_NodeGenerator<L, TrainState, TrainData, TestState, TestData>;
+    using LGen = IPF_LeafGenerator<TrainState, TrainData, TestState, TestData>;
+    using NGen = IPF_NodeGenerator<TrainState, TrainData, TestState, TestData>;
 
     // Shorthand for the final tree type
-    using PFTree_t = PFTree<L, TestState, TestData>;
+    using PFTree_t = PFTree<TestState, TestData>;
 
     std::shared_ptr<LGen> leaf_generator;
     std::shared_ptr<NGen> node_generator;
@@ -136,7 +135,7 @@ namespace libtempo::classifier::pf {
     * @param bcmvec stack of BCM from root to this node: 'bcmvec.back()' stands for the BCM at this node.
     * @return  ISplitterGenerator::Result with the splitter and the associated split of the train data
     */
-    Result generate(TrainState& state, const TrainData& data, const BCMVec<L>& bcmvec) const {
+    Result generate(TrainState& state, const TrainData& data, const BCMVec& bcmvec) const {
       std::optional<Leaf> oleaf = leaf_generator->generate(state, data, bcmvec);
       if (oleaf.has_value()) {
         return Result{std::move(oleaf.value())};
@@ -148,7 +147,7 @@ namespace libtempo::classifier::pf {
   public:
 
     /// Train a tree
-    [[nodiscard]] std::unique_ptr<PFTree_t> train(TrainState& state, const TrainData& data, BCMVec<L> bcmvec) const {
+    [[nodiscard]] std::unique_ptr<PFTree_t> train(TrainState& state, const TrainData& data, BCMVec bcmvec) const {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       const auto bcm = bcmvec.back();
@@ -220,19 +219,18 @@ namespace libtempo::classifier::pf {
 
 
   /** Proximity Forest at test time */
-  template<Label L, typename TestState, typename TestData>
+  template<typename TestState, typename TestData>
   struct PForest {
-    using TreeVec = std::vector<std::unique_ptr<PFTree<L, TestState, TestData>>>;
+    using TreeVec = std::vector<std::unique_ptr<PFTree<TestState, TestData>>>;
 
     TreeVec forest;
     arma::Col<size_t> train_class_cardinalities;
 
     PForest(TreeVec&& forest, arma::Col<size_t> cardinaliaties) :
-      forest(std::move(forest)), train_class_cardinalities(std::move(cardinaliaties)){}
+      forest(std::move(forest)), train_class_cardinalities(std::move(cardinaliaties)) {}
 
-    [[nodiscard]]
-    arma::Col<size_t>
-    predict_cardinality(TestState& state, const TestData& data, size_t instance_index, size_t nbthread) const {
+    arma::Col<size_t> predict_cardinality(TestState& state, const TestData& data, size_t instance_index,
+                                          size_t nbthread) const {
       const size_t nbtree = forest.size();
 
       // Result variables
@@ -267,14 +265,14 @@ namespace libtempo::classifier::pf {
   };
 
   /** Proximity Forest at train time */
-  template<Label L, typename TrainState, typename TrainData, typename TestState, typename TestData>
+  template<typename TrainState, typename TrainData, typename TestState, typename TestData>
   struct PForestTrainer {
 
-    std::shared_ptr<const PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer;
+    std::shared_ptr<const PFTreeTrainer<TrainState, TrainData, TestState, TestData>> tree_trainer;
     size_t nbtrees;
 
     PForestTrainer(
-      std::shared_ptr<PFTreeTrainer<L, TrainState, TrainData, TestState, TestData>> tree_trainer,
+      std::shared_ptr<PFTreeTrainer<TrainState, TrainData, TestState, TestData>> tree_trainer,
       size_t nbtrees
     ) :
       tree_trainer(std::move(tree_trainer)),
@@ -283,16 +281,16 @@ namespace libtempo::classifier::pf {
     /** Train the proximity forest */
     std::tuple<
       std::vector<std::unique_ptr<TrainState>>,
-      std::shared_ptr<PForest<L, TestState, TestData>>
-    > train(TrainState& state, const TrainData& data, ByClassMap<L> bcm, size_t nbthread) {
+      std::shared_ptr<PForest<TestState, TestData>>
+    > train(TrainState& state, const TrainData& data, ByClassMap bcm, size_t nbthread) {
 
       std::mutex mutex;
 
-      BCMVec<L> bcmvec{bcm};
+      BCMVec bcmvec{bcm};
       const auto& header = data.get_header();
       arma::Col<size_t> cardinalities = get_class_cardinalities(header, bcm);
 
-      typename PForest<L, TestState, TestData>::TreeVec forest;
+      typename PForest<TestState, TestData>::TreeVec forest;
       forest.reserve(nbtrees);
 
       std::vector<std::unique_ptr<TrainState>> states_vec;
@@ -331,7 +329,7 @@ namespace libtempo::classifier::pf {
 
       return {
         std::move(states_vec),
-        std::make_shared<PForest<L, TestState, TestData>>(std::move(forest), cardinalities)
+        std::make_shared<PForest<TestState, TestData>>(std::move(forest), cardinalities)
       };
 
     }

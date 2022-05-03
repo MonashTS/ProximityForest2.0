@@ -49,11 +49,11 @@ namespace libtempo {
       vset = std::make_shared<std::vector<size_t>>(std::move(collection));
     }
 
-    /// Create a new dataset from another dataset and a selection of indexes
-    /// @param other              Other dataset
+    /// Create a new IndexSet from another IndexSet and a selection of indexes
+    /// @param other              Other IndexSet
     /// @param indexes_in_other   Vector of indexes i, indexing in other 0 <= i < other.size().
     ///                           Must be sorted
-    inline IndexSet(const IndexSet& other, const std::vector<size_t>& indexes_in_other){
+    inline IndexSet(const IndexSet& other, const std::vector<size_t>& indexes_in_other) {
       using std::begin, std::end;
       // Test requested subset
       assert(indexes_in_other.size()>other.vset->size());
@@ -81,12 +81,14 @@ namespace libtempo {
     inline bool empty() const { return vset->empty(); }
 
     /// Random Access Iterator begin
-    inline auto begin() const {return vset->begin();}
+    inline auto begin() const { return vset->begin(); }
 
     /// Random Access Iterator end
     inline auto end() const { return vset->end(); }
-  };
 
+    /// Access to the underlying vector
+    inline const auto& vector() const { return *vset; }
+  };
 
   /// ByClassMap (BCM): a tyype gathering indexes in a dataset by class
   /// Note: if an instance does not have a label (class), it cannot be part of a BCM.
@@ -313,6 +315,9 @@ namespace libtempo {
       return get_BCM(IndexSet(_size));
     }
 
+    /// Build an indexset
+    inline IndexSet index_set() const { return IndexSet(_size); }
+
     /// Base name of the dataset
     inline const std::string& name() const { return _name; }
 
@@ -394,7 +399,8 @@ namespace libtempo {
       std::vector<D>&& data,
       std::optional<json> parameters = {} // TODO
     )
-      : _dataset_header(std::move(core)), _identifier(std::move(id)), _data(std::make_shared<std::vector<D>>(std::move(data))),
+      : _dataset_header(std::move(core)), _identifier(std::move(id)),
+        _data(std::make_shared<std::vector<D>>(std::move(data))),
         _parameters(std::move(parameters)) {
       assert((bool)_dataset_header);
       assert(_data->size()==_dataset_header->size());

@@ -4,6 +4,7 @@
 #include <libtempo/transform/derivative.hpp>
 #include <libtempo/reader/reader.hpp>
 #include <nlohmann/json.hpp>
+#include <armadillo>
 
 namespace fs = std::filesystem;
 
@@ -80,33 +81,33 @@ int main(int argc, char **argv) {
   const auto train_delta = utils::now()-train_start;
 
   // --- --- test
-  // Make transformation
-  const size_t test_seed = seed*nbc+nbt;
-  auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<double>>();
   {
-    test_transformations->insert({"default", test_dataset});
-    auto test_derives = transform::derive(test_dataset, 1);
-    test_transformations->insert({"d1", std::move(test_derives[0])});
+    // Make transformation
+    const size_t test_seed = seed*nbc + nbt;
+    auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<double>>();
+    {
+      test_transformations->insert({"default", test_dataset});
+      auto test_derives = transform::derive(test_dataset, 1);
+      test_transformations->insert({"d1", std::move(test_derives[0])});
+    }
+    // Get the classifier
+    json results;
+    auto classifier = trained_forest.get_classifier_for(test_seed, test_transformations, false);
+    const auto& test_header = test_dataset.header();
+    const size_t test_top = test_header.size();
+    const auto test_start = utils::now();
+    for (size_t i = 0; i<test_top; ++i) {
+      vector<double> proba_array = arma::conv_to<vector<double>>::from(classifier.predict_proba(i, nbthread));
+      string true_l = test_header.labels()[i].value();
+      size_t true_label_idx = test_header.label_to_index().at(true_l);
+      results.push_back({proba_array, true_label_idx});
+    }
+    const auto test_delta = utils::now() - test_start;
+    j["results"] = results;
   }
-  // Get the classifier
-  auto classifier = trained_forest.get_classifier_for(test_seed, test_transformations, false);
-  const size_t test_top = test_dataset.header().size();
-  size_t correct = 0;
-  for (size_t i = 0; i<test_top; ++i) {
-    arma::Col<double> proba = classifier.predict_proba(i, nbthread);
-    size_t predicted_idx = std::distance(proba.begin(), std::max_element(proba.begin(), proba.end()));
-    std::string predicted_l = train_dataset.header().index_to_label().at(predicted_idx);
-    std::string true_l = test_dataset.header().labels()[i].value();
-    if (predicted_l==true_l) { correct++; }
-  }
-
-  std::cout << "Result with " << nbt << " trees:" << std::endl;
-  std::cout << "  correct: " << correct << "/" << test_top << std::endl;
-  std::cout << "  accuracy: " << (double)correct/test_top << std::endl;
 
   // Output
   cout << j.dump(2) << endl;
-
 
   return 0;
 }

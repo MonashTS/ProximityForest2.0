@@ -343,13 +343,13 @@ namespace libtempo::classifier::pf {
   public:
 
     /// Build a new PF2018 classifier trainer
-    inline PF2018(size_t nbtree, size_t nbcandidate) :
+    PF2018(size_t nbtree, size_t nbcandidate) :
       _nbtree(nbtree),
       _nbcandidate(nbcandidate),
       _tree_trainer(tree_trainer(nbcandidate)) {}
 
     /// Train the classifier
-    inline Trained train(
+    Trained train(
       size_t seed,
       std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map,
       size_t nbthreads = 1,

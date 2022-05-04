@@ -4,6 +4,8 @@
 #include <libtempo/classifier/splitting_forest/ipf.hpp>
 
 #include <functional>
+#include <iostream>
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <mutex>

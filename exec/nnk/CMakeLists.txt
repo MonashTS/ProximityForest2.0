@@ -6,5 +6,5 @@ target_sources(nnk
         )
 
 
-target_link_libraries(nnk libtempo armadillo nlohmann_json::nlohmann_json)
+target_link_libraries(nnk PRIVATE libtempo armadillo jsoncpp)
 target_precompile_headers(nnk PRIVATE pch.hpp)

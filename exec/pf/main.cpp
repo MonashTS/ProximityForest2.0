@@ -1,10 +1,6 @@
 #include "pch.hpp"
 
-#include <libtempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
-#include <libtempo/transform/derivative.hpp>
-#include <libtempo/reader/reader.hpp>
-#include <nlohmann/json.hpp>
-#include <armadillo>
+#include <json/json.h>
 
 namespace fs = std::filesystem;
 
@@ -18,14 +14,13 @@ namespace fs = std::filesystem;
 int main(int argc, char **argv) {
   using namespace std;
   using namespace libtempo;
-  using json = nlohmann::json;
   using DS = DTS<double>;
 
   std::random_device rd;
 
   // ARGS
   string program_name(*argv);
-  vector<string> args(argv + 1, argv + argc);
+  vector <string> args(argv + 1, argv + argc);
 
   // Config
   fs::path UCRPATH(args[0]);
@@ -36,7 +31,7 @@ int main(int argc, char **argv) {
   size_t seed = rd();
 
   // Json record
-  json j;
+  Json::Value j;
 
   // Load UCR train and test dataset
   DS train_dataset;
@@ -56,7 +51,7 @@ int main(int argc, char **argv) {
       else { do_exit(1, {"Could not read train set '" + test_path.string() + "': " + std::get<0>(variant_test)}); }
     }
     auto delta = utils::now() - start;
-    json dataset;
+    Json::Value dataset;
     dataset["train"] = train_dataset.header().to_json();
     dataset["test"] = test_dataset.header().to_json();
     dataset["load_time_ns"] = delta.count();
@@ -78,7 +73,7 @@ int main(int argc, char **argv) {
   // actual train call.
   const auto train_start = utils::now();
   auto trained_forest = pf2018.train(seed, transformations, nbthread);
-  const auto train_delta = utils::now()-train_start;
+  const auto train_delta = utils::now() - train_start;
 
   // --- --- test
   {
@@ -91,23 +86,28 @@ int main(int argc, char **argv) {
       test_transformations->insert({"d1", std::move(test_derives[0])});
     }
     // Get the classifier
-    json results;
+    Json::Value results;
     auto classifier = trained_forest.get_classifier_for(test_seed, test_transformations, false);
     const auto& test_header = test_dataset.header();
     const size_t test_top = test_header.size();
     const auto test_start = utils::now();
     for (size_t i = 0; i<test_top; ++i) {
-      vector<double> proba_array = arma::conv_to<vector<double>>::from(classifier.predict_proba(i, nbthread));
+      vector<double> proba_array = arma::conv_to<vector<double>>
+      ::from(classifier.predict_proba(i, nbthread));
       string true_l = test_header.labels()[i].value();
       size_t true_label_idx = test_header.label_to_index().at(true_l);
-      results.push_back({proba_array, true_label_idx});
+      Json::Value j_proba = utils::to_json(proba_array);
+      Json::Value j_array;
+      j_array.append(j_proba);
+      j_array.append(true_label_idx);
+      results.append(j_array);
     }
     const auto test_delta = utils::now() - test_start;
     j["results"] = results;
   }
 
   // Output
-  cout << j.dump(2) << endl;
+  cout << j.toStyledString() << endl;
 
   return 0;
 }

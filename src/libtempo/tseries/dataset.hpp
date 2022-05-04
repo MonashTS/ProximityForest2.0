@@ -4,7 +4,7 @@
 
 #include <libtempo/utils/utils.hpp>
 
-#include <nlohmann/json.hpp>
+#include <json/json.h>
 
 #include <algorithm>
 #include <cassert>
@@ -223,8 +223,6 @@ namespace libtempo {
    * @tparam L  Type of the label
    */
   class DatasetHeader {
-  public:
-    using json = nlohmann::json;
 
   private:
 
@@ -354,11 +352,11 @@ namespace libtempo {
     inline const std::vector<std::string>& index_to_label() const { return _index_to_label; }
 
     /// Create a json representation of the header
-    inline json to_json() const {
-      json j;
+    inline Json::Value to_json() const {
+      Json::Value j;
       j["dataset_name"] = name();
       j["dataset_size"] = size();
-      j["dataset_label"] = index_to_label();
+      j["dataset_label"] = utils::to_json(index_to_label());
       j["series_dimension"] = nb_dimensions();
       j["series_length_min"] = length_min();
       j["series_length_max"] = length_max();
@@ -373,8 +371,6 @@ namespace libtempo {
   template<typename D>
   class Dataset {
 
-    using json = nlohmann::json;
-
     /// Reference to the core dataset. A datum indexed here must have a corresponding index in the core dataset.
     std::shared_ptr<DatasetHeader> _dataset_header;
 
@@ -385,7 +381,7 @@ namespace libtempo {
     std::shared_ptr<std::vector<D>> _data;
 
     /// Optional parameter of the transform, as a JSONValue
-    std::optional<json> _parameters;
+    std::optional<Json::Value> _parameters;
 
   public:
 
@@ -397,7 +393,7 @@ namespace libtempo {
       std::shared_ptr<DatasetHeader> core,
       std::string id,
       std::vector<D>&& data,
-      std::optional<json> parameters = {} // TODO
+      std::optional<Json::Value> parameters = {} // TODO
     )
       : _dataset_header(std::move(core)), _identifier(std::move(id)),
         _data(std::make_shared<std::vector<D>>(std::move(data))),
@@ -411,7 +407,7 @@ namespace libtempo {
       const Dataset& other,
       std::string id,
       std::vector<D>&& data,
-      std::optional<json> parameters = {} // TODO
+      std::optional<Json::Value> parameters = {} // TODO
     ) : _dataset_header(other._dataset_header),
         _identifier(std::move(id)),
         _data(std::make_shared<std::vector<D>>(std::move(data))),
@@ -437,7 +433,7 @@ namespace libtempo {
     std::string name() const {
       assert((bool)_dataset_header);
       std::string result = _dataset_header->name() + ":" + _identifier;
-      if (_parameters.has_value()) { result += _parameters.value().dump(); }
+      if (_parameters.has_value()) { result += _parameters.value().toStyledString(); }
       return result;
     }
 

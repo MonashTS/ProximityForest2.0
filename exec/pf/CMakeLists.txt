@@ -6,5 +6,5 @@ target_sources(pf
         )
 
 
-target_link_libraries(pf libtempo armadillo nlohmann_json::nlohmann_json)
+target_link_libraries(pf PRIVATE libtempo armadillo jsoncpp)
 target_precompile_headers(pf PRIVATE pch.hpp)

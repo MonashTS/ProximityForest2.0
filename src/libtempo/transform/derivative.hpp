@@ -34,7 +34,6 @@ namespace libtempo::transform {
    */
   template<Float F>
   [[nodiscard]] inline std::vector<DTS<F>> derive(const DTS<F>& input, size_t degree) {
-    using json = nlohmann::json;
     assert(degree>0);
     assert(input.header().nb_dimensions()==1);
 
@@ -51,7 +50,7 @@ namespace libtempo::transform {
         series.push_back(TSeries<F>::mk_rowmajor(ts, std::move(d)));
       }
 
-      result.emplace_back(input, "derivative", std::move(series), std::optional(json(1)));
+      result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)1)));
     }
 
     // Following derivative
@@ -66,7 +65,7 @@ namespace libtempo::transform {
         series.push_back(TSeries<F>::mk_rowmajor(ts, std::move(d)));
       }
 
-      result.emplace_back(input, "derivative", std::move(series), std::optional(json(deg)));
+      result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)deg)));
     }
 
     return result;

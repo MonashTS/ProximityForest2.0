@@ -4,6 +4,8 @@
 #include "utils/uncopyable.hpp"
 #include "utils/stats.hpp"
 
+#include <json/json.h>
+
 #include <any>
 #include <chrono>
 #include <functional>
@@ -34,6 +36,22 @@ namespace libtempo::utils {
     return pick_one(v, v.size(), prng);
   }
 
+  // --- --- --- --- --- ---
+  // --- JSON helper
+  // --- --- --- --- --- ---
+  inline Json::Value to_json(const std::vector<std::string>& vec){
+    Json::Value a(Json::arrayValue);
+    for(const auto& v: vec){ a.append(v); }
+    return a;
+  }
+
+  template<typename V>
+  inline Json::Value to_json(const std::vector<V>& vec){
+    using std::to_string;
+    Json::Value a(Json::arrayValue);
+    for(const auto& v: vec){ a.append(to_string(v)); }
+    return a;
+  }
 
   // --- --- --- --- --- ---
   // --- Constants

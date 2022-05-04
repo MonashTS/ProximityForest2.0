@@ -1,15 +1,10 @@
 #pragma once
 
-#include <libtempo/utils/utils.hpp>
-
-#include <cassert>
-#include <optional>
-#include <random>
-#include <vector>
+#include <tempo/utils/utils.hpp>
 
 namespace mock {
   using namespace std;
-  namespace lu = libtempo::utils;
+  namespace lu = tempo::utils;
 
   template<typename FloatType=double>
   [[nodiscard]] inline FloatType sqdist(FloatType a, FloatType b) {

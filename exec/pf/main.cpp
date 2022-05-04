@@ -1,5 +1,8 @@
-#include "pch.hpp"
-
+#include <tempo/utils/utils.hpp>
+#include <tempo/reader/reader.hpp>
+#include <tempo/tseries/dataset.hpp>
+#include <tempo/transform/derivative.hpp>
+#include <tempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
 
 namespace fs = std::filesystem;
 
@@ -12,7 +15,7 @@ namespace fs = std::filesystem;
 
 int main(int argc, char **argv) {
   using namespace std;
-  using namespace libtempo;
+  using namespace tempo;
   using DS = DTS<double>;
 
   std::random_device rd;

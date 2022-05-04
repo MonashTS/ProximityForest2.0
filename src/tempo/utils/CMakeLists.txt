@@ -1,0 +1,9 @@
+target_sources(libtempo
+        PRIVATE
+            utils.cpp
+        PUBLIC
+            utils/uncopyable.hpp
+            utils/stats.hpp
+            concepts.hpp
+            utils.hpp
+        )

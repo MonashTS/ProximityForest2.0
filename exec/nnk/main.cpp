@@ -2,8 +2,6 @@
 
 #include <libtempo/transform/derivative.hpp>
 #include <libtempo/reader/reader.hpp>
-#include <nlohmann/json.hpp>
-#include <armadillo>
 
 namespace fs = std::filesystem;
 

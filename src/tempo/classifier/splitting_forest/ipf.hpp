@@ -111,27 +111,6 @@ namespace tempo::classifier::pf {
     std::uniform_random_bit_generator<decltype(*T::prng)>;
   };
 
-  /// Description of a dataset map
-  using DatasetMap_t = std::map<std::string, tempo::DTS>;
-
-  /*
-  /// Requirement for a shared map
-  template<typename T, typename L>
-  concept TimeSeriesDataset = requires {
-    std::convertible_to<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
-  };
-
-  /// Dataset Header mixin: provides a get_header() providing a non empty dataset_shared_map
-  template<typename Base, Float F, Label L>
-  struct TimeSeriesDatasetHeader {
-    const DatasetHeader<L>& get_header() const {
-      const auto& ds = static_cast<const Base&>(*this);
-      const std::map<std::string, tempo::DTS<F, L>>& map = *ds.dataset_shared_map;
-      return map.begin()->second.header();
-    }
-  };
-   */
-
   /// Interface for both the train and the test state
   template<typename Derived>
   struct IState {

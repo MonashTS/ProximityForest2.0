@@ -1,10 +1,7 @@
 #include "pch.h"
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/reader/reader.hpp>
-#include <tempo/tseries/dataset.hpp>
-#include <tempo/transform/derivative.hpp>
-#include <tempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
+#include <tempo/classifier/splitting_forest/proximity_forest/pf2018_impl.hpp>
 
 namespace fs = std::filesystem;
 
@@ -62,9 +59,9 @@ int main(int argc, char **argv) {
     j["dataset"] = dataset;
   }
 
-  // --- --- --- PF2018
+  // --- --- --- PF2018_Impl
   // --- --- train
-  classifier::pf::PF2018 pf2018(nbt, nbc);
+  classifier::pf::PF2018_Impl pf2018(nbt, nbc);
   // Make Transformation
   auto transformations = std::make_shared<classifier::pf::DatasetMap_t>();
   {

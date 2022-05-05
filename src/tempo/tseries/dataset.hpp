@@ -445,6 +445,9 @@ namespace tempo {
   /// Helper for Dataset of time series.
   using DTS = Dataset<TSeries>;
 
+  /// Map of named DTS
+  using DTSMap = std::map<std::string, DTS>;
+
   /// Helper for a DTS (Dataset of Time Series), computing statistics per dimension
   struct DTS_Stats {
     arma::Col<F> _min;
@@ -472,8 +475,7 @@ namespace tempo {
   };
 
   /// Helper for univariate DTS
-  template<Float F>
-  F stddev(const DTS& dts, const IndexSet& is) {
+  inline F stddev(const DTS& dts, const IndexSet& is) {
     DTS_Stats stat(dts, is);
     return stat._stddev[0];
   }

@@ -34,22 +34,21 @@ namespace tempo::transform {
    * @param input Input dataset - must be univariate
    * @param degree maximum desired derivative >= 1
    */
-  template<Float F>
-  [[nodiscard]] inline std::vector<DTS<F>> derive(const DTS<F>& input, size_t degree) {
+  [[nodiscard]] inline std::vector<DTS> derive(const DTS& input, size_t degree) {
     assert(degree>0);
     assert(input.header().nb_dimensions()==1);
 
-    std::vector<DTS<F>> result;
+    std::vector<DTS> result;
 
     // 1st derivative
     {
-      std::vector<TSeries<F>> series;
+      std::vector<TSeries> series;
       for (size_t i = 0; i<input.size(); ++i) {
         const auto& ts = input[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
         derive<F>(ts.rawdata(), l, d.data());
-        series.push_back(TSeries<F>::mk_rowmajor(ts, std::move(d)));
+        series.push_back(TSeries::mk_rowmajor(ts, std::move(d)));
       }
 
       result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)1)));
@@ -58,13 +57,13 @@ namespace tempo::transform {
     // Following derivative
     for (size_t deg = 2; deg<=degree; ++deg) {
 
-      std::vector<TSeries<F>> series;
+      std::vector<TSeries> series;
       for (size_t i = 0; i<input.size(); ++i) {
         const auto& ts = result.back()[i];
         const size_t l = ts.length();
         std::vector<F> d(l);
         derive<F>(ts.rawdata(), l, d.data());
-        series.push_back(TSeries<F>::mk_rowmajor(ts, std::move(d)));
+        series.push_back(TSeries::mk_rowmajor(ts, std::move(d)));
       }
 
       result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)deg)));

@@ -1,3 +1,5 @@
+#include "pch.h"
+
 #include <tempo/utils/utils.hpp>
 #include <tempo/reader/reader.hpp>
 #include <tempo/tseries/dataset.hpp>
@@ -16,7 +18,6 @@ namespace fs = std::filesystem;
 int main(int argc, char **argv) {
   using namespace std;
   using namespace tempo;
-  using DS = DTS<double>;
 
   std::random_device rd;
 
@@ -36,8 +37,8 @@ int main(int argc, char **argv) {
   Json::Value j;
 
   // Load UCR train and test dataset
-  DS train_dataset;
-  DS test_dataset;
+  DTS train_dataset;
+  DTS test_dataset;
   {
     auto start = utils::now();
     { // Read train
@@ -61,12 +62,11 @@ int main(int argc, char **argv) {
     j["dataset"] = dataset;
   }
 
-
   // --- --- --- PF2018
   // --- --- train
   classifier::pf::PF2018 pf2018(nbt, nbc);
   // Make Transformation
-  auto transformations = std::make_shared<classifier::pf::DatasetMap_t<double>>();
+  auto transformations = std::make_shared<classifier::pf::DatasetMap_t>();
   {
     transformations->insert({"default", train_dataset});
     auto train_derives = transform::derive(train_dataset, 1);
@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
   {
     // Make transformation
     const size_t test_seed = seed*nbc + nbt;
-    auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t<double>>();
+    auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t>();
     {
       test_transformations->insert({"default", test_dataset});
       auto test_derives = transform::derive(test_dataset, 1);

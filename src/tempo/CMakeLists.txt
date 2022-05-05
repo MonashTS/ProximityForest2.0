@@ -10,6 +10,7 @@ target_sources(libtempo
     PRIVATE
         pch_std.hpp
         pch_lib.hpp
+        predef.hpp
 )
 
 # Recurse (also run for the tests)

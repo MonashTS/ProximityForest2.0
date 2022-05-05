@@ -265,7 +265,7 @@ namespace tempo::reader {
       // --- Inside series loop
 
       // Data for a time series
-      std::vector<double> series;
+      std::vector<F> series;
       size_t length{0};
       size_t cur_dim{0};
       std::string label{};
@@ -283,7 +283,7 @@ namespace tempo::reader {
           // Ok if end of line/end of file
           if (c=='\n' || c==EOF) {
             // Construct the series
-            dataset.emplace_back(TSData::TS::mk_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
+            dataset.emplace_back(TSeries::mk_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
             // Update min/max length
             data.shortest_length = std::min(data.shortest_length, length);
             data.longest_length = std::max(data.longest_length, length);
@@ -312,16 +312,16 @@ namespace tempo::reader {
             // --- --- --- Else, What have we read?
             // Missing value? If so, also record the index of the series
             if (buffer=="?") {
-              series.push_back(std::numeric_limits<double>::quiet_NaN());
+              series.push_back(std::numeric_limits<F>::quiet_NaN());
               size_t missing_index = dataset.size();
               if (missing.empty() || missing.back()!=missing_index) {
                 missing.push_back(missing_index);
               }
             } else {
               auto od = as_double(buffer);
-              if (od.has_value()) { series.push_back(od.value()); }
+              if (od.has_value()) { series.push_back((F)od.value()); }
               else {
-                return {"Error reading '"+buffer+"': only supporting double and missing values"};
+                return {"Error reading '"+buffer+"': only supporting floating values (read as double) and missing values"};
               }
             }
 
@@ -348,7 +348,7 @@ namespace tempo::reader {
                 return {"Error reading the data: non matching dimension"};
               }
               // Ok, store the series in the dataset
-              dataset.push_back(TSData::TS::mk_rowmajor(std::move(series), ndim, {}, {has_missing}));
+              dataset.push_back(TSeries::mk_rowmajor(std::move(series), ndim, {}, {has_missing}));
               // Update min/max length
               data.shortest_length = std::min(data.shortest_length, length);
               data.longest_length = std::max(data.longest_length, length);
@@ -370,7 +370,7 @@ namespace tempo::reader {
 
 
   /** Static function */
-  std::variant<std::string, Dataset<TSeries<double>>> TSReader::read(std::istream& input) {
+  std::variant<std::string, Dataset<TSeries>> TSReader::read(std::istream& input) {
     TSReader reader(input);
     auto result = reader.read();
     if (result.index()==1) {
@@ -391,7 +391,7 @@ namespace tempo::reader {
       );
 
       // 2) Build a Dataset
-      return {Dataset<TSeries<double>>(std::move(cd), "default", std::move(tsdata.series))};
+      return {Dataset<TSeries>(std::move(cd), "default", std::move(tsdata.series))};
 
     } else {
       return {std::get<0>(result)};

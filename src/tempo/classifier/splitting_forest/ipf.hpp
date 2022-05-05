@@ -112,12 +112,11 @@ namespace tempo::classifier::pf {
   };
 
   /// Description of a dataset map
-  template<Float F>
-  using DatasetMap_t = std::map<std::string, tempo::DTS<F>>;
+  using DatasetMap_t = std::map<std::string, tempo::DTS>;
 
   /*
   /// Requirement for a shared map
-  template<typename T, typename F, typename L>
+  template<typename T, typename L>
   concept TimeSeriesDataset = requires {
     std::convertible_to<decltype(T::dataset_shared_map), std::shared_ptr<Dataset<F, L>>>;
   };

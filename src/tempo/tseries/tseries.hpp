@@ -8,7 +8,6 @@ namespace tempo {
     namespace lu = tempo::utils;
   }
 
-  template<Float F>
   class TSeries {
     /// Missing data in the time series? We use a floating point type, so should be represented by "nan"
     bool _missing{false};

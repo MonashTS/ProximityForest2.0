@@ -443,22 +443,20 @@ namespace tempo {
   };
 
   /// Helper for Dataset of time series.
-  template<Float F>
-  using DTS = Dataset<TSeries<F>>;
+  using DTS = Dataset<TSeries>;
 
   /// Helper for a DTS (Dataset of Time Series), computing statistics per dimension
-  template<Float F>
   struct DTS_Stats {
     arma::Col<F> _min;
     arma::Col<F> _max;
     arma::Col<F> _mean;
     arma::Col<F> _stddev;
 
-    DTS_Stats(const DTS<F>& dts, const IndexSet& is) {
+    DTS_Stats(const DTS& dts, const IndexSet& is) {
 
       arma::running_stat_vec<arma::Col<F>> stat;
       for (const auto i : is) {
-        const TSeries<F>& s = dts[i];
+        const TSeries& s = dts[i];
         const arma::Mat<F> mat = s.data();
         for (size_t c = 0; c<mat.n_cols; ++c) {
           stat(mat.col(c));
@@ -475,8 +473,8 @@ namespace tempo {
 
   /// Helper for univariate DTS
   template<Float F>
-  F stddev(const DTS<F>& dts, const IndexSet& is) {
-    DTS_Stats<F> stat(dts, is);
+  F stddev(const DTS& dts, const IndexSet& is) {
+    DTS_Stats stat(dts, is);
     return stat._stddev[0];
   }
 

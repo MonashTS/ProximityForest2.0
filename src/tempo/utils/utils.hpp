@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tempo/pch_lib.hpp>
+#include <tempo/predef.hpp>
 
 #include "concepts.hpp"
 #include "utils/uncopyable.hpp"
@@ -30,17 +30,11 @@ namespace tempo::utils {
   // --- --- --- --- --- ---
   // --- JSON helper
   // --- --- --- --- --- ---
-  inline Json::Value to_json(const std::vector<std::string>& vec){
-    Json::Value a(Json::arrayValue);
-    for(const auto& v: vec){ a.append(v); }
-    return a;
-  }
 
   template<typename V>
   inline Json::Value to_json(const std::vector<V>& vec){
-    using std::to_string;
     Json::Value a(Json::arrayValue);
-    for(const auto& v: vec){ a.append(to_string(v)); }
+    for(const auto& v: vec){ a.append(v); }
     return a;
   }
 

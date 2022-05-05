@@ -15,7 +15,6 @@ namespace tempo::reader {
   public:
     using FloatType = double;
     using LabelType = std::string;
-    using TS = tempo::TSeries<FloatType>;
 
     // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
     // Fields:
@@ -31,7 +30,7 @@ namespace tempo::reader {
     std::set<std::string> labels{};
 
     // --- --- --- Data
-    std::vector<TS> series;
+    std::vector<TSeries> series;
 
     // --- --- --- Extra
     size_t nb_dimensions{0};
@@ -79,7 +78,7 @@ namespace tempo::reader {
      */
     static std::variant<
       std::string,
-      Dataset<TSeries<double>>
+      Dataset<TSeries>
     > read(std::istream& input);
 
   private:

@@ -13,9 +13,6 @@ namespace tempo::classifier::pf {
   /** Implementation of Proximity Forest 2018 in the tempo framework */
   struct PF2018 {
 
-    /// Floating Point type
-    using F = double;
-
     /// Pseudo Random Number Generator
     using PRNG = std::mt19937_64;
 
@@ -95,19 +92,19 @@ namespace tempo::classifier::pf {
     struct TrainData {
 
       /// Dictionary of name->dataset of time series
-      std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_map_sptr;
+      std::shared_ptr<pf::DatasetMap_t> train_dataset_map_sptr;
 
       /// Concept requirement - train_dataset_map
-      inline const pf::DatasetMap_t<F>& train_dataset_map() const { return *train_dataset_map_sptr; }
+      inline const pf::DatasetMap_t& train_dataset_map() const { return *train_dataset_map_sptr; }
 
       /// Concept requirement - get_train_dataset
-      inline const DTS<F> get_train_dataset(const std::string& tname) const { return train_dataset_map().at(tname); }
+      inline const DTS get_train_dataset(const std::string& tname) const { return train_dataset_map().at(tname); }
 
       /// Get header
       inline const DatasetHeader& get_header() const { return train_dataset_map().begin()->second.header(); }
 
       /// Constructor from shared pointer on a dataset map
-      inline explicit TrainData(std::shared_ptr<pf::DatasetMap_t<F>> dataset_shared_map) :
+      inline explicit TrainData(std::shared_ptr<pf::DatasetMap_t> dataset_shared_map) :
         train_dataset_map_sptr(dataset_shared_map) {}
     };
 
@@ -118,17 +115,17 @@ namespace tempo::classifier::pf {
     struct TestData : public TrainData {
 
       /// Dictionary of name->dataset of time series
-      std::shared_ptr<pf::DatasetMap_t<F>> test_dataset_map_sptr;
+      std::shared_ptr<pf::DatasetMap_t> test_dataset_map_sptr;
 
       /// Concept requirement - test_dataset_map
-      inline const pf::DatasetMap_t<F>& test_dataset_map() const { return *test_dataset_map_sptr; }
+      inline const pf::DatasetMap_t& test_dataset_map() const { return *test_dataset_map_sptr; }
 
       /// Concept requirement - get_test_dataset
-      inline const DTS<F> get_test_dataset(const std::string& tname) const { return test_dataset_map().at(tname); }
+      inline const DTS get_test_dataset(const std::string& tname) const { return test_dataset_map().at(tname); }
 
       TestData(
-        std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map,
-        std::shared_ptr<pf::DatasetMap_t<F>> test_dataset_shared_map
+        std::shared_ptr<pf::DatasetMap_t> train_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t> test_dataset_shared_map
       ) :
         TrainData(std::move(train_dataset_shared_map)),
         test_dataset_map_sptr(test_dataset_shared_map) {}
@@ -146,8 +143,8 @@ namespace tempo::classifier::pf {
       /// Build a classifier with a seed, the train data, the test data and the forest
       inline Classifier(
         size_t seed,
-        std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map,
-        std::shared_ptr<pf::DatasetMap_t<F>> test_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t> train_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t> test_dataset_shared_map,
         std::shared_ptr<PForest<TestState, TestData>> forest,
         bool do_instrumentation
       ) :
@@ -170,12 +167,12 @@ namespace tempo::classifier::pf {
     /// Result of the training. Used this class to produce a Classifier.
     struct Trained {
 
-      std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map;
+      std::shared_ptr<pf::DatasetMap_t> train_dataset_shared_map;
       std::vector<std::unique_ptr<TrainState>> trained_states;
       std::shared_ptr<PForest<TestState, TestData>> trained_forest;
 
       inline Trained(
-        std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t> train_dataset_shared_map,
         std::vector<std::unique_ptr<TrainState>>&& trained_states,
         std::shared_ptr<PForest<TestState, TestData>> trained_forest
       ) :
@@ -186,7 +183,7 @@ namespace tempo::classifier::pf {
       /// Get a classifier over a test set
       inline Classifier get_classifier_for(
         size_t seed,
-        std::shared_ptr<pf::DatasetMap_t<F>> test_dataset_shared_map,
+        std::shared_ptr<pf::DatasetMap_t> test_dataset_shared_map,
         bool do_instrumentation
       ) noexcept(false) {
 
@@ -220,6 +217,8 @@ namespace tempo::classifier::pf {
 
     /// Transformation name array - always "d1", the first derivative
     inline static const auto d1 = [](TrainState& /* state */) { return "d1"; };
+
+    /*
 
     /// Random window computation function
     inline static const auto getw = [](TrainState& state, const TrainData& data) -> size_t {
@@ -266,6 +265,7 @@ namespace tempo::classifier::pf {
                         0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
       return utils::pick_one(lambdas, N, *state.prng);
     };
+     */
 
   private:
 
@@ -273,42 +273,45 @@ namespace tempo::classifier::pf {
     // List of splitters. This one are shared amongst all PF instances.
     // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
     template<typename D>
-    using SG1 = pf::SG_1NN<F, TrainState, TrainData, TestState, TestData, D>;
+    using SG1 = pf::SG_1NN<TrainState, TrainData, TestState, TestData, D>;
 
     /// SQED
-    using DA_t = typename DComp_DA<F>::template Generator<TrainState, TrainData>;
+    using DA_t = typename DComp_DA::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
 
+    /*
+
     /// DTW Full window
-    using DTWFull_t = typename DComp_DTWFull<F>::template Generator<TrainState, TrainData>;
+    using DTWFull_t = typename DComp_DTWFull::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
     static inline auto sg_1nn_ddtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(d1, exp2));
 
     /// DTW with parametric window
-    using DTW_t = typename DComp_DTW<F>::template Generator<TrainState, TrainData>;
+    using DTW_t = typename DComp_DTW::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtw = std::make_shared<SG1<DTW_t>>(DTW_t(def, exp2, getw));
     static inline auto sg_1nn_ddtw = std::make_shared<SG1<DTW_t>>(DTW_t(d1, exp2, getw));
 
     /// WDTW with parametric window
-    using WDTW_t = typename DComp_WDTW<F>::template Generator<TrainState, TrainData>;
+    using WDTW_t = typename DComp_WDTW::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_wdtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(def, exp2));
     static inline auto sg_1nn_wddtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(d1, exp2));
 
     /// ERP with parametric window and gap value
-    using ERP_t = typename DComp_ERP<F>::template Generator<TrainState, TrainData>;
+    using ERP_t = typename DComp_ERP::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw, frac_stddev));
 
     /// LCSS with parametric window and epsilon value
-    using LCSS_t = typename DComp_LCSS<F>::template Generator<TrainState, TrainData>;
+    using LCSS_t = typename DComp_LCSS::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw, frac_stddev));
 
     /// MSM with parametric window and epsilon value
-    using MSM_t = typename DComp_MSM<F>::template Generator<TrainState, TrainData>;
+    using MSM_t = typename DComp_MSM::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, msm_cost));
 
     /// TWE with parametric window and epsilon value
-    using TWE_t = typename DComp_TWE<F>::template Generator<TrainState, TrainData>;
+    using TWE_t = typename DComp_TWE::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_twe = std::make_shared<SG1<TWE_t>>(TWE_t(def, twe_nu, twe_lambda));
+*/
 
     /// Leaf generator
     static inline std::shared_ptr<pf::SGLeaf_PureNode<TrainState, TrainData, TestState, TestData>> sgleaf_purenode =
@@ -322,6 +325,7 @@ namespace tempo::classifier::pf {
         typename pf::SG_chooser<TrainState, TrainData, TestState, TestData>::SGVec_t(
           {
             sg_1nn_da,
+            /*
             sg_1nn_dtw,
             sg_1nn_ddtw,
             sg_1nn_dtwfull,
@@ -332,6 +336,7 @@ namespace tempo::classifier::pf {
             sg_1nn_lcss,
             sg_1nn_msm,
             sg_1nn_twe
+             */
           }
         ), nbc
       );
@@ -355,7 +360,7 @@ namespace tempo::classifier::pf {
     /// Train the classifier
     Trained train(
       size_t seed,
-      std::shared_ptr<pf::DatasetMap_t<F>> train_dataset_shared_map,
+      std::shared_ptr<pf::DatasetMap_t> train_dataset_shared_map,
       size_t nbthreads = 1,
       bool do_instrumentation = true
     ) noexcept(false) {

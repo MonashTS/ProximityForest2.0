@@ -1,7 +1,7 @@
 #include "pch.h"
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/classifier/splitting_forest/proximity_forest/pf2018_impl.hpp>
+#include <tempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
 
 namespace fs = std::filesystem;
 
@@ -18,9 +18,10 @@ int main(int argc, char **argv) {
 
   std::random_device rd;
 
+
   // ARGS
   string program_name(*argv);
-  vector <string> args(argv + 1, argv + argc);
+  vector<string> args(argv + 1, argv + argc);
 
   // Config
   fs::path UCRPATH(args[0]);
@@ -28,7 +29,8 @@ int main(int argc, char **argv) {
   size_t nbt = 100;
   size_t nbc = 5;
   size_t nbthread = 8;
-  size_t seed = rd();
+  size_t train_seed = rd();
+  size_t test_seed = train_seed+(nbt*nbc);
 
   // Json record
   Json::Value j;
@@ -59,50 +61,55 @@ int main(int argc, char **argv) {
     j["dataset"] = dataset;
   }
 
-  // --- --- --- PF2018_Impl
+  // --- --- --- PF2018
   // --- --- train
-  classifier::pf::PF2018_Impl pf2018(nbt, nbc);
-  // Make Transformation
-  auto transformations = std::make_shared<classifier::pf::DatasetMap_t>();
+  classifier::PF2018 pf2018(nbt, nbc);
   {
-    transformations->insert({"default", train_dataset});
+    DTSMap trainset;
+    trainset.insert({"default", train_dataset});
     auto train_derives = transform::derive(train_dataset, 1);
-    transformations->insert({"d1", std::move(train_derives[0])});
+    trainset.insert({"d1", std::move(train_derives[0])});
+    // actual train call.
+    const auto train_start = utils::now();
+    pf2018.train(trainset, train_seed, nbthread);
+    const auto train_delta = utils::now() - train_start;
+    // Record JSON
   }
-  // actual train call.
-  const auto train_start = utils::now();
-  auto trained_forest = pf2018.train(seed, transformations, nbthread);
-  const auto train_delta = utils::now() - train_start;
 
   // --- --- test
   {
-    // Make transformation
-    const size_t test_seed = seed*nbc + nbt;
-    auto test_transformations = std::make_shared<classifier::pf::DatasetMap_t>();
-    {
-      test_transformations->insert({"default", test_dataset});
-      auto test_derives = transform::derive(test_dataset, 1);
-      test_transformations->insert({"d1", std::move(test_derives[0])});
-    }
-    // Get the classifier
-    Json::Value results;
-    auto classifier = trained_forest.get_classifier_for(test_seed, test_transformations, false);
+    // Prepare data
+    DTSMap testset;
+    testset.insert({"default", test_dataset});
+    auto test_derives = transform::derive(test_dataset, 1);
+    testset.insert({"d1", std::move(test_derives[0])});
+    // Prepare output
+    arma::mat probabilities;
+    arma::rowvec weights;
+    // Call
+    const auto test_start = utils::now();
+    pf2018.predict(testset, probabilities, weights, test_seed, nbthread);
+    const auto test_delta = utils::now() - test_start;
+    // Record JSON
     const auto& test_header = test_dataset.header();
     const size_t test_top = test_header.size();
-    const auto test_start = utils::now();
-    for (size_t i = 0; i<test_top; ++i) {
-      vector<double> proba_array = arma::conv_to<vector<double>>
-      ::from(classifier.predict_proba(i, nbthread));
-      string true_l = test_header.labels()[i].value();
+    Json::Value result_probas;
+    Json::Value result_weights;
+    Json::Value result_truelabels;
+    // For each query (test instance)
+    for(size_t query=0; query<test_top; ++query){
+      // Store the probabilities
+      result_probas.append(utils::to_json(probabilities.col(query)));
+      // Store the weight associated with the probabilities
+      result_weights.append(Json::Value(weights[query]));
+      // Store the true label
+      string true_l = test_header.labels()[query].value();
       size_t true_label_idx = test_header.label_to_index().at(true_l);
-      Json::Value j_proba = utils::to_json(proba_array);
-      Json::Value j_array;
-      j_array.append(j_proba);
-      j_array.append(true_label_idx);
-      results.append(j_array);
+      result_truelabels.append(true_label_idx);
     }
-    const auto test_delta = utils::now() - test_start;
-    j["results"] = results;
+    j["result_probabilities"] = result_probas;
+    j["result_truelabels"] = result_truelabels;
+    j["result_weights"] = result_weights;
   }
 
   // Output

@@ -10,4 +10,6 @@ namespace tempo {
   using FloatType = double;
   using F = FloatType;
 
+  using PRNG = std::mt19937_64;
+
 } // End of namespace tempo

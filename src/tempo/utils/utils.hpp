@@ -9,6 +9,9 @@
 
 namespace tempo::utils {
 
+  template<typename T>
+  concept Iterable = std::ranges::range<std::ranges::range_value_t<T>>;
+
   /// Pick a random item from a subscriptable type, from [0] to [size-1]
   template<typename PRNG>
   inline const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng) {
@@ -31,10 +34,10 @@ namespace tempo::utils {
   // --- JSON helper
   // --- --- --- --- --- ---
 
-  template<typename V>
-  inline Json::Value to_json(const std::vector<V>& vec){
+  template<typename T>
+  inline Json::Value to_json(const T& vec) {
     Json::Value a(Json::arrayValue);
-    for(const auto& v: vec){ a.append(v); }
+    for (const auto& v : vec) { a.append(v); }
     return a;
   }
 

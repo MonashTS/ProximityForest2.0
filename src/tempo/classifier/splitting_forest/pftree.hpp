@@ -219,6 +219,14 @@ namespace tempo::classifier::pf {
     TreeVec forest;
     arma::Col<size_t> train_class_cardinalities;
 
+    PForest() = default;
+
+    PForest(PForest const& other) = delete;
+    PForest& operator =(PForest const& other) = delete;
+
+    PForest(PForest&& other)  noexcept = default;
+    PForest& operator =(PForest&& other) noexcept = default;
+
     PForest(TreeVec&& forest, arma::Col<size_t> cardinaliaties) :
       forest(std::move(forest)), train_class_cardinalities(std::move(cardinaliaties)) {}
 
@@ -230,7 +238,7 @@ namespace tempo::classifier::pf {
       arma::Col<size_t> result(train_class_cardinalities.size());
 
       // State vector
-      std::vector<std::unique_ptr<TestState>> states_vec;
+      std::vector<TestState> states_vec;
       states_vec.reserve(nbtree);
 
       // Multithreading control
@@ -273,9 +281,9 @@ namespace tempo::classifier::pf {
 
     /** Train the proximity forest */
     std::tuple<
-      std::vector<std::unique_ptr<TrainState>>,
-      std::shared_ptr<PForest<TestState, TestData>>
-    > train(TrainState& state, const TrainData& data, ByClassMap bcm, size_t nbthread) {
+      std::vector<TrainState>,
+      PForest<TestState, TestData>
+    > train(TrainState& state, const TrainData& data, ByClassMap bcm, size_t nb_threads) {
 
       std::mutex mutex;
 
@@ -286,7 +294,7 @@ namespace tempo::classifier::pf {
       typename PForest<TestState, TestData>::TreeVec forest;
       forest.reserve(nbtrees);
 
-      std::vector<std::unique_ptr<TrainState>> states_vec;
+      std::vector<TrainState> states_vec;
       states_vec.reserve(nbtrees);
 
       auto mk_task = [&bcmvec, &states_vec, &mutex, &forest, &data, this](size_t tree_index) {
@@ -295,7 +303,7 @@ namespace tempo::classifier::pf {
           std::cout << "Start tree " << tree_index << std::endl;
         }
         auto start = tempo::utils::now();
-        auto tree = this->tree_trainer->train(*states_vec[tree_index], data, bcmvec);
+        auto tree = this->tree_trainer->train(states_vec[tree_index], data, bcmvec);
         auto delta = tempo::utils::now() - start;
         {
           // Lock protecting the forest and out printing
@@ -318,11 +326,11 @@ namespace tempo::classifier::pf {
         p.push_task(mk_task, i);
       }
 
-      p.execute(nbthread);
+      p.execute(nb_threads);
 
       return {
         std::move(states_vec),
-        std::make_shared<PForest<TestState, TestData>>(std::move(forest), cardinalities)
+        PForest<TestState, TestData>(std::move(forest), cardinalities)
       };
 
     }

@@ -7,163 +7,131 @@
 
 #include "distance_splitters.hpp"
 
-namespace tempo::classifier::pf {
+namespace tempo::classifier {
 
-  /// Implementation of Proximity Forest 2018
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // PF2018 IMPLEMENTATION
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   struct PF2018::Impl {
 
-    /// Pseudo Random Number Generator
-    using PRNG = std::mt19937_64;
+    Impl(size_t nb_trees, size_t nb_candidates)
+      : nb_trees(nb_trees), nb_candidates(nb_candidates) {}
 
-    /// Train time state structure
-    struct TrainState : public pf::IState<TrainState> {
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Train time structures
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-      /// Track the depth of the tree; starts at 1
-      size_t current_depth{1};
-      size_t max_depth{0};
-
-      /// Track selected distances; On merge, just create a new empty one (done by default)
-      DistanceSplitterState distance_splitter_state;
-
-      /// Pseudo random number generator: use a unique pointer (stateful)
+    struct TrainState : pf::IState<TrainState> {
+      /// State-full PRNG (prevent copy constructor)
       std::unique_ptr<PRNG> prng;
 
-      inline TrainState(bool do_instrumentation, size_t seed) :
-        distance_splitter_state(do_instrumentation),
-        prng(std::make_unique<PRNG>(seed)) {}
+      /// Specific distance state for the splitters
+      pf::DistanceSplitterState distance_splitter_state;
 
-      /// Ensure we do not copy the state by error: we have to properly deal with the random number generator
-      inline TrainState(const TrainState&) = delete;
+      /// Constructor with a seed for the PRNG
+      explicit TrainState(size_t seed) :
+        prng(std::make_unique<PRNG>(seed)), distance_splitter_state(false) {}
 
-      /// Ensure that we have a move constructor
+      /// Constructor with a PRNG
+      explicit TrainState(std::unique_ptr<PRNG>&& prng) :
+        prng(std::move(prng)), distance_splitter_state(false) {}
+
+      /// Allow move construction
       inline TrainState(TrainState&&) = default;
 
-    private:
-
-      inline TrainState(bool do_instrumentation,
-                        size_t current_depth,
-                        size_t seed) :
-        current_depth(current_depth),
-        distance_splitter_state(do_instrumentation),
-        prng(std::make_unique<PRNG>(seed)) {}
-
-      /// Forking Constructor: transmit PRNG into the new state
-      inline TrainState(bool do_instrumentation,
-                        size_t current_depth,
-                        std::unique_ptr<PRNG>&& m_prng) :
-        current_depth(current_depth),
-        distance_splitter_state(do_instrumentation),
-        prng(std::move(m_prng)) {}
-
-    public:
-
-      /// On leaf
-      inline void on_leaf(const BCMVec& bcmvec) override {
-        max_depth = current_depth;
+      /// Interface on_leaf
+      inline void on_leaf(const pf::BCMVec& bcmvec) override {
         distance_splitter_state.on_leaf(bcmvec);
       }
 
-      /// Transmit the prng down the branch
+      /// Interface branch_fork - transmit the prng (state-full)
       inline TrainState branch_fork(size_t /* bidx */) override {
-        return TrainState(distance_splitter_state.do_instrumentation, current_depth + 1, std::move(prng));
+        return TrainState(std::move(prng));
       }
 
-      /// Merge "other" into "this". Move the prng into this. Merge statistics into this
+      /// Interface branch_merge - move prng into this, merge other state into this
       inline void branch_merge(TrainState&& other) override {
-        // Resources: move!
-        prng = std::move(other.prng);
-        // Values:
-        distance_splitter_state.merge(other.distance_splitter_state);
-        max_depth = std::max(max_depth, other.max_depth);
+        this->prng = std::move(other.prng);
+        this->distance_splitter_state.merge(other.distance_splitter_state);
       }
 
-      /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-      /// Create a new prng
-      inline std::unique_ptr<TrainState> forest_fork(size_t /* tree_index */) override {
+      /// Interface forest_fork - create new prng (fully independent clones)
+      inline TrainState forest_fork(size_t /* tree_index */) override {
         size_t new_seed = (*prng)();
-        return std::unique_ptr<TrainState>(
-          new TrainState(distance_splitter_state.do_instrumentation, current_depth, new_seed)
-        );
+        return TrainState(new_seed);
       }
+
     };
 
-    /// Train time data structure
     struct TrainData {
 
-      /// Dictionary of name->dataset of time series
-      std::shared_ptr<DTSMap> train_dataset_map_sptr;
+      DTSMap trainset;
+
+      inline explicit TrainData(DTSMap trainset) : trainset(move(trainset)) {}
 
       /// Concept requirement - train_dataset_map
-      inline const DTSMap& train_dataset_map() const { return *train_dataset_map_sptr; }
+      inline const DTSMap& train_dataset_map() const { return trainset; }
 
       /// Concept requirement - get_train_dataset
-      inline const DTS get_train_dataset(const std::string& tname) const { return train_dataset_map().at(tname); }
+      inline const DTS get_train_dataset(const std::string& tname) const { return trainset.at(tname); }
 
       /// Get header
-      inline const DatasetHeader& get_header() const { return train_dataset_map().begin()->second.header(); }
-
-      /// Constructor from shared pointer on a dataset map
-      inline explicit TrainData(std::shared_ptr<DTSMap> dataset_shared_map) :
-        train_dataset_map_sptr(dataset_shared_map) {}
+      inline const DatasetHeader& get_header() const { return trainset.begin()->second.header(); }
     };
 
-    /// Test time state structure - use the same as the train time
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Test time structures
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    // Test time state structure - use the same as the train time
     using TestState = TrainState;
 
-    /// Test time data structure - "include" all member from TrainData
+    // Test time data structure - "include" all member from TrainData
     struct TestData : public TrainData {
 
-      /// Dictionary of name->dataset of time series
-      std::shared_ptr<DTSMap> test_dataset_map_sptr;
+      DTSMap testset;
 
-      /// Concept requirement - test_dataset_map
-      inline const DTSMap& test_dataset_map() const { return *test_dataset_map_sptr; }
+      // Concept requirement - test_dataset_map
+      inline const DTSMap& test_dataset_map() const { return testset; }
 
-      /// Concept requirement - get_test_dataset
-      inline const DTS get_test_dataset(const std::string& tname) const { return test_dataset_map().at(tname); }
+      // Concept requirement - get_test_dataset
+      inline const DTS get_test_dataset(const std::string& tname) const { return testset.at(tname); }
 
-      TestData(
-        std::shared_ptr<DTSMap> train_dataset_shared_map,
-        std::shared_ptr<DTSMap> test_dataset_shared_map
-      ) :
-        TrainData(std::move(train_dataset_shared_map)),
-        test_dataset_map_sptr(test_dataset_shared_map) {}
+      TestData(DTSMap trainset, DTSMap testset) : TrainData(std::move(trainset)), testset(std::move(testset)) {}
     };
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Splitter
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-
-
-
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // PROXIMITY FOREST PARAMETERIZATION
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // --- --- --- Splitter parameterization
 
     /// Exponents array for the cost function - always 2
-    inline static const auto exp2 = [](TrainState& /* state */) { return 2; };
+    inline static const auto exp2 = [](TrainState& /* state */) -> double { return 2; };
 
     /// Transformation name array - always "default"
-    inline static const auto def = [](TrainState& /* state */ ) { return "default"; };
+    inline static const auto def = [](TrainState& /* state */ ) -> std::string { return "default"; };
 
     /// Transformation name array - always "d1", the first derivative
-    inline static const auto d1 = [](TrainState& /* state */) { return "d1"; };
+    inline static const auto d1 = [](TrainState& /* state */) -> std::string { return "d1"; };
 
-    /// Random window computation function
+    /// Random window computation function [0, Lmax/4]
     inline static const auto getw = [](TrainState& state, const TrainData& data) -> size_t {
-      const size_t win_top = (data.get_header().length_max() + 1)/4;
+      const size_t win_top = std::ceil((double)data.get_header().length_max()/4.0);
       return std::uniform_int_distribution<size_t>(0, win_top)(*state.prng);
     };
 
-    /// ERP Gap Value AND LCSS epsilon. Requires the name of the dataset.
+    /// ERP Gap Value *AND* LCSS epsilon. Requires the name of the dataset.
     /// Random fraction of the dataset standard deviation, within [stddev/5, stddev[
     inline static const auto frac_stddev =
-      [](TrainState& state, const TrainData& data, const BCMVec& bcmvec, const std::string& tn) -> double {
+      [](TrainState& state, const TrainData& data, const pf::BCMVec& bcmvec, const std::string& tn) -> double {
         const auto& train_dataset = data.get_train_dataset(tn);
         auto stddev_ = stddev(train_dataset, bcmvec.back().to_IndexSet());
         return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(*state.prng);
       };
 
     /// List of MSM costs
-    inline static const auto msm_cost = [](TrainState& state) {
+    inline static const auto msm_cost = [](TrainState& state) -> size_t {
       constexpr size_t N = 100;
       double costs[N]{
         0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
@@ -179,72 +147,65 @@ namespace tempo::classifier::pf {
     };
 
     /// TWE nu parameters
-    inline static const auto twe_nu = [](TrainState& state) {
+    inline static const auto twe_nu = [](TrainState& state) -> size_t {
       constexpr size_t N = 10;
       double nus[N]{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
       return utils::pick_one(nus, N, *state.prng);
     };
 
     /// TWE lambda parameters
-    inline static const auto twe_lambda = [](TrainState& state) {
+    inline static const auto twe_lambda = [](TrainState& state) -> size_t {
       constexpr size_t N = 10;
       double lambdas[N]{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
                         0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
       return utils::pick_one(lambdas, N, *state.prng);
     };
 
-  private:
+    // --- --- --- Splitter Builder
 
-    // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
-    // List of splitters. This one are shared amongst all PF instances.
-    // --- --- --- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- -- --- --- --
     template<typename D>
     using SG1 = pf::SG_1NN<TrainState, TrainData, TestState, TestData, D>;
 
     /// SQED
-    using DA_t = typename DComp_DA::template Generator<TrainState, TrainData>;
+    using DA_t = typename pf::DComp_DA::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_da = std::make_shared<SG1<DA_t>>(DA_t(def, exp2));
 
     /// DTW Full window
-    using DTWFull_t = typename DComp_DTWFull::template Generator<TrainState, TrainData>;
+    using DTWFull_t = typename pf::DComp_DTWFull::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(def, exp2));
     static inline auto sg_1nn_ddtwfull = std::make_shared<SG1<DTWFull_t>>(DTWFull_t(d1, exp2));
 
     /// DTW with parametric window
-    using DTW_t = typename DComp_DTW::template Generator<TrainState, TrainData>;
+    using DTW_t = typename pf::DComp_DTW::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_dtw = std::make_shared<SG1<DTW_t>>(DTW_t(def, exp2, getw));
     static inline auto sg_1nn_ddtw = std::make_shared<SG1<DTW_t>>(DTW_t(d1, exp2, getw));
 
     /// WDTW with parametric window
-    using WDTW_t = typename DComp_WDTW::template Generator<TrainState, TrainData>;
+    using WDTW_t = typename pf::DComp_WDTW::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_wdtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(def, exp2));
     static inline auto sg_1nn_wddtw = std::make_shared<SG1<WDTW_t>>(WDTW_t(d1, exp2));
 
     /// ERP with parametric window and gap value
-    using ERP_t = typename DComp_ERP::template Generator<TrainState, TrainData>;
+    using ERP_t = typename pf::DComp_ERP::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_erp = std::make_shared<SG1<ERP_t>>(ERP_t(def, exp2, getw, frac_stddev));
 
     /// LCSS with parametric window and epsilon value
-    using LCSS_t = typename DComp_LCSS::template Generator<TrainState, TrainData>;
+    using LCSS_t = typename pf::DComp_LCSS::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_lcss = std::make_shared<SG1<LCSS_t>>(LCSS_t(def, getw, frac_stddev));
 
     /// MSM with parametric window and epsilon value
-    using MSM_t = typename DComp_MSM::template Generator<TrainState, TrainData>;
+    using MSM_t = typename pf::DComp_MSM::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_msm = std::make_shared<SG1<MSM_t>>(MSM_t(def, msm_cost));
 
     /// TWE with parametric window and epsilon value
-    using TWE_t = typename DComp_TWE::template Generator<TrainState, TrainData>;
+    using TWE_t = typename pf::DComp_TWE::template Generator<TrainState, TrainData>;
     static inline auto sg_1nn_twe = std::make_shared<SG1<TWE_t>>(TWE_t(def, twe_nu, twe_lambda));
 
-    /// Leaf generator
-    static inline std::shared_ptr<pf::SGLeaf_PureNode<TrainState, TrainData, TestState, TestData>> sgleaf_purenode =
-      std::make_shared<pf::SGLeaf_PureNode<TrainState, TrainData, TestState, TestData>>();
-
-    /// Helper function building a tree trainer, combining a splitter chooser with a number of candidate and
-    /// our leaf generator
+    /// Helper function building a tree trainer.
+    /// combines a splitter chooser with a number of candidate and a leaf generator
     static inline std::shared_ptr<pf::PFTreeTrainer<TrainState, TrainData, TestState, TestData>> fun_tree_trainer(
       size_t nbc) {
-      auto chooser = std::make_shared<pf::SG_chooser<TrainState, TrainData, TestState, TestData>>(
+      auto node = std::make_shared<pf::SG_chooser<TrainState, TrainData, TestState, TestData>>(
         typename pf::SG_chooser<TrainState, TrainData, TestState, TestData>::SGVec_t(
           {
             sg_1nn_da,
@@ -261,137 +222,98 @@ namespace tempo::classifier::pf {
           }
         ), nbc
       );
+      auto leaf = std::make_shared<pf::SGLeaf_PureNode<TrainState, TrainData, TestState, TestData>>();
       // mk trainer
-      return std::make_shared<pf::PFTreeTrainer<TrainState, TrainData, TestState, TestData>>(sgleaf_purenode,
-                                                                                             std::move(chooser));
+      return std::make_shared<pf::PFTreeTrainer<TrainState, TrainData, TestState, TestData>>(leaf, node);
     }
 
-    // --- --- --- --- Fields
-    size_t nbtrees;
-    size_t nbcandidates;
-    std::shared_ptr<pf::PFTreeTrainer<TrainState, TrainData, TestState, TestData>> tree_trainer;
 
-    // --- --- --- Trained state
-    std::shared_ptr<DTSMap> train_dataset_shared_map;
-    std::vector<std::unique_ptr<TrainState>> trained_states;
-    std::shared_ptr<PForest<TestState, TestData>> trained_forest;
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Fields
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    // --- --- --- Classifier
-
-    /// Test time structure
-    class Classifier {
-      TestState test_state;
-      TestData test_data;
-      std::shared_ptr<PForest<TestState, TestData>> forest; /// Trained proximity forest
-
-    public :
-
-      /// Build a classifier with a seed, the train data, the test data and the forest
-      inline Classifier(
-        size_t seed,
-        std::shared_ptr<DTSMap> train_dataset_shared_map,
-        std::shared_ptr<DTSMap> test_dataset_shared_map,
-        std::shared_ptr<PForest<TestState, TestData>> forest,
-        bool do_instrumentation
-      ) :
-        test_state(do_instrumentation, seed),
-        test_data(train_dataset_shared_map, test_dataset_shared_map),
-        forest(std::move(forest)) {}
-
-      /// Classifier interface
-      inline arma::Col<double> predict_proba(size_t index, size_t nbthread) {
-        // Get cardinalities as double
-        arma::Col<double> cards =
-          arma::conv_to<arma::Col<double>>::from(forest->predict_cardinality(test_state, test_data, index, nbthread));
-        // Sum and return as proba
-        double sum = arma::sum(cards);
-        return cards/sum;
-      }
-
-    }; // End of class Classifier
+    // --- --- --- Valid after construction
+    size_t nb_trees;
+    size_t nb_candidates;
+    // --- --- --- Valid after train
+    std::optional<DTSMap> o_trainset;                   // Trainset needed at test time (for distance to exemplar)
+    std::vector<TrainState> trained_states;             // Train state per trained tree
+    pf::PForest<TestState, TestData> trained_forest;    //
 
 
-  public:
-
-    /// Build a new PF2018_Impl classifier trainer
-    Impl(size_t nbtrees, size_t nbcandidates) :
-      nbtrees(nbtrees),
-      nbcandidates(nbcandidates),
-      tree_trainer(fun_tree_trainer(nbcandidates)) {}
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Functions
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Train the classifier
-    void train(
-      std::shared_ptr<DTSMap> train_dataset_shared_map,
-      size_t seed,
-      size_t nbthreads = 1,
-      bool do_instrumentation = true
-    ) {
+    void train(DTSMap trainset, size_t seed, size_t nb_threads) {
       // Arg check
-      if (!train_dataset_shared_map->contains("default")) {
-        throw std::invalid_argument("'default' transform not found in data_shared_map");
-      }
-      if (!train_dataset_shared_map->contains("d1")) {
-        throw std::invalid_argument("'d1' transform not found in data_shared_map");
-      }
-
-      // Build state and forest trainer
-      TrainState train_state(do_instrumentation, seed);
-      TrainData train_data(train_dataset_shared_map);
-      pf::PForestTrainer<TrainState, TrainData, TestState, TestData> forest_trainer(tree_trainer, nbtrees);
-
-      // Build ByClassMap vector
-      auto train_dataset = train_dataset_shared_map->at("default");
+      if (!trainset.contains("default")) { throw std::invalid_argument("'default' transform not found in trainset"); }
+      if (!trainset.contains("d1")) { throw std::invalid_argument("'d1' transform not found in trainset"); }
+      // Build the state and the forest
+      TrainState train_state(seed);
+      TrainData train_data(trainset);
+      auto tree_trainer = fun_tree_trainer(nb_candidates);
+      pf::PForestTrainer<TrainState, TrainData, TestState, TestData> forest_trainer(tree_trainer, nb_trees);
+      // Training: requires the ByClassMap of the train
+      auto train_dataset = trainset.at("default");
       auto [train_bcm, train_noclass] = train_dataset.header().get_BCM();
-
-      // training...
-      auto [trained_states, trained_forest] = forest_trainer.train(train_state, train_data, train_bcm, nbthreads);
-
+      auto [states, forest] = forest_trainer.train(train_state, train_data, train_bcm, nb_threads);
       // Store training result
-      this->train_dataset_shared_map = std::move(train_dataset_shared_map);
-      this->trained_states = std::move(trained_states);
-      this->trained_forest = std::move(trained_forest);
+      o_trainset = {std::move(trainset)};
+      trained_states = std::move(states);
+      trained_forest = std::move(forest);
     }
 
-    inline Classifier get_classifier(
-      std::shared_ptr<DTSMap> test_dataset_shared_map,
-      size_t seed,
-      size_t nbthreads = 1,
-      bool do_instrumentation = true
-    ) noexcept(false) {
-
-      // Check that we have trained the classifier
-      if (!(bool)trained_forest) {
-        throw std::logic_error("PF2018_Impl must be trained first");
-      }
+    /// Predict probabilities for the testset. Must be called after 'train'!
+    void predict(const DTSMap& testset, arma::mat& out_probabilities, arma::rowvec& out_weights,
+                 size_t seed, size_t nb_threads) {
+      // Check calling logic
+      if (!o_trainset) { throw std::logic_error("'predict' called before 'train'"); }
+      const auto& trainset = o_trainset.value();
       // Arg check
-      if (!test_dataset_shared_map->contains("default")) {
-        throw std::invalid_argument("'default' transform not found in data_shared_map");
+      if (!testset.contains("default")) { throw std::invalid_argument("'default' transform not found in testset"); }
+      if (!testset.contains("d1")) { throw std::invalid_argument("'d1' transform not found in testset"); }
+      // Build test state
+      TestState test_state(seed);
+      TestData test_data(trainset, testset);
+      // Configure output
+      size_t nb_rows = test_data.get_header().nb_labels();  // i.e. length of a column
+      size_t nb_cols = test_data.get_header().size();       // i.e. length of a row
+      out_probabilities.zeros(nb_rows, nb_cols);
+      out_weights.zeros(nb_cols);
+      // For each query
+      for (size_t query = 0; query<nb_cols; ++query) {
+        // Get cardinalities as double
+        arma::Col<double> cards = arma::conv_to<arma::Col<double>>::from(
+          trained_forest.predict_cardinality(test_state, test_data, query, nb_threads));
+        // Get the total
+        double sum = arma::sum(cards);
+        // Record result
+        arma::colvec proba = cards/sum;
+        out_probabilities.col(query) = proba;
+        out_weights[query] = sum;
       }
-      if (!test_dataset_shared_map->contains("d1")) {
-        throw std::invalid_argument("'d1' transform not found in data_shared_map");
-      }
-
-      // Build state and forest trainer
-      return Classifier(seed, train_dataset_shared_map, test_dataset_shared_map, trained_forest, do_instrumentation);
     }
 
   }; // End of struct PF2018::Impl
 
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // PF2018 INTERFACE
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+  PF2018::PF2018(size_t nb_trees, size_t nb_candidates)
+    : pImpl(std::make_unique<Impl>(nb_trees, nb_candidates)) {}
 
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // PF2018
+  PF2018::~PF2018() = default;
 
-  PF2018::PF2018(size_t nb_trees, size_t nb_candidates, std::optional<size_t> opt_seed) :
-    nb_trees(nb_trees),
-    nb_candidates(nb_candidates),
-    pImpl{std::make_unique<Impl>(nb_trees, nb_candidates)} {
-    // Use the seed or build a random one
-    if (opt_seed) { seed = opt_seed.value(); }
-    else {
-      std::random_device rd;
-      seed = rd();
-    }
+  void PF2018::train(DTSMap trainset, size_t seed, size_t nb_threads) {
+    pImpl->train(std::move(trainset), seed, nb_threads);
   }
 
-} // End of namespace tempo::classifier::pf
+  void PF2018::predict(const DTSMap& testset, arma::mat& out_probabilities, arma::rowvec& out_weights,
+                       size_t seed, size_t nb_threads) {
+    pImpl->predict(testset, out_probabilities, out_weights, seed, nb_threads);
+  }
+
+} // End of namespace tempo::classifier

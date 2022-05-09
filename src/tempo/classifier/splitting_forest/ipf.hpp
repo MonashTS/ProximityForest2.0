@@ -125,7 +125,7 @@ namespace tempo::classifier::pf {
     virtual void branch_merge(Derived&& /* other */) = 0;
 
     /// Clone at the forest level - clones must be fully independent as they can be used in parallel
-    virtual std::unique_ptr<Derived> forest_fork(size_t /* tree_idx */) = 0;
+    virtual Derived forest_fork(size_t /* tree_idx */) = 0;
 
     virtual ~IState() = default;
   };

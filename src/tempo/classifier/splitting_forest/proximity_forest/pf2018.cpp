@@ -1,6 +1,8 @@
 #include "pf2018.hpp"
 
+#include <tempo/utils/utils.hpp>
 #include <tempo/tseries/dataset.hpp>
+
 #include <tempo/classifier/splitting_forest/ipf.hpp>
 #include <tempo/classifier/splitting_forest/pftree.hpp>
 #include <tempo/classifier/splitting_forest/splitters.hpp>

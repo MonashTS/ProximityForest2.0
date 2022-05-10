@@ -5,6 +5,7 @@
 
 namespace fs = std::filesystem;
 
+
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg = {}) {
   if (msg) {
     std::cerr << msg.value() << std::endl;

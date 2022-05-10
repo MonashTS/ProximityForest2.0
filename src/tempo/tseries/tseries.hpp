@@ -166,6 +166,11 @@ namespace tempo {
     /// Matrix access (li, co)
     [[nodiscard]] inline const arma::Mat<F>& data() const { return _matrix; }
 
+    /// As row vector, only for univariate
+    [[nodiscard]] inline arma::Row<F> rowvec() const {
+      if(nvar()!=1){ throw std::logic_error("rowvec can only be used with univariate series"); }
+      return arma::Row<F>(data());
+    }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Statistic access

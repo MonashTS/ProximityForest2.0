@@ -97,7 +97,7 @@ namespace tempo::classifier::pf {
         return {
           Result{
             ResLeaf<TrainState, TrainData, TestState, TestData>{
-              .splitter = std::make_unique<PureNode>(size, header.label_to_index(), label)}
+              .splitter = std::make_unique<PureNode>(size, header.label_encoder().label_to_index(), label)}
           }
         };
       }

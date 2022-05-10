@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include "cost_function.hpp"
+#include <tempo/distance/cost_function.hpp>
 
 namespace tempo::distance {
 

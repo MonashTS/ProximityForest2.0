@@ -2,7 +2,7 @@
 
 #include <mock/mockseries.hpp>
 #include <catch.hpp>
-#include <tempo/distance/twe.hpp>
+#include <tempo/distance/elastic/twe.hpp>
 
 
 using namespace mock;

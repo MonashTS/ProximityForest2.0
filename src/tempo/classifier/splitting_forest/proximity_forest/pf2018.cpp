@@ -280,8 +280,8 @@ namespace tempo::classifier {
       TestState test_state(seed);
       TestData test_data(trainset, testset);
       // Configure output
-      size_t nb_rows = test_data.get_header().nb_labels();  // i.e. length of a column
-      size_t nb_cols = test_data.get_header().size();       // i.e. length of a row
+      size_t nb_rows = test_data.get_header().label_encoder().nb_labels();  // i.e. length of a column
+      size_t nb_cols = test_data.get_header().size();                       // i.e. length of a row
       out_probabilities.zeros(nb_rows, nb_cols);
       out_weights.zeros(nb_cols);
       // For each query

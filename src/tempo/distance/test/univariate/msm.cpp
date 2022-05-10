@@ -2,7 +2,7 @@
 
 #include <mock/mockseries.hpp>
 #include <catch.hpp>
-#include <tempo/distance/msm.hpp>
+#include <tempo/distance/elastic/msm.hpp>
 
 using namespace mock;
 using namespace tempo::distance::univariate;

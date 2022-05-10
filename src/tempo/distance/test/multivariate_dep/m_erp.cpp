@@ -2,7 +2,7 @@
 
 #include <mock/mockseries.hpp>
 #include <catch.hpp>
-#include <tempo/distance/erp.hpp>
+#include <tempo/distance/elastic/erp.hpp>
 
 using namespace mock;
 using namespace tempo::distance;

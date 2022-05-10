@@ -2,7 +2,7 @@
 
 #include <mock/mockseries.hpp>
 #include <catch.hpp>
-#include <tempo/distance/lcss.hpp>
+#include <tempo/distance/elastic/lcss.hpp>
 
 using namespace mock;
 using namespace tempo::distance;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tseries.hpp"
+#include <utility>
 #include <tempo/utils/utils.hpp>
 
 namespace tempo {
@@ -207,6 +208,74 @@ namespace tempo {
     }
   };
 
+  /// Label encoder
+  class LabelEncoder {
+
+    /// Set of labels for the dataset, with index encoding
+    std::map<L, size_t> _label_to_index;
+
+    /// Reverse mapping index top label
+    std::vector<L> _index_to_label;
+
+    /// Helper function: create the mapping structures with the content from the set _labels.
+    /// Also use as an update function if _label has been *extended*.
+    template<typename Collection>
+    void update(Collection const& labels) {
+      size_t idx = _index_to_label.size();
+      for (auto const& k : labels) {
+        if (!_label_to_index.contains(k)) {
+          _label_to_index[k] = idx;
+          _index_to_label.push_back(k);
+          ++idx;
+        }
+      }
+    }
+
+    static std::set<L> to_set(std::vector<std::optional<L>> const& vec) {
+      std::set<L> s;
+      for (auto const& l : vec) { if (l) { s.insert(l.value()); }}
+      return s;
+    }
+
+  public:
+
+    LabelEncoder() = default;
+
+    LabelEncoder(LabelEncoder const& other) = default;
+
+    LabelEncoder(LabelEncoder&& other) = default;
+
+    /// Create a new encoder given a set of label
+    explicit LabelEncoder(std::set<L> const& labels) { update(labels); }
+
+    /// Copy other into this, then add unknown label from 'labels'
+    explicit LabelEncoder(LabelEncoder other, std::set<L> const& labels) : LabelEncoder(std::move(other)) {
+      update(labels);
+    }
+
+    /// Helper with a vector of optional labels
+    explicit LabelEncoder(std::vector<std::optional<L>> const& labels) :
+      LabelEncoder(to_set(labels)) {}
+
+    /// Helper with a vector of optional labels
+    explicit LabelEncoder(LabelEncoder other, std::vector<std::optional<L>> const& labels) :
+      LabelEncoder(std::move(other), to_set(labels)) {}
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /// Number of labels in the dataset
+    inline size_t nb_labels() const { return _label_to_index.size(); }
+
+    /// Labels to indexes encoding (reverse from index_to_label)
+    inline const std::map<std::string, size_t>& label_to_index() const { return _label_to_index; }
+
+    /// Indexes to labels encoding (reverse from label_to_index)
+    inline const std::vector<std::string>& index_to_label() const { return _index_to_label; }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  };
+
   /** The Dataset header is independent from the actual data -
    * it only records general information and the labels per instance.
    * An instance is represented by its index within [0, size[
@@ -215,9 +284,7 @@ namespace tempo {
    */
   class DatasetHeader {
 
-  private:
-
-    /// Identifier for the core dataset - usually the actual dataset name.
+    /// Identifier for the core dataset - usually the actual dataset name, but could be anything.
     std::string _name;
 
     /// Size of the dataset in number of instances. Instances are indexed in [0, size[
@@ -235,16 +302,39 @@ namespace tempo {
     /// Series with missing data
     std::vector<size_t> _instances_with_missing;
 
-    /// Mapping between index and label
-    std::vector<std::optional<std::string>> _labels;
+    /// Mapping between exemplar index and label
+    std::vector<std::optional<L>> _labels;
 
-    /// Set of labels for the dataset, with index encoding
-    std::map<std::string, size_t> _label_to_index;
-
-    /// Reverse mapping index top label
-    std::vector<std::string> _index_to_label;
+    LabelEncoder _label_encoder;
 
   public:
+
+    /** Constructor of a core dataset
+     * @param dataset_name  A name use to identify this dataset
+     * @param lmin          Minimum length of the series
+     * @param lmax          Maximum length of the series
+     * @param dimensions    Number of dimensions
+     * @param labels        Label per instance, instances being indexed in [0, labels.size()[
+     * @param instances_with_missing Indices of instances with missing data. Empty = no missing data.
+     * @param lencoder      Pre-existing label encoder
+     */
+    inline DatasetHeader(
+      std::string _name,
+      size_t lmin,
+      size_t lmax,
+      size_t dimensions,
+      std::vector<std::optional<std::string>>&& labels,
+      std::vector<size_t>&& instances_with_missing,
+      LabelEncoder lencoder
+    )
+      : _name(std::move(_name)),
+        _size(labels.size()),
+        _length_min(lmin),
+        _length_max(lmax),
+        _nb_dimensions(dimensions),
+        _instances_with_missing(std::move(instances_with_missing)),
+        _labels(std::move(labels)),
+        _label_encoder(std::move(lencoder), _labels) {}
 
     /** Constructor of a core dataset
      * @param dataset_name  A name use to identify this dataset
@@ -261,25 +351,9 @@ namespace tempo {
       size_t dimensions,
       std::vector<std::optional<std::string>>&& labels,
       std::vector<size_t>&& instances_with_missing
-    )
-      : _name(std::move(_name)),
-        _size(labels.size()),
-        _length_min(lmin),
-        _length_max(lmax),
-        _nb_dimensions(dimensions),
-        _instances_with_missing(std::move(instances_with_missing)),
-        _labels(std::move(labels)) {
-      // Set of labels from input vector: guarantee uniqueness
-      std::set<std::string> lset;
-      for (const auto& ol : _labels) { if (ol.has_value()) { lset.insert(ol.value()); }}
-      // Set to map (Label, Index)
-      size_t idx = 0;
-      for (const auto& k : lset) {
-        _label_to_index[k] = idx;
-        _index_to_label.push_back(k);
-        ++idx;
-      }
-    }
+    ) :
+      DatasetHeader(std::move(_name), lmin, lmax, dimensions, std::move(labels), std::move(instances_with_missing),
+                    LabelEncoder()) {}
 
     /**   Given a set of index 'is', compute a tuple (BCM, vec) where:
      *  * 'BCM' gives a list of index from 'is' per label ("class")
@@ -333,21 +407,15 @@ namespace tempo {
     /// Label per instance. An instance may not have a label, hence we use optional
     inline const std::vector<std::optional<std::string>>& labels() const { return _labels; }
 
-    /// Number of labels in the dataset
-    inline size_t nb_labels() const { return _label_to_index.size(); }
-
-    /// Labels to indexes encoding (reverse from index_to_label)
-    inline const std::map<std::string, size_t>& label_to_index() const { return _label_to_index; }
-
-    /// Indexes to labels encoding (reverse from label_to_index)
-    inline const std::vector<std::string>& index_to_label() const { return _index_to_label; }
+    /// Access the label encoder
+    inline LabelEncoder const& label_encoder() const { return _label_encoder; }
 
     /// Create a json representation of the header
     inline Json::Value to_json() const {
       Json::Value j;
       j["dataset_name"] = name();
       j["dataset_size"] = size();
-      j["dataset_label"] = utils::to_json(index_to_label());
+      j["dataset_label"] = utils::to_json(_label_encoder.index_to_label());
       j["series_dimension"] = nb_dimensions();
       j["series_length_min"] = length_min();
       j["series_length_max"] = length_max();
@@ -381,12 +449,12 @@ namespace tempo {
 
     /// Constructor: all data must be pre-constructed
     Dataset(
-      std::shared_ptr<DatasetHeader> core,
+      std::shared_ptr<DatasetHeader> header,
       std::string id,
       std::vector<D>&& data,
       std::optional<Json::Value> parameters = {} // TODO
-    )
-      : _dataset_header(std::move(core)), _identifier(std::move(id)),
+    ) : _dataset_header(std::move(header)),
+        _identifier(std::move(id)),
         _data(std::make_shared<std::vector<D>>(std::move(data))),
         _parameters(std::move(parameters)) {
       assert((bool)_dataset_header);
@@ -460,7 +528,7 @@ namespace tempo {
       arma::running_stat_vec<arma::Col<F>> stat;
       for (const auto i : is) {
         const TSeries& s = dts[i];
-        const arma::Mat<F> mat = s.data();
+        const arma::Mat<F>& mat = s.data();
         for (size_t c = 0; c<mat.n_cols; ++c) {
           stat(mat.col(c));
         }
@@ -482,7 +550,7 @@ namespace tempo {
 
   /// Helper providing the by class cardinality in Col vector
   inline arma::Col<size_t> get_class_cardinalities(const DatasetHeader& header, const ByClassMap& bcm) {
-    const auto& label_to_index = header.label_to_index();
+    const auto& label_to_index = header.label_encoder().label_to_index();
     arma::Col<size_t> result(label_to_index.size(), arma::fill::zeros);
     for (const auto& [l, v] : bcm) { result[label_to_index.at(l)] = v.size(); }
     return result;

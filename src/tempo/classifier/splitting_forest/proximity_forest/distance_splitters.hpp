@@ -3,14 +3,14 @@
 #include <tempo/utils/utils.hpp>
 
 #include <tempo/tseries/dataset.hpp>
-#include <tempo/distance/direct.hpp>
-#include <tempo/distance/adtw.hpp>
-#include <tempo/distance/dtw.hpp>
-#include <tempo/distance/wdtw.hpp>
-#include <tempo/distance/erp.hpp>
-#include <tempo/distance/lcss.hpp>
-#include <tempo/distance/msm.hpp>
-#include <tempo/distance/twe.hpp>
+#include <tempo/distance/lockstep/direct.hpp>
+#include <tempo/distance/elastic/adtw.hpp>
+#include <tempo/distance/elastic/dtw.hpp>
+#include <tempo/distance/elastic/wdtw.hpp>
+#include <tempo/distance/elastic/erp.hpp>
+#include <tempo/distance/elastic/lcss.hpp>
+#include <tempo/distance/elastic/msm.hpp>
+#include <tempo/distance/elastic/twe.hpp>
 
 #include "../ipf.hpp"
 

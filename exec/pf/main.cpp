@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
       result_weights.append(Json::Value(weights[query]));
       // Store the true label
       string true_l = test_header.labels()[query].value();
-      size_t true_label_idx = test_header.label_to_index().at(true_l);
+      size_t true_label_idx = test_header.label_encoder().label_to_index().at(true_l);
       result_truelabels.append(true_label_idx);
     }
     j["result_probabilities"] = result_probas;

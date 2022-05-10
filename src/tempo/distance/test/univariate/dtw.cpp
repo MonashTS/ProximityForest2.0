@@ -2,7 +2,7 @@
 
 #include <mock/mockseries.hpp>
 #include <catch.hpp>
-#include <tempo/distance/dtw.hpp>
+#include <tempo/distance/elastic/dtw.hpp>
 
 
 // Configuration

@@ -9,8 +9,9 @@ target_sources(libtempo
         elastic/twe.hpp
         elastic/wdtw.hpp
         lockstep/direct.hpp
-        lockstep/minkowski.hpp
         lockstep/lorentzian.hpp
+        lockstep/manhattan.hpp
+        lockstep/minkowski.hpp
         )
 
 if (BUILD_TESTING)

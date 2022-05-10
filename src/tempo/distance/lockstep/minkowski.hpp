@@ -5,16 +5,12 @@
 
 namespace tempo::distance {
 
-  /// Minkowski metric on arma::Row
+  /// Minkowski metric on arma vector (Row or Col)
   ///  - Equal to the Manhattan distance with p=1
   ///  - Equal to the Euclidean Distance distance with p=2
-  template<Float F>
-  F minkowski(arma::Row<F> const& A, arma::Row<F> const& B, F p, [[maybe_unused]]F ub = utils::PINF<F>) {
-    if(p==1.0){ // Manhattan distance
-      return arma::sum(arma::abs(A - B));
-    } else {
-      return std::pow(arma::sum(arma::pow(arma::abs(A - B), p)), (F)1.0/p);
-    }
+  template<Float F, typename ARMA_V>
+  F minkowski(ARMA_V const& A, ARMA_V const& B, F p, [[maybe_unused]]F ub = utils::PINF<F>) {
+    return std::pow(arma::sum(arma::pow(arma::abs(A - B), p)), (F)1.0/p);
   }
 
   /// Minkowski metric on TSeries (univariate only)

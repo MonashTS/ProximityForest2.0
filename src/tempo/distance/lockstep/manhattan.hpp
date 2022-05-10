@@ -1,13 +1,14 @@
 #pragma once
 
-#include "minkowski.hpp"
+#include <tempo/utils/utils.hpp>
+#include <tempo/tseries/tseries.hpp>
 
 namespace tempo::distance {
 
-  /// Manhattan metric on arma::Row
-  template<Float F>
-  F manhattan(arma::Row<F> const& A, arma::Row<F> const& B, F p, [[maybe_unused]]F ub = utils::PINF<F>) {
-    return minkowski<F>(A, B, 1, ub);
+  /// Manhattan metric on arma vector (Row or Col)
+  template<Float F, typename ARMA_V>
+  F manhattan(ARMA_V const& A, ARMA_V const& B, F p, [[maybe_unused]]F ub = utils::PINF<F>) {
+    return arma::sum(arma::abs(A - B));
   }
 
   /// manhattan metric on TSeries (univariate only)

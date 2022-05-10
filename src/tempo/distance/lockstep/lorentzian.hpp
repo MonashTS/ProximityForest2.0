@@ -5,10 +5,9 @@
 
 namespace tempo::distance {
 
-  /// Lorentzian metric on arma::Row
-  // d = sum(log(1 + abs(P - Q)));
-  template<Float F>
-  F lorentzian(arma::Row<F> const& A, arma::Row<F> const& B, [[maybe_unused]]F ub = utils::PINF<F>) {
+  /// Lorentzian metric on arma vector (Row or Col)
+  template<Float F, typename ARMA_V>
+  F lorentzian(ARMA_V const& A, ARMA_V const& B, [[maybe_unused]]F ub = utils::PINF<F>) {
     return arma::sum(arma::log(1 + arma::abs(A - B)));
   }
 

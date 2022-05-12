@@ -7,6 +7,18 @@ namespace tempo::transform {
 
   namespace {
 
+    // MeanNorm normalisation
+    // avgv == avg(A) average value over A
+    // minv == min(A) min value of A
+    // maxv == max(A) max value of A
+    // For constant series (maxv-minv==0), return a copy of A unchanged
+    template<typename F>
+    arma::Row<F> _meannorm(arma::Row<F> const& A, F avgv, F minv, F maxv) {
+      F diffv = maxv - minv;
+      if (diffv==0) { return A; }
+      else { return (A - avgv)/diffv; }
+    }
+
     // MinMax normalisation
     // minv == min(A)
     // maxv == max(A)
@@ -18,18 +30,6 @@ namespace tempo::transform {
       F diffr = range_max - range_min;
       if (diffv==0) { return arma::Row<F>(A.n_elem, arma::fill::value(diffr/2)); }
       else { return range_min + (A - minv)*diffr/diffv; }
-    }
-
-    // MeanNorm normalisation
-    // avgv == avg(A) average value over A
-    // minv == min(A) min value of A
-    // maxv == max(A) max value of A
-    // For constant series (maxv-minv==0), return a copy of A unchanged
-    template<typename F>
-    arma::Row<F> _meannorm(arma::Row<F> const& A, F avgv, F minv, F maxv) {
-      F diffv = maxv - minv;
-      if (diffv==0) { return A; }
-      else { return (A - avgv)/diffv; }
     }
 
     // ZScore normalisation

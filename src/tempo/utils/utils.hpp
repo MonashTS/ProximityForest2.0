@@ -215,11 +215,13 @@ namespace tempo::utils {
   public:
     using task_t = std::function<void()>;
     using taskgen_t = std::function<std::optional<task_t>()>;
+    using itask_t = std::function<void(size_t i)>;
 
   private:
     std::mutex mtx;
     std::vector<std::thread> threads;
     std::queue<task_t> tasklist;
+    size_t itask_idx;
 
   public:
 
@@ -243,6 +245,9 @@ namespace tempo::utils {
     /// Blocking call using a task generator
     void execute(int nbthread, taskgen_t tgenerator);
 
+    /// Blocking call using an incremental task with i [start, stop[
+    void execute(int nbthread, itask_t itask, size_t start, size_t stop, size_t step=1);
+
   private:
 
     void run_thread();
@@ -250,6 +255,8 @@ namespace tempo::utils {
     void run_thread(size_t nbtask);
 
     void run_thread_generator(taskgen_t& tgenerator);
+
+    void run_thread_itask(itask_t& itask, size_t stop, size_t step);
 
   };
 

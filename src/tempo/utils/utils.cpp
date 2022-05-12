@@ -5,7 +5,7 @@
 // --- --- --- --- --- ---
 // Timing
 // --- --- --- --- --- ---
-namespace tempo::utils{
+namespace tempo::utils {
 
   /** Create a time point for "now" */
   time_point_t now() { return myclock_t::now(); }
@@ -136,6 +136,30 @@ namespace tempo::utils {
     }
   }
 
+  /// Blocking call using an incremental task with i [start, stop[
+  void ParTasks::execute(int nbthread, itask_t itask, size_t start, size_t stop, size_t step) {
+    // --- --- --- 1 thread
+    if (nbthread<=1) {
+      for (size_t i = start; i<stop; i += step) {
+        itask(i);
+      }
+    }
+      // --- --- --- Multi thread
+    else {
+      threads.reserve(nbthread);
+      itask_idx = start;
+      for (int i = 0; i<nbthread; ++i) {
+        threads.emplace_back([this, &itask, stop, step]() { run_thread_itask(itask, stop, step); });
+      }
+      // Wait for all threads to stop
+      for (auto& thread : threads) { thread.join(); }
+      threads.clear();
+    }
+  }
+
+
+
+
   // --- --- ---  Private
 
   void ParTasks::run_thread() {
@@ -182,6 +206,22 @@ namespace tempo::utils {
         ntask = tgenerator();
       }
     }
+  }
+
+  void ParTasks::run_thread_itask(itask_t& itask, size_t stop, size_t step) {
+    // Lock block to compare/get/increment shared itask_idx
+    mtx.lock();
+    while (itask_idx<stop) {
+      size_t myidx = itask_idx;
+      itask_idx += step;
+      mtx.unlock();
+      // Execute the task
+      itask(myidx);
+      // Lock block re-start
+      mtx.lock();
+    }
+    // Lock block re-end
+    mtx.unlock();
   }
 
 }

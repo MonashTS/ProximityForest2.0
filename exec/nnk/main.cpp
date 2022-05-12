@@ -140,14 +140,10 @@ int main(int argc, char **argv) {
     }
   };
 
-
   // Create the tasks per tree. Note that we clone the state.
   tempo::utils::ParTasks p;
-  for (size_t i = 0; i<test_top; ++i) {
-    p.push_task(test_task, i);
-  }
 
-  p.execute(nbthread);
+  p.execute(nbthread, test_task, 0, test_top, 1);
 
   Json::Value jtest;
 
@@ -169,7 +165,7 @@ int main(int argc, char **argv) {
     jtest.append(res);
   }
 
-  j["result"] = jtest;
+  j["result_neighbour"] = jtest;
 
   cout << j.toStyledString() << endl;
 
@@ -218,9 +214,7 @@ int main(int argc, char **argv) {
 
       size_t true_class = test_header.label_index(qidx).value();
 
-      if (selected_class==true_class) {
-        nbcorrect++;
-      }
+      if (selected_class==true_class) { nbcorrect++; }
 
     }
 

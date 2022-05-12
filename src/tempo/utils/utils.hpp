@@ -6,7 +6,6 @@
 #include "utils/uncopyable.hpp"
 #include "utils/stats.hpp"
 
-
 namespace tempo::utils {
 
   template<typename T>
@@ -65,30 +64,6 @@ namespace tempo::utils {
   FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
 
 
-
-  // --- --- --- --- --- ---
-  // --- Simple Tooling
-  // --- --- --- --- --- ---
-
-  /// Minimum of 3 values using std::min<T>
-  template<typename T>
-  inline T min(T a, T b, T c) { return std::min<T>(a, std::min<T>(b, c)); }
-
-  /// Maximum of 3 values using std::min<T>
-  template<typename T>
-  inline T max(T a, T b, T c) { return std::max<T>(a, std::max<T>(b, c)); }
-
-
-
-  // --- --- --- --- --- ---
-  // --- Should not happen
-  // --- --- --- --- --- ---
-
-  /// Throw an exception "should not happen". Used as default case in switches.
-  void inline should_not_happen() { throw std::logic_error("Should not happen"); }
-
-
-
   // --- --- --- --- --- ---
   // --- Unsigned tooling
   // --- --- --- --- --- ---
@@ -122,6 +97,39 @@ namespace tempo::utils {
     }
     return (SIType)ui;
   }
+
+
+  // --- --- --- --- --- ---
+  // --- Simple Math Tooling
+  // --- --- --- --- --- ---
+
+  /// Minimum of 3 values using std::min<T>
+  template<typename T>
+  inline T min(T a, T b, T c) { return std::min<T>(a, std::min<T>(b, c)); }
+
+  /// Maximum of 3 values using std::min<T>
+  template<typename T>
+  inline T max(T a, T b, T c) { return std::max<T>(a, std::max<T>(b, c)); }
+
+  /// Exponent p of next higher power of 2 for absolute value of v, i.e. 2^p >= |v|
+  template<typename T>
+  inline T nextpow2(T v) {
+    T a;
+    if constexpr( std::is_unsigned<T>::value) { a=v; } else { a=std::abs(v); }
+    return std::ceil(std::log2(a));
+  }
+
+
+
+  // --- --- --- --- --- ---
+  // --- Should not happen
+  // --- --- --- --- --- ---
+
+  /// Throw an exception "should not happen". Used as default case in switches.
+  void inline should_not_happen() { throw std::logic_error("Should not happen"); }
+
+
+
 
 
   // --- --- --- --- --- ---
@@ -161,7 +169,7 @@ namespace tempo::utils {
     return std::any_cast<T>(capsule.get());
   }
 
-}
+} // End of namespace tempo::utils
 
 // --- --- --- --- --- ---
 // --- Timing

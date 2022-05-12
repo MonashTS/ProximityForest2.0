@@ -407,6 +407,16 @@ namespace tempo {
     /// Label per instance. An instance may not have a label, hence we use optional
     inline const std::vector<std::optional<std::string>>& labels() const { return _labels; }
 
+    /// Label for a given instance
+    inline std::optional<std::string> label(size_t i) const { return _labels[i]; }
+
+    /// Index in the label encoder for a given instance.
+    inline std::optional<size_t> label_index(size_t i) const {
+      auto const& l = _labels[i];
+      if(l){ return {_label_encoder.label_to_index().at(l.value())}; }
+      else { return {}; }
+    }
+
     /// Access the label encoder
     inline LabelEncoder const& label_encoder() const { return _label_encoder; }
 

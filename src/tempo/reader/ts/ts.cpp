@@ -52,7 +52,7 @@ namespace tempo::reader {
     // Consume the next word (non whites char), converting to lower case.
     buffer.clear();
     int c = read_word_to_lower(input, buffer);
-    if (c==EOF) { return {"Error while reading the header: reached the end of file (after \""+buffer+"\"."}; }
+    if (c==EOF) { return {"Error while reading the header: reached the end of file (after \"" + buffer + "\"."}; }
     // Whatever we read, skip whites
     skip_white(input);
 
@@ -64,119 +64,119 @@ namespace tempo::reader {
       switch (it->second) {
 
         // Read the name of the problem
-        case DirectiveCode::dir_problem_name: {
-          if (read_word(input, buffer)==EOF) {
-            return {"Error while reading directive @problemname: reached EOF."};
-          }
-          data.problem_name = {buffer};
-          state = (&TSReader::read_header);
-          return {};
+      case DirectiveCode::dir_problem_name: {
+        if (read_word(input, buffer)==EOF) {
+          return {"Error while reading directive @problemname: reached EOF."};
         }
+        data.problem_name = {buffer};
+        state = (&TSReader::read_header);
+        return {};
+      }
 
-          // Are we using the timestamps?
-        case DirectiveCode::dir_timestamp: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @timestamps: reached EOF."};
-          }
-          auto ob = as_bool(buffer);
-          if (ob.has_value()) { data.timestamps = {ob.value()}; }
-          else { return {"Error while reading directive @timestamps ('true' or 'false' expected)"}; }
-          state = (&TSReader::read_header);
-          return {};
+        // Are we using the timestamps?
+      case DirectiveCode::dir_timestamp: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @timestamps: reached EOF."};
         }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) { data.timestamps = {ob.value()}; }
+        else { return {"Error while reading directive @timestamps ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
+      }
 
-          // Do we have missing values?
-        case DirectiveCode::dir_missing: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @missing: reached EOF."};
-          }
-          auto ob = as_bool(buffer);
-          if (ob.has_value()) { data.missing = {ob.value()}; }
-          else { return {"Error while reading directive @missing ('true' or 'false' expected)"}; }
-          state = (&TSReader::read_header);
-          return {};
+        // Do we have missing values?
+      case DirectiveCode::dir_missing: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @missing: reached EOF."};
         }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) { data.missing = {ob.value()}; }
+        else { return {"Error while reading directive @missing ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
+      }
 
-          // Is this an univariate time series?
-        case DirectiveCode::dir_univariate: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @univariate: reached EOF."};
-          }
-          auto ob = as_bool(buffer);
-          if (ob.has_value()) { data.univariate = {ob.value()}; }
-          else { return {"Error while reading directive @univariate ('true' or 'false' expected)"}; }
-          state = (&TSReader::read_header);
-          return {};
+        // Is this an univariate time series?
+      case DirectiveCode::dir_univariate: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @univariate: reached EOF."};
         }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) { data.univariate = {ob.value()}; }
+        else { return {"Error while reading directive @univariate ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
+      }
 
-          // Do we have series of equal length_?
-        case DirectiveCode::dir_equal_length: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @equallength: reached EOF."};
-          }
-          auto ob = as_bool(buffer);
-          if (ob.has_value()) {
-            if (!ob.value() && data.serieslength.has_value()) {
-              return {"Error while reading the directive @equallength: cannot be false if a length is specified"};
-            }
-            data.equallength = {ob.value()};
-          } else { return {"Error while reading directive @equallength ('true' or 'false' expected)"}; }
-          state = (&TSReader::read_header);
-          return {};
+        // Do we have series of equal length_?
+      case DirectiveCode::dir_equal_length: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @equallength: reached EOF."};
         }
-
-          // What is the length_ of the series? Implies equal length.
-        case DirectiveCode::dir_series_length: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @serieslength: reached EOF."};
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) {
+          if (!ob.value()&&data.serieslength.has_value()) {
+            return {"Error while reading the directive @equallength: cannot be false if a length is specified"};
           }
-          auto oi = as_int(buffer);
-          if (oi.has_value() && oi.value()>0) {
-            if (data.equallength.has_value() && !data.equallength.value()) {
-              return {"Error while reading directive @serieslength: cannot be set with @equallength set to false"};
-            }
-            data.serieslength = {oi.value()};
+          data.equallength = {ob.value()};
+        } else { return {"Error while reading directive @equallength ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
+      }
+
+        // What is the length_ of the series? Implies equal length.
+      case DirectiveCode::dir_series_length: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @serieslength: reached EOF."};
+        }
+        auto oi = as_int(buffer);
+        if (oi.has_value()&&oi.value()>0) {
+          if (data.equallength.has_value()&&!data.equallength.value()) {
+            return {"Error while reading directive @serieslength: cannot be set with @equallength set to false"};
+          }
+          data.serieslength = {oi.value()};
+        } else {
+          return {"Error while reading directive @serieslength (positive integer number expected)"};
+        }
+        state = (&TSReader::read_header);
+        return {};
+      }
+
+        // Do we have class label?
+      case DirectiveCode::dir_class_label: {
+        if (read_word_to_lower(input, buffer)==EOF) {
+          return {"Error while reading directive @classlabel: reached EOF."};
+        }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) {
+          if (ob.value()) {
+            // Read the classes
+            state = (&TSReader::read_classes);
+            return {};
           } else {
-            return {"Error while reading directive @serieslength (positive integer number expected)"};
+            // Skip until the end of line.
+            skip_line(input);
+            state = (&TSReader::read_header);
+            return {};
           }
-          state = (&TSReader::read_header);
-          return {};
+        } else {
+          return {"Error whole reading directive @classlabel ('true' or 'false' expected)"};
         }
+      }
 
-          // Do we have class label?
-        case DirectiveCode::dir_class_label: {
-          if (read_word_to_lower(input, buffer)==EOF) {
-            return {"Error while reading directive @classlabel: reached EOF."};
-          }
-          auto ob = as_bool(buffer);
-          if (ob.has_value()) {
-            if (ob.value()) {
-              // Read the classes
-              state = (&TSReader::read_classes);
-              return {};
-            } else {
-              // Skip until the end of line.
-              skip_line(input);
-              state = (&TSReader::read_header);
-              return {};
-            }
-          } else {
-            return {"Error whole reading directive @classlabel ('true' or 'false' expected)"};
-          }
-        }
+        // Data directive
+      case DirectiveCode::dir_data: {
+        skip_line(input);
+        state = (&TSReader::read_data);
+        return {};
+      }
 
-          // Data directive
-        case DirectiveCode::dir_data: {
-          skip_line(input);
-          state = (&TSReader::read_data);
-          return {};
-        }
-
-          // Default case: should not happen
-        default:return {"Error while reading the header: internal"};
+        // Default case: should not happen
+      default:return {"Error while reading the header: internal"};
       }
     } else {
-      return {"Error while reading the header: unrecognized directive \""+buffer+"\"."};
+      return {"Error while reading the header: unrecognized directive \"" + buffer + "\"."};
     }
   }
 
@@ -216,22 +216,22 @@ namespace tempo::reader {
     buffer.clear();
     std::getline(input, buffer);
     auto has_labels = data.has_labels();
-    data.nb_dimensions = std::count(buffer.begin(), buffer.end(), ':')+(has_labels ? 0 : 1);
+    data.nb_dimensions = std::count(buffer.begin(), buffer.end(), ':') + (has_labels ? 0 : 1);
     if (data.nb_dimensions==0) {
       return {"Initialisation: Error reading the data: no dimension could be read"};
-    } else if (data.univariate.has_value() && data.univariate.value() && data.nb_dimensions!=1) {
+    } else if (data.univariate.has_value()&&data.univariate.value()&&data.nb_dimensions!=1) {
       return {"Initialisation: Error reading the data: the dataset is not univariate."};
     }
 
     // --- --- --- Check the length
     // Get the length_ of the first series (looking at its first dimension)
     auto first_band = buffer.substr(0, buffer.find(':'));
-    length1st = std::count(first_band.begin(), first_band.end(), ',')+1;
+    length1st = std::count(first_band.begin(), first_band.end(), ',') + 1;
     // Ensure we have the good length_ if it was specified
-    if (data.has_equallength() && data.serieslength.has_value() &&
+    if (data.has_equallength()&&data.serieslength.has_value()&&
       data.serieslength.value()!=length1st) {
-      return {"Initialisation: Error reading the data: non matching length_ "s+
-        std::to_string(data.serieslength.value())+" vs "+std::to_string(length1st)};
+      return {"Initialisation: Error reading the data: non matching length_ "s +
+        std::to_string(data.serieslength.value()) + " vs " + std::to_string(length1st)};
     }
 
     // --- --- --- Read the first line based on the buffer
@@ -276,12 +276,12 @@ namespace tempo::reader {
       do {
         // --- Class or inside band loop
         // If we have label and we read all the dimensions, read the label
-        if (has_labels && cur_dim==ndim) {
+        if (has_labels&&cur_dim==ndim) {
           buffer.clear();
           int c = read_until_delim(in, buffer);
           trim(buffer);
           // Ok if end of line/end of file
-          if (c=='\n' || c==EOF) {
+          if (c=='\n'||c==EOF) {
             // Construct the series
             dataset.emplace_back(TSeries::mk_from_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
             // Update min/max length
@@ -314,14 +314,15 @@ namespace tempo::reader {
             if (buffer=="?") {
               series.push_back(std::numeric_limits<F>::quiet_NaN());
               size_t missing_index = dataset.size();
-              if (missing.empty() || missing.back()!=missing_index) {
+              if (missing.empty()||missing.back()!=missing_index) {
                 missing.push_back(missing_index);
               }
             } else {
               auto od = as_double(buffer);
               if (od.has_value()) { series.push_back((F)od.value()); }
               else {
-                return {"Error reading '"+buffer+"': only supporting floating values (read as double) and missing values"};
+                return {"Error reading '" + buffer
+                          + "': only supporting floating values (read as double) and missing values"};
               }
             }
 
@@ -329,20 +330,20 @@ namespace tempo::reader {
             // Read an item, not the end of anything: continue
             if (c==',') { continue; }
             // Mark the end of a dimension: check the expected_length if needed
-            if (c==':' || c=='\n' || c==EOF) {
+            if (c==':'||c=='\n'||c==EOF) {
               // After reading the first dimension, record the length_
               if (cur_dim==0) { length = series.size(); }
               cur_dim++;
               // Length check
-              if (has_equallength && length!=expected_length) {
-                return {"Error reading the data: non matching expected_length "s+
-                  std::to_string(expected_length)+" vs "+std::to_string(length)};
+              if (has_equallength&&length!=expected_length) {
+                return {"Error reading the data: non matching expected_length "s +
+                  std::to_string(expected_length) + " vs " + std::to_string(length)};
               }
               // End of the dimension loop
               loop_dimension = false;
             }
             // Mark the end of the current series: check the dimension, no label
-            if (c=='\n' || c==EOF) {
+            if (c=='\n'||c==EOF) {
               if (has_labels) { return {"Error reading the data: missing get_label"}; }
               else if (series.size()!=cur_dim*length) {
                 return {"Error reading the data: non matching dimension"};
@@ -356,13 +357,10 @@ namespace tempo::reader {
               loop_series = false;
               loop_data = c!=EOF;
             }
-          }
-          while (loop_dimension);
+          } while (loop_dimension);
         } // End of if - read labels or read band
-      }
-      while (loop_series);
-    }
-    while (loop_data);
+      } while (loop_series);
+    } while (loop_data);
 
     // All good!
     return {};
@@ -370,25 +368,42 @@ namespace tempo::reader {
 
 
   /** Static function */
-  std::variant<std::string, Dataset<TSeries>> TSReader::read(std::istream& input) {
+  std::variant<std::string, Dataset<TSeries>> TSReader::read(
+    std::istream& input,
+    std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder
+  ) {
     TSReader reader(input);
     auto result = reader.read();
     if (result.index()==1) {
       TSData tsdata = std::move(std::get<1>(result));
 
-      // 1) Build a core dataset
+      // 1) Build a dataset header
       // 1.a) Build the labels vector
       std::vector<std::optional<std::string>> labels;
-      for (const auto& ts: tsdata.series) { labels.emplace_back(ts.label()); }
-      // 1.b) Build the core dataset behind a shared pointer
-      std::shared_ptr<DatasetHeader> cd = std::make_shared<DatasetHeader>(
-        tsdata.problem_name.value(),
-        tsdata.shortest_length,
-        tsdata.longest_length,
-        tsdata.nb_dimensions,
-        std::move(labels),
-        std::move(tsdata.series_with_missing_values)
-      );
+      for (const auto& ts : tsdata.series) { labels.emplace_back(ts.label()); }
+      // 1.b) Build the header
+      std::shared_ptr<DatasetHeader> cd;
+      if (mbencoder) {
+        cd = std::make_shared<DatasetHeader>(
+          tsdata.problem_name.value(),
+          tsdata.shortest_length,
+          tsdata.longest_length,
+          tsdata.nb_dimensions,
+          std::move(labels),
+          std::move(tsdata.series_with_missing_values),
+          mbencoder->get()
+        );
+
+      } else {
+        cd = std::make_shared<DatasetHeader>(
+          tsdata.problem_name.value(),
+          tsdata.shortest_length,
+          tsdata.longest_length,
+          tsdata.nb_dimensions,
+          std::move(labels),
+          std::move(tsdata.series_with_missing_values)
+        );
+      }
 
       // 2) Build a Dataset
       return {Dataset<TSeries>(std::move(cd), "default", std::move(tsdata.series))};

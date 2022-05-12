@@ -4,7 +4,6 @@
 #include <tempo/tseries/tseries.hpp>
 #include <tempo/tseries/dataset.hpp>
 
-
 namespace tempo::reader {
 
   /** Structure obtained after reading a TS file
@@ -48,7 +47,7 @@ namespace tempo::reader {
 
     TSData(TSData&& other) = default;
 
-    TSData& operator=(TSData&& other) = default;
+    TSData& operator =(TSData&& other) = default;
 
     // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
     // Helpers
@@ -76,15 +75,13 @@ namespace tempo::reader {
      *  * either an error-string if an error occured
      *  * or the data on success
      */
-    static std::variant<
-      std::string,
-      Dataset<TSeries>
-    > read(std::istream& input);
+    static std::variant<std::string, Dataset<TSeries>>
+    read(std::istream& input, std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder = {});
 
   private:
     // --- --- --- Private constructor
     explicit TSReader(std::istream& input)
-      :input(input), state(nullptr) { }
+      : input(input), state(nullptr) {}
 
     // --- --- --- Alias
 
@@ -127,13 +124,13 @@ namespace tempo::reader {
     // Map (directive string |-> directive switch code)
     inline static std::map<std::string, DirectiveCode> directive_map = {
       {str_problem_name, DirectiveCode::dir_problem_name},
-      {str_timestamp,    DirectiveCode::dir_timestamp},
-      {str_missing,      DirectiveCode::dir_missing},
-      {str_univariate,   DirectiveCode::dir_univariate},
-      {str_equallength,  DirectiveCode::dir_equal_length},
+      {str_timestamp, DirectiveCode::dir_timestamp},
+      {str_missing, DirectiveCode::dir_missing},
+      {str_univariate, DirectiveCode::dir_univariate},
+      {str_equallength, DirectiveCode::dir_equal_length},
       {str_serieslength, DirectiveCode::dir_series_length},
-      {str_classlabel,   DirectiveCode::dir_class_label},
-      {str_data,         DirectiveCode::dir_data}
+      {str_classlabel, DirectiveCode::dir_class_label},
+      {str_data, DirectiveCode::dir_data}
     };
 
     // --- --- --- Methods

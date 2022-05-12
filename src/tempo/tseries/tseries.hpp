@@ -73,13 +73,31 @@ namespace tempo {
     /** Disable copy (we have to move instead; prevent unwanted data duplication) */
     TSeries(const TSeries&) = delete;
 
-    /** Build a new series from a row major vector */
-    [[nodiscard]] static TSeries mk_rowmajor(
-      std::vector<F>&& v,
-      size_t nbvar,
-      std::optional<std::string> olabel,
-      std::optional<bool> omissing
-    ) {
+    /// Build a new univariate series from an arma::Row<F>
+    static TSeries mk_from(arma::Row<F>&& v, std::optional<std::string> olabel, std::optional<bool> omissing) {
+      // Build matrix from incoming row vector
+      arma::Mat<F> matrix(std::move(v));
+      // Check missing data (NAN)
+      bool has_missing;
+      if (omissing.has_value()) { has_missing = omissing.value(); }
+      else { has_missing = matrix.has_nan(); }
+      //
+      return TSeries({}, nullptr, std::move(matrix), olabel, has_missing);
+    }
+
+    /// Build a new univariate series copying its info from an existing TSeries,
+    /// and getting its data from an arma::Row<F>
+    /// Usefull when transforming series into other series (e.g. normalisation)
+    /// Does not check if the info from other actually match v.
+    static TSeries mk_from(TSeries const& other, arma::Row<F>&& v) {
+      return mk_from(std::move(v), other.label(), {other.missing()});
+    }
+
+    /// Build a new series from a row major vector
+    static TSeries mk_from_rowmajor(std::vector<F>&& v,
+                               size_t nbvar,
+                               std::optional<std::string> olabel,
+                               std::optional<bool> omissing) {
       using namespace std;
 
       // --- Checking
@@ -92,17 +110,19 @@ namespace tempo {
       const size_t nb_cols = vsize/nbvar;
 
       // --- Take ownership of the incoming vector
-      auto capsule = lu::make_capsule<vector<F>>(move(v));
+      auto capsule = lu::make_capsule<vector<F>>
+      (std::move(v));
 
       // --- Build Armadillo matrix
       // Armadillo works with column major data, but we are given a row major one.
       // Build the data, and proceed with an "in place" transposition
       // This transposition **will** change the underlying vector, which is fine.
-      F *rawptr = lu::get_capsule_ptr<vector<F>>(capsule)->data();
+      F *rawptr = lu::get_capsule_ptr<vector<F>>
+      (capsule)->data();
       // Invert line/column here: we get the "right" matrix after transposition
       arma::Mat<F> matrix(rawptr, nb_cols, nb_lines,
-                 false,   // copy_aux_mem = false: use the auxiliary memory (i.e. no copying)
-                 true     // struct = true: matrix bounds to the auxiliary memory for its lifetime; can't be resized
+                          false,   // copy_aux_mem = false: use the auxiliary memory (i.e. no copying)
+                          true     // struct = true: matrix bounds to the auxiliary memory for its lifetime; can't be resized
       );
 
       // Transpose
@@ -127,12 +147,11 @@ namespace tempo {
     }
 
     /// Copy data from other, except for the actual data. Allow to easily do transforms. No checking done.
-    [[nodiscard]] static TSeries mk_rowmajor(
-      const TSeries& other,
-      std::vector<F>&& v
-    ) {
-      return mk_rowmajor(std::move(v), other.nvar(), other.label(), {other.missing()});
+    static TSeries mk_from_rowmajor(TSeries const& other, std::vector<F>&& v) {
+      return mk_from_rowmajor(std::move(v), other.nvar(), other.label(), {other.missing()});
     }
+
+
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Basic access
@@ -161,14 +180,14 @@ namespace tempo {
     [[nodiscard]] inline F operator [](size_t idx) const { return _matrix(idx); }
 
     /// Column major access to the raw pointer
-    [[nodiscard]] inline const F* rawdata() const { return _rawdata; }
+    [[nodiscard]] inline const F *rawdata() const { return _rawdata; }
 
     /// Matrix access (li, co)
     [[nodiscard]] inline const arma::Mat<F>& data() const { return _matrix; }
 
     /// As row vector, only for univariate
     [[nodiscard]] inline arma::Row<F> rowvec() const {
-      if(nvar()!=1){ throw std::logic_error("rowvec can only be used with univariate series"); }
+      if (nvar()!=1) { throw std::logic_error("rowvec can only be used with univariate series"); }
       return arma::Row<F>(data());
     }
 
@@ -177,19 +196,19 @@ namespace tempo {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Minimum value per dimension
-    [[nodiscard]] inline const arma::Col<F>& min() const {return _min; };
+    [[nodiscard]] inline const arma::Col<F>& min() const { return _min; };
 
     /// Maximum value per dimension
-    [[nodiscard]] inline const arma::Col<F>& max() const {return _max; };
+    [[nodiscard]] inline const arma::Col<F>& max() const { return _max; };
 
     /// Mean value per dimension
-    [[nodiscard]] inline const arma::Col<F>& mean() const {return _mean; };
+    [[nodiscard]] inline const arma::Col<F>& mean() const { return _mean; };
 
     /// Median value per dimension
-    [[nodiscard]] inline const arma::Col<F>& median() const {return _median; };
+    [[nodiscard]] inline const arma::Col<F>& median() const { return _median; };
 
     /// Standard deviation per dimension
-    [[nodiscard]] inline const arma::Col<F>& stddev() const {return _stddev; };
+    [[nodiscard]] inline const arma::Col<F>& stddev() const { return _stddev; };
 
   }; // End of class TSeries
 

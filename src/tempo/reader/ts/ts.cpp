@@ -283,7 +283,7 @@ namespace tempo::reader {
           // Ok if end of line/end of file
           if (c=='\n' || c==EOF) {
             // Construct the series
-            dataset.emplace_back(TSeries::mk_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
+            dataset.emplace_back(TSeries::mk_from_rowmajor(std::move(series), ndim, {buffer}, {has_missing}));
             // Update min/max length
             data.shortest_length = std::min(data.shortest_length, length);
             data.longest_length = std::max(data.longest_length, length);
@@ -348,7 +348,7 @@ namespace tempo::reader {
                 return {"Error reading the data: non matching dimension"};
               }
               // Ok, store the series in the dataset
-              dataset.push_back(TSeries::mk_rowmajor(std::move(series), ndim, {}, {has_missing}));
+              dataset.push_back(TSeries::mk_from_rowmajor(std::move(series), ndim, {}, {has_missing}));
               // Update min/max length
               data.shortest_length = std::min(data.shortest_length, length);
               data.longest_length = std::max(data.longest_length, length);

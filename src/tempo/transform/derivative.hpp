@@ -48,7 +48,7 @@ namespace tempo::transform {
         const size_t l = ts.length();
         std::vector<F> d(l);
         derive<F>(ts.rawdata(), l, d.data());
-        series.push_back(TSeries::mk_rowmajor(ts, std::move(d)));
+        series.push_back(TSeries::mk_from_rowmajor(ts, std::move(d)));
       }
 
       result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)1)));
@@ -63,7 +63,7 @@ namespace tempo::transform {
         const size_t l = ts.length();
         std::vector<F> d(l);
         derive<F>(ts.rawdata(), l, d.data());
-        series.push_back(TSeries::mk_rowmajor(ts, std::move(d)));
+        series.push_back(TSeries::mk_from_rowmajor(ts, std::move(d)));
       }
 
       result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)deg)));

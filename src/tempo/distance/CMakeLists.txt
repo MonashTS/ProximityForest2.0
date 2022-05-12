@@ -12,6 +12,7 @@ target_sources(libtempo
         lockstep/lorentzian.hpp
         lockstep/manhattan.hpp
         lockstep/minkowski.hpp
+        sliding/cross_correlation.hpp
         )
 
 if (BUILD_TESTING)

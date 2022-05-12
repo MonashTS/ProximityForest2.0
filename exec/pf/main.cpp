@@ -5,7 +5,6 @@
 
 namespace fs = std::filesystem;
 
-
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg = {}) {
   if (msg) {
     std::cerr << msg.value() << std::endl;
@@ -31,7 +30,7 @@ int main(int argc, char **argv) {
   size_t nbc = 5;
   size_t nbthread = 8;
   size_t train_seed = rd();
-  size_t test_seed = train_seed+(nbt*nbc);
+  size_t test_seed = train_seed + (nbt*nbc);
 
   // Json record
   Json::Value j;
@@ -98,7 +97,7 @@ int main(int argc, char **argv) {
     Json::Value result_weights;
     Json::Value result_truelabels;
     // For each query (test instance)
-    for(size_t query=0; query<test_top; ++query){
+    for (size_t query = 0; query<test_top; ++query) {
       // Store the probabilities
       result_probas.append(utils::to_json(probabilities.col(query)));
       // Store the weight associated with the probabilities

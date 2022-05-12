@@ -7,10 +7,22 @@ namespace tempo::classifier {
 
   struct Result {
 
-    /// Resulting matrix of probabilities. Each column represents the result of one test exemplar, in the order
-    /// found in the test set. Inside a column, each row represents the probability of the class matching the index.
-    /// This matching is done with the label encoder provided by the test dataset header
+    /// Resulting (nbclass X nbtest_exemplar) matrix of probabilities.
+    /// Each column represents the result of one test exemplar, in the order
+    /// found in the test set. Inside a column, each row represents the probability of the class matching the index,
+    /// This matching is done with the label encoder provided by the test dataset header.
+    /// In order to properly build this encoder, it must be built with the encoder obtained at train time.
     arma::mat probabilities;
+
+    /// Row vector of length nbtest_exemplar,
+    /// indicating the "weights" (can be used to indicate confidence)
+    /// associated to each probability vector from the probabilities matrix
+    arma::rowvec weights;
+
+    /// row vector of length nbtest_exemplar
+    /// indicating for each exemplar the index of the actual class in the label encoder.
+    /// Use -1 to indicate unknown label
+    arma::Row<int> true_labels;
 
   };
 

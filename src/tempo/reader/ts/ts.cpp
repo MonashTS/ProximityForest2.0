@@ -3,6 +3,54 @@
 
 namespace tempo::reader {
 
+  bool TSData::use_timestemps() const { return timestamps.value_or(false); }
+
+  bool TSData::is_univariate() const { return univariate.value_or(false); }
+
+  bool TSData::has_missings() const { return missing.value_or(false); }
+
+  bool TSData::has_equallength() const { return equallength.value_or(false); }
+
+  bool TSData::has_labels() const { return !labels.empty(); }
+
+  std::tuple<DatasetHeader, std::vector<TSeries>> TSData::to_datasetheader(
+    std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder
+  ) {
+    // Build label vector
+    std::vector<std::optional<std::string>> vlabels;
+    for (const auto& ts : series) { vlabels.emplace_back(ts.label()); }
+
+    // Build header
+    DatasetHeader hd;
+    if (mbencoder) {
+      hd = DatasetHeader(
+        problem_name.value(),
+        shortest_length,
+        longest_length,
+        nb_dimensions,
+        labels,
+        std::move(vlabels),
+        std::move(series_with_missing_values),
+        mbencoder->get()
+      );
+
+    } else {
+      hd = DatasetHeader(
+        problem_name.value(),
+        shortest_length,
+        longest_length,
+        nb_dimensions,
+        labels,
+        std::move(vlabels),
+        std::move(series_with_missing_values)
+      );
+    }
+
+    return {std::move(hd), std::move(series)};
+  }
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
   using namespace std::string_literals;
 
   /** Main reading loop
@@ -367,50 +415,9 @@ namespace tempo::reader {
   } // End of read_data
 
 
-  /** Static function */
-  std::variant<std::string, Dataset<TSeries>> TSReader::read(
-    std::istream& input,
-    std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder
-  ) {
+  std::variant<std::string, TSData> TSReader::read(std::istream& input) {
     TSReader reader(input);
-    auto result = reader.read();
-    if (result.index()==1) {
-      TSData tsdata = std::move(std::get<1>(result));
-
-      // 1) Build a dataset header
-      // 1.a) Build the labels vector
-      std::vector<std::optional<std::string>> labels;
-      for (const auto& ts : tsdata.series) { labels.emplace_back(ts.label()); }
-      // 1.b) Build the header
-      std::shared_ptr<DatasetHeader> cd;
-      if (mbencoder) {
-        cd = std::make_shared<DatasetHeader>(
-          tsdata.problem_name.value(),
-          tsdata.shortest_length,
-          tsdata.longest_length,
-          tsdata.nb_dimensions,
-          std::move(labels),
-          std::move(tsdata.series_with_missing_values),
-          mbencoder->get()
-        );
-
-      } else {
-        cd = std::make_shared<DatasetHeader>(
-          tsdata.problem_name.value(),
-          tsdata.shortest_length,
-          tsdata.longest_length,
-          tsdata.nb_dimensions,
-          std::move(labels),
-          std::move(tsdata.series_with_missing_values)
-        );
-      }
-
-      // 2) Build a Dataset
-      return {Dataset<TSeries>(std::move(cd), "default", std::move(tsdata.series))};
-
-    } else {
-      return {std::get<0>(result)};
-    }
+    return reader.read();
   }
 
 } // End of namespace tempo::reader

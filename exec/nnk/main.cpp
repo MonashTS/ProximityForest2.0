@@ -130,8 +130,8 @@ int main(int argc, char **argv) {
         auto ow = tempo::reader::as_int(v[2]);
         ok = oe.has_value()&&ow.has_value();
         if (ok) {
-          param_window = ow.value()<0 ? utils::NO_WINDOW : ow.value();
           param_cf_exponent = oe.value();
+          param_window = ow.value()<0 ? utils::NO_WINDOW : ow.value();
           distfun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
             return distance::dtw(
               A.size(), B.size(),
@@ -155,18 +155,28 @@ int main(int argc, char **argv) {
   // Load UCR train and test dataset - Load test with the label encoder from train!
   auto variant_ds = reader::load_ucr_ts(UCRPATH, dataset_name);
   if (variant_ds.index()==0) { do_exit(2, {get<0>(variant_ds)}); }
-  reader::Loaded_UCRDataset ds = get<1>(variant_ds);
-  j["dataset"] = ds.to_json();
+  reader::UCRDataset ucrds = move(get<1>(variant_ds));
 
   // --- --- --- --- --- ---
   // Shorthands
-  DTS const& train_dataset = ds.train_dataset;
-  const auto& train_header = train_dataset.header();
-  const size_t train_top = train_header.size();
+  /*
+  const auto& header = ucrds.alldata.header();
+  DTS alldata = ucrds.alldata;
+  const size_t train_top = ucrds.default_train_size;
+  const IndexSet trainIS = ucrds.trainIS();
+  const size_t test_top = ucrds.default_test_size;
+  const IndexSet testIS = ucrds.testIS();
+   */
 
-  DTS const& test_dataset = ds.test_dataset;
-  const auto& test_header = test_dataset.header();
-  const size_t test_top = test_header.size();
+  auto trainds = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TRAIN.ts")));
+  auto const& train_header = trainds.header();
+  size_t train_top = train_header.size();
+
+  auto testds = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TEST.ts")));
+  auto const& test_header = testds.header();
+  size_t test_top = test_header.size();
+
+  // j["dataset"] = header.to_json();
 
   // --- --- --- --- --- ---
   // NN struct for the table 'kresults'
@@ -202,8 +212,9 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Implement the task with an 'increment task', i.e. a task taking, when executed, a unique index as its parameter
   auto test_task = [&](size_t qidx) {
+    //size_t qidx = testIS[idx];
     size_t local_seed = seed+qidx;
-    TSeries const& query = test_dataset[qidx];
+    TSeries const& query = testds[qidx];
     double bsf = tempo::utils::PINF<double>; // bsf = worst of the knn
     std::vector<nn> results;
     results.reserve(k);
@@ -212,15 +223,16 @@ int main(int argc, char **argv) {
     std::iota(candidate_idxs.begin(), candidate_idxs.end(), 0);
     std::shuffle(candidate_idxs.begin(), candidate_idxs.end(), std::mt19937{local_seed});
     // Candidate loop
-    for (size_t candidateidx : candidate_idxs) {
-      TSeries const& candidate = train_dataset[candidateidx];
+    for (size_t cidx : candidate_idxs) {
+      //size_t candidateidx = trainIS[candidateidx_];
+      TSeries const& candidate = trainds[cidx];
       double dist = distfun(query, candidate, bsf);
       // Update knn
       if (dist<=bsf) {
         // Find position and insert
         size_t i = 0;
         for (; i<results.size()&&dist>results[i].distance; ++i) {}
-        nn n{candidateidx, train_header.label_index(candidateidx).value(), dist};
+        nn n{cidx, train_header.label_index(cidx).value(), dist};
         results.insert(results.begin() + i, n);
         // Remove last neighbour if we have too many candidates
         if (results.size()>k) { results.pop_back(); }
@@ -232,7 +244,6 @@ int main(int argc, char **argv) {
       std::lock_guard lock(mutex);
       nbdone++;
       pm.print_progress(cout, nbdone);
-      // Write results
       kresults[qidx] = move(results);
     }
   };

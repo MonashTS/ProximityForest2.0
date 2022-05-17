@@ -53,15 +53,25 @@ namespace tempo::reader {
     // Helpers
     // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
 
-    [[nodiscard]] inline bool use_timestemps() const { return timestamps.value_or(false); }
+    inline bool use_timestemps() const;
 
-    [[nodiscard]] inline bool is_univariate() const { return univariate.value_or(false); }
+    inline bool is_univariate() const;
 
-    [[nodiscard]] inline bool has_missings() const { return missing.value_or(false); }
+    inline bool has_missings() const;
 
-    [[nodiscard]] inline bool has_equallength() const { return equallength.value_or(false); }
+    inline bool has_equallength() const;
 
-    [[nodiscard]] inline bool has_labels() const { return !labels.empty(); }
+    inline bool has_labels() const;
+
+    // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
+    // Convert to a dataset
+    // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
+
+    /// Convert a TSData into a DatasetHeader and a vector of series. Consume itself! (this is not valid after the call)
+    /// Can provide an already existing label encoder.
+    std::tuple<DatasetHeader, std::vector<TSeries>> to_datasetheader(
+      std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder = {}
+    );
   };
 
   /** Allow to read an input stream into a TSData structure.
@@ -75,8 +85,7 @@ namespace tempo::reader {
      *  * either an error-string if an error occured
      *  * or the data on success
      */
-    static std::variant<std::string, Dataset<TSeries>>
-    read(std::istream& input, std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder = {});
+    static std::variant<std::string, TSData> read(std::istream& input);
 
   private:
     // --- --- --- Private constructor

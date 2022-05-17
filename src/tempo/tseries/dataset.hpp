@@ -26,16 +26,20 @@ namespace tempo {
     // Constructors
 
     /// Default constructor, building an empty set
-    inline IndexSet() : IndexSet(0) {}
+    IndexSet() : IndexSet(0) {}
 
-    /// Create an index set |0, top[ (top excluded)
-    inline explicit IndexSet(size_t top) {
-      vset = std::make_shared<std::vector<size_t>>(top);
-      std::iota(vset->begin(), vset->end(), 0);
+
+    /// Create an index set of size N with |start, start+N[ (top excluded)
+    explicit IndexSet(size_t start, size_t N) {
+      vset = std::make_shared<std::vector<size_t>>(N);
+      std::iota(vset->begin(), vset->end(), start);
     }
 
+    /// Create an index set of size N |0, N[ (top excluded)
+    explicit IndexSet(size_t N):IndexSet(0, N) {}
+
     /// Set of index based on a collection. Collection must be ordered!
-    inline explicit IndexSet(std::vector<size_t>&& collection) {
+    explicit IndexSet(std::vector<size_t>&& collection) {
       using std::begin, std::end;
       assert(std::is_sorted(begin(collection), end(collection)));
       vset = std::make_shared<std::vector<size_t>>(std::move(collection));
@@ -45,7 +49,7 @@ namespace tempo {
     /// @param other              Other IndexSet
     /// @param indexes_in_other   Vector of indexes i, indexing in other 0 <= i < other.size().
     ///                           Must be sorted
-    inline IndexSet(const IndexSet& other, const std::vector<size_t>& indexes_in_other) {
+    IndexSet(const IndexSet& other, const std::vector<size_t>& indexes_in_other) {
       using std::begin, std::end;
       // Test requested subset
       assert(indexes_in_other.size()>other.vset->size());
@@ -245,6 +249,8 @@ namespace tempo {
 
     LabelEncoder(LabelEncoder&& other) = default;
 
+    LabelEncoder& operator =(LabelEncoder&& other) = default;
+
     /// Create a new encoder given a set of label
     explicit LabelEncoder(std::set<L> const& labels) { update(labels); }
 
@@ -285,29 +291,35 @@ namespace tempo {
   class DatasetHeader {
 
     /// Identifier for the core dataset - usually the actual dataset name, but could be anything.
-    std::string _name;
-
-    /// Size of the dataset in number of instances. Instances are indexed in [0, size[
-    size_t _size;
+    std::string _name{"null"};
 
     /// Smallest series length
-    size_t _length_min;
+    size_t _length_min{0};
 
     /// Longest series length
-    size_t _length_max;
+    size_t _length_max{0};
 
     /// Original dimensions of the dataset
-    size_t _nb_dimensions;
+    size_t _nb_dimensions{1};
 
     /// Series with missing data
-    std::vector<size_t> _instances_with_missing;
+    std::vector<size_t> _missing{};
 
     /// Mapping between exemplar index and label
-    std::vector<std::optional<L>> _labels;
+    std::vector<std::optional<L>> _labels{};
 
-    LabelEncoder _label_encoder;
+    ///
+    LabelEncoder _label_encoder{};
 
   public:
+
+    DatasetHeader() = default;
+
+    /// Move constructor
+    DatasetHeader(DatasetHeader&&) = default;
+
+    /// Move assignment operator
+    DatasetHeader& operator =(DatasetHeader&&) = default;
 
     /** Constructor of a core dataset
      * @param dataset_name  A name use to identify this dataset
@@ -323,18 +335,18 @@ namespace tempo {
       size_t lmin,
       size_t lmax,
       size_t dimensions,
-      std::vector<std::optional<std::string>>&& labels,
+      std::set<L> const& labelset,
+      std::vector<std::optional<L>>&& labels,
       std::vector<size_t>&& instances_with_missing,
       LabelEncoder lencoder
     )
       : _name(std::move(_name)),
-        _size(labels.size()),
         _length_min(lmin),
         _length_max(lmax),
         _nb_dimensions(dimensions),
-        _instances_with_missing(std::move(instances_with_missing)),
+        _missing(std::move(instances_with_missing)),
         _labels(std::move(labels)),
-        _label_encoder(std::move(lencoder), _labels) {}
+        _label_encoder(std::move(lencoder), labelset) {}
 
     /** Constructor of a core dataset
      * @param dataset_name  A name use to identify this dataset
@@ -349,11 +361,52 @@ namespace tempo {
       size_t lmin,
       size_t lmax,
       size_t dimensions,
-      std::vector<std::optional<std::string>>&& labels,
+      std::set<L> const& labelset,
+      std::vector<std::optional<L>>&& labels,
       std::vector<size_t>&& instances_with_missing
     ) :
-      DatasetHeader(std::move(_name), lmin, lmax, dimensions, std::move(labels), std::move(instances_with_missing),
+      DatasetHeader(std::move(_name), lmin, lmax, dimensions, labelset, std::move(labels), std::move(instances_with_missing),
                     LabelEncoder()) {}
+
+    /** Merge two existing dataset header into a new one.
+     *  The only constraint is a match on the number of dimensions (throw std::logic if they do not match).
+     *  The new dataset D is a concatenation of the data in 'a' follow 'b',
+     *  i.e. the data from a are at indexes [0..a-1], and the data from b are at [a..b-1].
+     *  A new label encoder is created from the all the collected labels.
+     *  Label can be renamed on the fly with the transformation function.
+     */
+    inline DatasetHeader(
+      DatasetHeader a,
+      DatasetHeader b,
+      std::string name,
+      std::optional<std::function<std::optional<L>(std::optional<L> const&)>> rename_a = {},
+      std::optional<std::function<std::optional<L>(std::optional<L> const&)>> rename_b = {}
+    ) : _name(std::move(name)) {
+      if (a.nb_dimensions()!=b.nb_dimensions()) {
+        throw std::logic_error("DatasetHeader merging: no common dimension");
+      }
+      _length_min = std::min(a._length_min, b._length_min);
+      _length_max = std::max(a._length_max, b._length_max);
+      _nb_dimensions = a._nb_dimensions;
+      // Labels
+      _labels.reserve(a.size() + b.size());
+      // A
+      std::copy(a._labels.begin(), a._labels.end(), std::back_inserter(_labels));
+      if (rename_a) {
+        std::transform(_labels.begin(), _labels.end(), _labels.begin(), rename_a.value());
+      }
+      // B
+      std::copy(b._labels.begin(), b._labels.end(), std::back_inserter(_labels));
+      if (rename_b) {
+        std::transform(_labels.begin() + a.size(), _labels.end(), _labels.begin() + a.size(), rename_b.value());
+      }
+      // Instance with missing
+      _missing.reserve(a.instances_with_missing().size() + b.instances_with_missing().size());
+      std::copy(a.instances_with_missing().begin(), a.instances_with_missing().end(), std::back_inserter(_missing));
+      std::copy(b.instances_with_missing().begin(), b.instances_with_missing().end(), std::back_inserter(_missing));
+      // New label encoder made from both dataset header
+      _label_encoder = LabelEncoder(_labels);
+    }
 
     /**   Given a set of index 'is', compute a tuple (BCM, vec) where:
      *  * 'BCM' gives a list of index from 'is' per label ("class")
@@ -375,17 +428,17 @@ namespace tempo {
 
     /// Helper for the above, using all the index
     inline std::tuple<ByClassMap, std::vector<size_t>> get_BCM() const {
-      return get_BCM(IndexSet(_size));
+      return get_BCM(IndexSet(size()));
     }
 
     /// Build an indexset
-    inline IndexSet index_set() const { return IndexSet(_size); }
+    inline IndexSet index_set() const { return IndexSet(size()); }
 
     /// Base name of the dataset
     inline const std::string& name() const { return _name; }
 
     /// The size of the dataset, i.e. the number of exemplars
-    inline size_t size() const { return _size; }
+    inline size_t size() const { return _labels.size(); }
 
     /// The length of the shortest series in the dataset
     inline size_t length_min() const { return _length_min; }
@@ -399,21 +452,21 @@ namespace tempo {
     inline size_t nb_dimensions() const { return _nb_dimensions; }
 
     /// Index of instances with missing data
-    inline const std::vector<size_t>& instances_with_missing() const { return _instances_with_missing; }
+    inline const std::vector<size_t>& instances_with_missing() const { return _missing; }
 
     /// Check if any exemplar contains a missing value (encoded with "NaN")
-    inline bool has_missing_value() const { return !(_instances_with_missing.empty()); }
+    inline bool has_missing_value() const { return !(_missing.empty()); }
 
     /// Label per instance. An instance may not have a label, hence we use optional
-    inline const std::vector<std::optional<std::string>>& labels() const { return _labels; }
+    inline const std::vector<std::optional<L>>& labels() const { return _labels; }
 
     /// Label for a given instance
-    inline std::optional<std::string> label(size_t i) const { return _labels[i]; }
+    inline std::optional<L> label(size_t i) const { return _labels[i]; }
 
     /// Index in the label encoder for a given instance.
     inline std::optional<size_t> label_index(size_t i) const {
       auto const& l = _labels[i];
-      if(l){ return {_label_encoder.label_to_index().at(l.value())}; }
+      if (l) { return {_label_encoder.label_to_index().at(l.value())}; }
       else { return {}; }
     }
 
@@ -443,11 +496,11 @@ namespace tempo {
     /// Reference to the core dataset. A datum indexed here must have a corresponding index in the core dataset.
     std::shared_ptr<DatasetHeader> _dataset_header;
 
-    /// Identifier for this dataset. Can be used to record transformation, such as "derivative".
-    std::string _identifier;
-
     /// Actual collection
     std::shared_ptr<std::vector<D>> _data;
+
+    /// Transform name of this dataset, e.g. "derivative".
+    std::string _transform_name;
 
     /// Optional parameter of the transform, as a JSONValue
     std::optional<Json::Value> _parameters;
@@ -460,12 +513,12 @@ namespace tempo {
     /// Constructor: all data must be pre-constructed
     Dataset(
       std::shared_ptr<DatasetHeader> header,
-      std::string id,
+      std::string transform_name,
       std::vector<D>&& data,
-      std::optional<Json::Value> parameters = {} // TODO
+      std::optional<Json::Value> parameters = {}
     ) : _dataset_header(std::move(header)),
-        _identifier(std::move(id)),
         _data(std::make_shared<std::vector<D>>(std::move(data))),
+        _transform_name(std::move(transform_name)),
         _parameters(std::move(parameters)) {
       assert((bool)_dataset_header);
       assert(_data->size()==_dataset_header->size());
@@ -474,12 +527,12 @@ namespace tempo {
     /// Constructor: using an existing dataset to get the dataset header.
     Dataset(
       const Dataset& other,
-      std::string id,
+      std::string transform_name,
       std::vector<D>&& data,
-      std::optional<Json::Value> parameters = {} // TODO
+      std::optional<Json::Value> parameters = {}
     ) : _dataset_header(other._dataset_header),
-        _identifier(std::move(id)),
         _data(std::make_shared<std::vector<D>>(std::move(data))),
+        _transform_name(std::move(transform_name)),
         _parameters(std::move(parameters)) {
       assert((bool)_dataset_header);
       assert(_data->size()==_dataset_header->size());
@@ -495,13 +548,13 @@ namespace tempo {
     }
 
     /// Access to the identifier
-    const std::string& id() const { return _identifier; }
+    const std::string& transform_name() const { return _transform_name; }
 
-    /// Get the full name, made of the name of the ore dataset header, the identifier, and the parameters
-    /// "name_in_header:id<JSONVALUE>"
-    std::string name() const {
+    /// Get the full name, made of the name from the dataset header and the transform name
+    /// E.g. "name_in_header:derivative1"
+    std::string fullname() const {
       assert((bool)_dataset_header);
-      std::string result = _dataset_header->name() + ":" + _identifier;
+      std::string result = _dataset_header->name() + ":" + transform_name();
       if (_parameters.has_value()) { result += _parameters.value().toStyledString(); }
       return result;
     }

@@ -105,10 +105,11 @@ namespace tempo::classifier::pf {
   // --- State
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// Requires a type to have a ".prng" field which is a random number generator
+  /// Requires a type T to have a '.prng' pointer field to a random number generator
+  /// e.g.    struct T{ std::unique_ptr<PRNG> prng; };
   template<typename T>
-  concept has_prng = requires {
-    std::uniform_random_bit_generator<decltype(*T::prng)>;
+  concept has_prng = requires(T t) {
+    *(t.prng);
   };
 
   /// Interface for both the train and the test state

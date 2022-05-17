@@ -1,94 +1,208 @@
 #include "pch.h"
-
-#include <tempo/utils/utils.hpp>
-#include <tempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
-#include <tempo/distance/elastic/dtw.hpp>
-#include <tempo/distance/lockstep/direct.hpp>
-#include <tempo/transform/normalization.hpp>
+#include <tempo/utils/simplecli.hpp>
+#include <tempo/distance/lockstep/minkowski.hpp>
 
 namespace fs = std::filesystem;
 
+static std::string usage =
+  "Time Series NNK Classification - demonstration application\n"
+  "Monash University, Melbourne, Australia 2022\n"
+  "Dr. Matthieu Herrmann\n"
+  "This application works with the UCR archive using the TS file format (or any archive following the same conventions).\n"
+  "For each exemplar in '_TEST', search for the k nearest neighbours in _'TRAIN' and report the results as json.\n"
+  "Ties are broken randomly.\n"
+  "nnk <-p:> <-n:> <-d:> [-k:] [-et:] [-seed:]\n"
+  "Mandatory arguments:\n"
+  "  -p:<path to the ucr archive folder>   e.g. '-p:/home/myuser/Univariate_ts'\n"
+  "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
+  "  -d:<distance>\n"
+  "    -d:minkowski:<float e>     Minkowski distance with exponent 'e'\n"
+  "    -d:dtw:<float e>:<int w>   DTW with cost function exponent e and warping window w. w<0 means no window\n"
+  "Optional arguments [with their default values]:\n"
+  "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
+  "  -k:<int n>      Number of neighbours to search [n = 1])\n"
+  "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1] !\n"
+  "  -out:<path>     Where to write the json file. If the file exists, overwrite it."
+  "";
+
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg = {}) {
-  if (msg) { std::cerr << msg.value() << std::endl; }
+  if (code==0) {
+    if (msg) { std::cout << msg.value() << std::endl; }
+  } else {
+    std::cerr << usage << std::endl;
+    if (msg) { std::cerr << msg.value() << std::endl; }
+  }
   exit(code);
 }
 
 int main(int argc, char **argv) {
   using namespace std;
   using namespace tempo;
+  using distfun_t = std::function<double(TSeries const& A, TSeries const& B, double ub)>;
 
-  std::random_device rd;
 
-  // ARGS
+  // --- --- --- --- --- ---
+  // Program Arguments
   string program_name(*argv);
   vector<string> args(argv + 1, argv + argc);
+  if (args.empty()) { do_exit(0, usage); }
 
-  // Config
-  fs::path UCRPATH(args[0]);
-  string dataset_name(args[1]);
-  std::string distname(args[2]);
-  size_t nbthread = 8;
-  size_t train_seed = rd();
-  size_t k = 20;
+  // --- --- ---
+  // Optional
 
-  // PRNG
-  PRNG prng(train_seed);
+  // Value for k
+  size_t k;
+  {
+    auto p_k = tempo::scli::get_parameter<long long>(args, "-k", tempo::scli::extract_int, 1);
+    if (p_k<=0) { do_exit(1, "-k must be followed by a integer >= 1"); }
+    k = p_k;
+  }
 
-  // Json record
+  // Number of threads
+  size_t nbthreads;
+  {
+    auto p_et = tempo::scli::get_parameter<long long>(args, "-et", tempo::scli::extract_int, 0);
+    if (p_et<0) { do_exit(1, "-et must specify a number of threads > 0, or 0 for auto-detect"); }
+    if (p_et==0) { nbthreads = std::thread::hardware_concurrency() + 2; } else { nbthreads = p_et; }
+  }
+
+  // Random
+  size_t seed;
+  {
+    auto p_seed = tempo::scli::get_parameter<long long>(args, "-seed", tempo::scli::extract_int, 0);
+    if (p_seed<0) { seed = std::random_device()(); } else { seed = p_seed; }
+  }
+
+  // Output file
+  optional<fs::path> outpath{};
+  {
+    auto p_out = tempo::scli::get_parameter<string>(args, "-out", tempo::scli::extract_string);
+    if(p_out){ outpath = {fs::path{p_out.value()}}; }
+  }
+
+  // --- --- ---
+  // Mandatory
+
+  // Path to UCR
+  fs::path UCRPATH;
+  {
+    auto parg_UCRPATH = tempo::scli::get_parameter<string>(args, "-p", tempo::scli::extract_string);
+    if (!parg_UCRPATH) { do_exit(1, "specify the UCR path with the -p flag, e.g. -p:/path/to/dataset"); }
+    UCRPATH = fs::path(parg_UCRPATH.value());
+  }
+
+  // Dataset name
+  string dataset_name;
+  {
+    auto parg_UCRNAME = tempo::scli::get_parameter<string>(args, "-n", tempo::scli::extract_string);
+    if (!parg_UCRNAME) { do_exit(1, "specify the UCR dataset name with the -n flag -n:NAME"); }
+    dataset_name = parg_UCRNAME.value();
+  }
+
+  // distance
+  double param_cf_exponent;
+  size_t param_window;
+  distfun_t distfun;
+  {
+    auto parg_dist = tempo::scli::get_parameter<string>(args, "-d", tempo::scli::extract_string);
+    if (!parg_dist) { do_exit(1, "specify a distance to use with '-d'"); }
+    auto v = tempo::reader::split(parg_dist.value(), ':');
+    // Minkowski
+    if (v[0]=="minkowski") {
+      bool ok = v.size()==2;
+      if (ok) {
+        auto oe = tempo::reader::as_double(v[1]);
+        ok = oe.has_value();
+        if (ok) {
+          param_cf_exponent = oe.value();
+          distfun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
+            return distance::minkowski(A, B, param_cf_exponent);
+          };
+        }
+      }
+      // Catchall
+      if (!ok) { do_exit(1, "Minkowski parameter error"); }
+    } // DTW with or without window
+    else if (v[0]=="dtw") {
+      bool ok = v.size()==3;
+      if (ok) {
+        auto oe = tempo::reader::as_double(v[1]);
+        auto ow = tempo::reader::as_int(v[2]);
+        ok = oe.has_value()&&ow.has_value();
+        if (ok) {
+          param_window = ow.value()<0 ? utils::NO_WINDOW : ow.value();
+          param_cf_exponent = oe.value();
+          distfun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+            return distance::dtw(
+              A.size(), B.size(),
+              distance::univariate::ade<F, TSeries>(param_cf_exponent)(A, B),
+              param_window,
+              ub
+            );
+          };
+        }
+      }
+      // Catchall
+      if (!ok) { do_exit(1, "DTW parameter error"); }
+    } // Unknown distance
+    else { do_exit(1, "Unknown distance '" + v[0] + "'"); }
+  }
+
+  // --- --- ---
+  // Json Record
   Json::Value j;
 
   // Load UCR train and test dataset - Load test with the label encoder from train!
-  DTS train_dataset;
-  DTS test_dataset;
-  {
-    auto start = utils::now();
-    { // Read train
-      fs::path train_path = UCRPATH/dataset_name/(dataset_name + "_TRAIN.ts");
-      auto variant_train = reader::load_dataset_ts(train_path);
-      if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
-      else { do_exit(1, {"Could not read train set '" + train_path.string() + "': " + std::get<0>(variant_train)}); }
-    }
-    { // Read test with the label encoder from train
-      fs::path test_path = UCRPATH/dataset_name/(dataset_name + "_TEST.ts");
-      auto variant_test = reader::load_dataset_ts(test_path, train_dataset.header().label_encoder());
-      if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
-      else { do_exit(1, {"Could not read train set '" + test_path.string() + "': " + std::get<0>(variant_test)}); }
-    }
-    auto delta = utils::now() - start;
-    Json::Value dataset;
-    dataset["train"] = train_dataset.header().to_json();
-    dataset["test"] = test_dataset.header().to_json();
-    dataset["load_time_ns"] = delta.count();
-    dataset["load_time_str"] = utils::as_string(delta);
-    j["dataset"] = dataset;
-  }
+  auto variant_ds = reader::load_ucr_ts(UCRPATH, dataset_name);
+  if (variant_ds.index()==0) { do_exit(2, {get<0>(variant_ds)}); }
+  reader::Loaded_UCRDataset ds = get<1>(variant_ds);
+  j["dataset"] = ds.to_json();
 
+  // --- --- --- --- --- ---
+  // Shorthands
+  DTS const& train_dataset = ds.train_dataset;
+  const auto& train_header = train_dataset.header();
+  const size_t train_top = train_header.size();
 
-  // --- --- ---
+  DTS const& test_dataset = ds.test_dataset;
+  const auto& test_header = test_dataset.header();
+  const size_t test_top = test_header.size();
 
+  // --- --- --- --- --- ---
+  // NN struct for the table 'kresults'
+  // Each line in the table corresponds to a test exemplar.
+  // Each column corresponds to a neighbor: 1st column is the nearest, follow by the one in the second column, etc...
+  // Each cell in the table is of the following type: storing the idx of the candidate (in the train set), its class,
+  // and the resulting distance.
+  // Insertion strategy, and how to deal with ties (how to select which one to keep?)
+  // We insert a candidate in the table (in a column) if:
+  //   - we have less than k column (no ties to manage)
+  //   - if we have k column and the current distance is =< than the one stored in the last column,
+  //     insert the new record in the right position in the line, removing the last cell (previous kth NN)
+  // This means that, on ties, the last encountered one "wins" (stays in the table).
+  // To avoid any bias due to the ordering of the train set, we take candidate in a random order
   struct nn {
     size_t candidate_nn_idx;
     size_t candidate_nn_class;
     double distance;
   };
 
-  const auto& train_header = train_dataset.header();
-  const size_t train_top = train_header.size();
-  const auto& test_header = test_dataset.header();
-  const size_t test_top = test_header.size();
-
   vector<vector<nn>> kresults(test_top);
 
-  utils::ParTasks ptasks;
-  utils::ProgressMonitor pm(test_top);
-
-
+  // --- --- --- --- --- ---
   // Multithreading control
+  utils::ParTasks ptasks;
   std::mutex mutex;
-  size_t nbdone = 0;
 
+  // --- --- --- --- --- ---
+  // Progress reporting
+  utils::ProgressMonitor pm(test_top);  // How many to do
+  size_t nbdone = 0;                    // How many done up to "now"
+
+  // --- --- --- --- --- ---
+  // Implement the task with an 'increment task', i.e. a task taking, when executed, a unique index as its parameter
   auto test_task = [&](size_t qidx) {
-
+    size_t local_seed = seed+qidx;
     TSeries const& query = test_dataset[qidx];
     double bsf = tempo::utils::PINF<double>; // bsf = worst of the knn
     std::vector<nn> results;
@@ -96,28 +210,11 @@ int main(int argc, char **argv) {
     // Take candidates in random order
     std::vector<size_t> candidate_idxs(train_top);
     std::iota(candidate_idxs.begin(), candidate_idxs.end(), 0);
-    std::shuffle(candidate_idxs.begin(), candidate_idxs.end(), std::mt19937{std::random_device{}()});
+    std::shuffle(candidate_idxs.begin(), candidate_idxs.end(), std::mt19937{local_seed});
     // Candidate loop
     for (size_t candidateidx : candidate_idxs) {
       TSeries const& candidate = train_dataset[candidateidx];
-      double dist;
-      // Test with square euclidean
-      if (distname=="eucl") {
-        dist = distance::directa(
-          query.size(), candidate.size(),
-          distance::univariate::ad2<F, TSeries>(query, candidate),
-          bsf
-        );
-      } else if (distname=="dtw") {
-        dist = distance::dtw(
-          query.size(), candidate.size(),
-          distance::univariate::ad2<F, TSeries>(query, candidate),
-          utils::NO_WINDOW,
-          bsf
-        );
-      } else {
-        utils::should_not_happen();
-      }
+      double dist = distfun(query, candidate, bsf);
       // Update knn
       if (dist<=bsf) {
         // Find position and insert
@@ -143,7 +240,7 @@ int main(int argc, char **argv) {
   // Create the tasks per tree. Note that we clone the state.
   tempo::utils::ParTasks p;
 
-  p.execute(nbthread, test_task, 0, test_top, 1);
+  p.execute(nbthreads, test_task, 0, test_top, 1);
 
   Json::Value jtest;
 
@@ -169,6 +266,10 @@ int main(int argc, char **argv) {
 
   cout << j.toStyledString() << endl;
 
+
+
+  // PRNG used to break ties
+  PRNG prng(seed+test_top*2+1);
   for (size_t kk = 1; kk<=k; ++kk) {
 
     size_t nbcorrect = 0;
@@ -210,6 +311,9 @@ int main(int argc, char **argv) {
         }
       }
 
+
+
+
       size_t selected_class = utils::pick_one(closest_class, prng);
 
       size_t true_class = test_header.label_index(qidx).value();
@@ -219,7 +323,7 @@ int main(int argc, char **argv) {
     }
 
     cout << "k = " << kk << " nb correct = " << nbcorrect << "/" << test_top
-      << " = " << (double)nbcorrect/double(test_top) << endl;
+         << " = " << (double)nbcorrect/double(test_top) << endl;
 
   }
 

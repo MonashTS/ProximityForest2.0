@@ -1,7 +1,5 @@
 #pragma once
 
-#include <tempo/utils/utils.hpp>
-
 namespace tempo::reader {
 
   // --- --- ---
@@ -68,6 +66,11 @@ namespace tempo::reader {
     return tokens;
   }
 
+  /** String splitter on a delimiter. Accept a istringstream */
+  inline std::vector<std::string> split(std::string input, char delimiter) {
+    return split(std::istringstream(std::move(input)), delimiter);
+  }
+
   /** trim from start (in place) */
   inline void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
@@ -103,6 +106,17 @@ namespace tempo::reader {
   inline std::optional<int> as_int(const std::string& str) {
     try {
       int i = std::stoi(str);
+      return {i};
+    }
+    catch (...) {
+      return {};
+    }
+  }
+
+  /** Attempt to convert a string into an integer */
+  inline std::optional<long long> as_long(const std::string& str) {
+    try {
+      long long i = std::stoll(str);
       return {i};
     }
     catch (...) {

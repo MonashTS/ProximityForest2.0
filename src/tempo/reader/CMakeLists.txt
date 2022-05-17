@@ -4,5 +4,5 @@ target_sources(libtempo
             reader.hpp
         PRIVATE
             ts/ts.cpp
-            readingtools.hpp
+            reader.cpp
         )

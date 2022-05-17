@@ -6,4 +6,6 @@ target_sources(libtempo
             utils/stats.hpp
             concepts.hpp
             utils.hpp
+            readingtools.hpp
+            simplecli.hpp
         )

@@ -115,7 +115,7 @@ namespace tempo::utils {
   template<typename T>
   inline T nextpow2(T v) {
     T a;
-    if constexpr( std::is_unsigned<T>::value) { a=v; } else { a=std::abs(v); }
+    if constexpr(std::is_unsigned<T>::value) { a = v; } else { a = std::abs(v); }
     return std::ceil(std::log2(a));
   }
 
@@ -246,7 +246,7 @@ namespace tempo::utils {
     void execute(int nbthread, taskgen_t tgenerator);
 
     /// Blocking call using an incremental task with i [start, stop[
-    void execute(int nbthread, itask_t itask, size_t start, size_t stop, size_t step=1);
+    void execute(int nbthread, itask_t itask, size_t start, size_t stop, size_t step = 1);
 
   private:
 

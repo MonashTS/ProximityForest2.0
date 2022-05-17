@@ -1,5 +1,5 @@
 #include "ts.hpp"
-#include "../readingtools.hpp"
+#include <tempo/utils/readingtools.hpp>
 
 namespace tempo::reader {
 

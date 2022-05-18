@@ -152,21 +152,8 @@ int main(int argc, char **argv) {
   // Json Record
   Json::Value j;
 
-  // Load UCR train and test dataset - Load test with the label encoder from train!
-  auto variant_ds = reader::load_ucr_ts(UCRPATH, dataset_name);
-  if (variant_ds.index()==0) { do_exit(2, {get<0>(variant_ds)}); }
-  reader::UCRDataset ucrds = move(get<1>(variant_ds));
-
   // --- --- --- --- --- ---
   // Shorthands
-  /*
-  const auto& header = ucrds.alldata.header();
-  DTS alldata = ucrds.alldata;
-  const size_t train_top = ucrds.default_train_size;
-  const IndexSet trainIS = ucrds.trainIS();
-  const size_t test_top = ucrds.default_test_size;
-  const IndexSet testIS = ucrds.testIS();
-   */
 
   auto trainds = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TRAIN.ts")));
   auto const& train_header = trainds.header();
@@ -176,7 +163,17 @@ int main(int argc, char **argv) {
   auto const& test_header = testds.header();
   size_t test_top = test_header.size();
 
-  // j["dataset"] = header.to_json();
+  Json::Value jv;
+  jv["dataset"] = train_header.name();
+  if(train_header.variable_length() || train_header.has_missing_value() || test_header.variable_length() || test_header.has_missing_value()){
+    jv["status"]="error";
+    cout << jv.toStyledString() << endl;
+    if(outpath){
+      auto out = ofstream(outpath.value());
+      out << jv << endl;
+    }
+    exit(0);
+  }
 
   // --- --- --- --- --- ---
   // NN struct for the table 'kresults'
@@ -281,6 +278,10 @@ int main(int argc, char **argv) {
 
   // PRNG used to break ties
   PRNG prng(seed+test_top*2+1);
+  size_t bestnbcorrect=0;
+  double bestaccuracy=0;
+  size_t bestk=0;
+
   for (size_t kk = 1; kk<=k; ++kk) {
 
     size_t nbcorrect = 0;
@@ -322,9 +323,6 @@ int main(int argc, char **argv) {
         }
       }
 
-
-
-
       size_t selected_class = utils::pick_one(closest_class, prng);
 
       size_t true_class = test_header.label_index(qidx).value();
@@ -333,10 +331,30 @@ int main(int argc, char **argv) {
 
     }
 
+    double accuracy =  (double)nbcorrect/double(test_top);
+    if(nbcorrect>bestnbcorrect){
+      bestnbcorrect = nbcorrect;
+      bestk = kk;
+      bestaccuracy = accuracy;
+    }
+
     cout << "k = " << kk << " nb correct = " << nbcorrect << "/" << test_top
-         << " = " << (double)nbcorrect/double(test_top) << endl;
+         << " = " << accuracy << endl;
 
   }
+
+
+  jv["status"] = "success";
+  jv["accuracy"] = bestaccuracy;
+  jv["k"] = bestk;
+  jv["nbcorrect"] = bestnbcorrect;
+
+  cout << jv.toStyledString() << endl;
+  if(outpath){
+    auto out = ofstream(outpath.value());
+    out << jv << endl;
+  }
+
 
   return 0;
 }

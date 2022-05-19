@@ -293,7 +293,7 @@ int main(int argc, char **argv) {
       std::map<size_t, size_t> mapcount;
       std::map<size_t, double> mapdist;
 
-      for (size_t ikk = 0; ikk<kk; ++ikk) {
+      for (size_t ikk = 0; ikk<kk && ikk<vnn.size(); ++ikk) {
         mapcount[vnn[ikk].candidate_nn_class] += 1;
         mapdist[vnn[ikk].candidate_nn_class] += vnn[ikk].distance;
       }

@@ -129,7 +129,7 @@ namespace tempo {
     /// Constructor taking ownership of a map of <std::string, std::vector<size_t>>
     /// The vectors represent sets of index, and must be sorted (low to high)
     inline explicit ByClassMap(BCMvec_t&& bcm) {
-      for (auto [l, v] : bcm) { _bcm.template emplace(l, IndexSet(std::move(v))); }
+      for (auto [l, v] : bcm) { _bcm.emplace(l, IndexSet(std::move(v))); }
       populate_indexes();
     }
 

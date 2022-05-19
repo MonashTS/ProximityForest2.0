@@ -177,7 +177,7 @@ namespace tempo::classifier::pf {
         // Building loop
         for (size_t idx = 0; idx<nbbranches; ++idx) {
           // Clone state, push bcm
-          bcmvec.template emplace_back(std::move(inner_node.branch_splits[idx]));
+          bcmvec.emplace_back(std::move(inner_node.branch_splits[idx]));
           // Cardinalities
           const auto& bcm = bcmvec.back();
           arma::Col<size_t> card = get_class_cardinalities(header, bcm);

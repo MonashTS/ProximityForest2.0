@@ -651,7 +651,7 @@ namespace tempo::classifier::pf {
 
       // --- --- --- Splitter training algorithm
       // Pick on exemplar per class using the pseudo random number generator from the state
-      ByClassMap train_bcm = bcm.template pick_one_by_class(*prng);
+      ByClassMap train_bcm = bcm.pick_one_by_class(*prng);
       IndexSet train_indexset = train_bcm.to_IndexSet();
 
       // Build return
@@ -668,7 +668,7 @@ namespace tempo::classifier::pf {
           auto dist = distance(exemplar, query, bsf);
           if (dist<bsf) {
             labels.clear();
-            labels.template emplace_back(exemplar.label().value());
+            labels.emplace_back(exemplar.label().value());
             bsf = dist;
           } else if (bsf==dist) {
             auto l = exemplar.label().value();

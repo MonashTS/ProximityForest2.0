@@ -4,6 +4,7 @@
 
 namespace fs = std::filesystem;
 
+
 static std::string usage =
   "Time Series NNK Classification - demonstration application\n"
   "Monash University, Melbourne, Australia 2022\n"
@@ -340,7 +341,6 @@ int main(int argc, char **argv) {
 
     cout << "k = " << kk << " nb correct = " << nbcorrect << "/" << test_top
          << " = " << accuracy << endl;
-
   }
 
 

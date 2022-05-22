@@ -20,6 +20,7 @@ add_subdirectory(reader)
 add_subdirectory(transform)
 add_subdirectory(tseries)
 add_subdirectory(utils)
+add_subdirectory(dataset)
 
 
 # Linking

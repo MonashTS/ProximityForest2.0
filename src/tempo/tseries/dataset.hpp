@@ -6,9 +6,6 @@
 
 namespace tempo {
 
-  /// ByClassMap forward declaration
-  class ByClassMap;
-
   /// Index Set:
   /// Manages a set of indexes, used to represent series from a Dataset (see below).
   class IndexSet {

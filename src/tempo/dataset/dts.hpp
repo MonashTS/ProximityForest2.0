@@ -2,7 +2,7 @@
 
 #include <tempo/utils/utils.hpp>
 #include "tseries.hpp"
-#include "datastore.hpp"
+#include "dataset.hpp"
 
 namespace tempo {
 

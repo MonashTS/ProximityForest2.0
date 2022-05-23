@@ -1,6 +1,6 @@
 target_sources(libtempo
         INTERFACE
-            datastore.hpp
+        dataset.hpp
             dts.hpp
             tseries.hpp
         )

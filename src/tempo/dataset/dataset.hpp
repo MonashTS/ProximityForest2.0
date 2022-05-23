@@ -34,7 +34,7 @@ namespace tempo {
    */
 
 
-  class LabelEncoder : tempo::utils::Uncopyable {
+  class LabelEncoder {
 
     /// Set of labels for the dataset, with index encoding
     std::map<L, EL> _label_to_index;
@@ -70,8 +70,9 @@ namespace tempo {
     explicit LabelEncoder(std::set<L> const& labels) { update(labels); }
 
     /// Copy other into this, then add unknown label from 'labels'
-    explicit LabelEncoder(LabelEncoder other, std::set<L> const& labels) : LabelEncoder(std::move(other)) {
+    LabelEncoder(LabelEncoder other, std::set<L> const& labels) : LabelEncoder(std::move(other)) {
       update(labels);
+      std::cout << "donzizze " << _label_to_index.size() <<  "  " << labels.size() <<  std::endl;
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -123,13 +124,15 @@ namespace tempo {
     /// @param name Name of the dataset
     /// @param labels Labels per instance, identifier by position.
     ///               The dataset header represents the instances by their index in [0 .. labels.size()[
+    /// @param encoder Existing encoder
     DatasetHeader(
       std::string name,
       size_t minlength,
       size_t maxlength,
       size_t dimensions,
       std::vector<std::optional<L>>&& labels,
-      std::vector<size_t>&& instance_with_missing
+      std::vector<size_t>&& instance_with_missing,
+      LabelEncoder encoder={}
     ) :
       _name(std::move(name)),
       _length_min(minlength),
@@ -139,10 +142,11 @@ namespace tempo {
       _missing(std::move(instance_with_missing)) {
       // Build the set and the encoder
       std::set<L> labelset;
-      for (std::optional<L> const& ol : labels) {
+      for (std::optional<L> const& ol : _labels) {
         if (ol) { labelset.insert(ol.value()); }
       }
-      _label_encoder = LabelEncoder(labelset);
+      // Build a new encoder
+      _label_encoder = LabelEncoder(std::move(encoder), labelset);
     }
 
     DatasetHeader(DatasetHeader&& other) = default;
@@ -485,8 +489,8 @@ namespace tempo {
   template<typename T>
   class DataSplit {
 
-    std::shared_ptr<DatasetTransform<T>> _transform{{}};
     std::string _name{"AnonDataSplit"};
+    std::shared_ptr<DatasetTransform<T>> _transform{{}};
     IndexSet _index_set{};
 
     IndexSet const& index_set() const { return _index_set; }
@@ -499,10 +503,17 @@ namespace tempo {
 
     DataSplit(DataSplit&& other) = default;
 
+    /// Split with a name, store, and a subset of the transform
     DataSplit(std::string name, std::shared_ptr<DatasetTransform<T>> store, IndexSet is) :
       _name(std::move(name)),
       _transform(std::move(store)),
       _index_set(std::move(is)) {}
+
+    /// Split with a name, store, and over the full transform
+    DataSplit(std::string name, std::shared_ptr<DatasetTransform<T>> store) :
+      _name(std::move(name)),
+      _transform(std::move(store)),
+      _index_set(0, _transform->size()) {}
 
     /// Subset of an existing split: is is indexing in other
     DataSplit(DataSplit const& other, std::string name, IndexSet is) :

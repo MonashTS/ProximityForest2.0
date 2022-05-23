@@ -1,8 +1,9 @@
 target_sources(libtempo
         PUBLIC
             ts/ts.hpp
-            reader.hpp
+            #reader.hpp
+            new_reader.hpp
         PRIVATE
             ts/ts.cpp
-            reader.cpp
+            #reader.cpp
         )

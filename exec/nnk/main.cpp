@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <tempo/utils/simplecli.hpp>
 #include <tempo/distance/lockstep/minkowski.hpp>
+#include <tempo/reader/new_reader.hpp>
 
 namespace fs = std::filesystem;
 
@@ -156,12 +157,12 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Shorthands
 
-  auto trainds = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TRAIN.ts")));
-  auto const& train_header = trainds.header();
+  DataSplit<TSeries> train_split = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TRAIN.ts"), "train"));
+  DatasetHeader const& train_header = train_split.header();
   size_t train_top = train_header.size();
 
-  auto testds = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TEST.ts")));
-  auto const& test_header = testds.header();
+  DataSplit<TSeries> test_split = std::get<1>(reader::load_dataset_ts(UCRPATH/dataset_name/(dataset_name+"_TEST.ts"), "test", train_header.label_encoder()));
+  DatasetHeader const& test_header = test_split.header();
   size_t test_top = test_header.size();
 
   Json::Value jv;
@@ -210,9 +211,8 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Implement the task with an 'increment task', i.e. a task taking, when executed, a unique index as its parameter
   auto test_task = [&](size_t qidx) {
-    //size_t qidx = testIS[idx];
     size_t local_seed = seed+qidx;
-    TSeries const& query = testds[qidx];
+    TSeries const& query = test_split[qidx];
     double bsf = tempo::utils::PINF<double>; // bsf = worst of the knn
     std::vector<nn> results;
     results.reserve(k);
@@ -223,14 +223,14 @@ int main(int argc, char **argv) {
     // Candidate loop
     for (size_t cidx : candidate_idxs) {
       //size_t candidateidx = trainIS[candidateidx_];
-      TSeries const& candidate = trainds[cidx];
+      TSeries const& candidate = train_split[cidx];
       double dist = distfun(query, candidate, bsf);
       // Update knn
       if (dist<=bsf) {
         // Find position and insert
         size_t i = 0;
         for (; i<results.size()&&dist>results[i].distance; ++i) {}
-        nn n{cidx, train_header.label_index(cidx).value(), dist};
+        nn n{cidx, train_split.label(cidx).value(), dist};
         results.insert(results.begin() + i, n);
         // Remove last neighbour if we have too many candidates
         if (results.size()>k) { results.pop_back(); }
@@ -267,7 +267,7 @@ int main(int argc, char **argv) {
     res["idx"] = result_nnidx;
     res["class"] = result_nnclass;
     res["distance"] = result_distance;
-    res["true_class"] = test_header.label_index(qidx).value();
+    res["true_class"] = test_split.label(qidx).value();
     jtest.append(res);
   }
 
@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
 
       size_t selected_class = utils::pick_one(closest_class, prng);
 
-      size_t true_class = test_header.label_index(qidx).value();
+      size_t true_class = test_split.label(qidx).value();
 
       if (selected_class==true_class) { nbcorrect++; }
 

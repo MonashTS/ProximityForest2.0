@@ -1,8 +1,7 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/tseries.hpp>
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/dataset/tseries.hpp>
 
 namespace tempo::reader {
 
@@ -63,15 +62,6 @@ namespace tempo::reader {
 
     inline bool has_labels() const;
 
-    // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
-    // Convert to a dataset
-    // --- --- --- --- --- --- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- --- --- -- --- --- ---
-
-    /// Convert a TSData into a DatasetHeader and a vector of series. Consume itself! (this is not valid after the call)
-    /// Can provide an already existing label encoder.
-    std::tuple<DatasetHeader, std::vector<TSeries>> to_datasetheader(
-      std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder = {}
-    );
   };
 
   /** Allow to read an input stream into a TSData structure.
@@ -165,6 +155,13 @@ namespace tempo::reader {
     // Working method for read_data
     Result read_data_(std::istream& in);
   };
+
+  /// Helper for TS file format and path
+  inline std::variant<std::string, TSData>
+  load_tsdata(const std::filesystem::path& path) {
+    std::ifstream istream_(path);
+    return tempo::reader::TSReader::read(istream_);
+  }
 
 } // end of namespace tempo::reader
 

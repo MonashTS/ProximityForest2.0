@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/tseries.hpp>
+#include <tempo/dataset/tseries.hpp>
 
 namespace tempo::distance {
 

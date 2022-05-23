@@ -8,12 +8,6 @@
 
 namespace tempo::reader {
 
-  /// Helper for TS file format and path
-  inline std::variant<std::string, TSData>
-  load_tsdata(const std::filesystem::path& path) {
-    std::ifstream istream_(path);
-    return tempo::reader::TSReader::read(istream_);
-  }
 
   /// Helper for TS file format and path, with an optional existing encoder
   inline std::variant<std::string, Dataset<TSeries>>

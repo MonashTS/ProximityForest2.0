@@ -1,5 +1,14 @@
 # Dev notes
 
+## Matt TODO
+
+### Distances to implement
+* Kernel DTW https://arxiv.org/abs/1005.5141
+* GRAIL http://people.cs.uchicago.edu/~jopa/Papers/PaparrizosVLDB2019.pdf
+  * more a transform + ED kind of distance
+
+
+
 ## IDE
 
 * May 2022 - after upgrading to gcc12, clangd analysis used in the CLion IDE

@@ -72,7 +72,6 @@ namespace tempo {
     /// Copy other into this, then add unknown label from 'labels'
     LabelEncoder(LabelEncoder other, std::set<L> const& labels) : LabelEncoder(std::move(other)) {
       update(labels);
-      std::cout << "donzizze " << _label_to_index.size() <<  "  " << labels.size() <<  std::endl;
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

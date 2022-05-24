@@ -1,8 +1,7 @@
 #pragma once
 
 #include "tempo/utils/utils.hpp"
-#include "tempo/tseries/tseries.hpp"
-#include "tempo/tseries/dataset.hpp"
+#include "tempo/dataset/dts.hpp"
 
 namespace tempo::transform {
 
@@ -34,11 +33,11 @@ namespace tempo::transform {
    * @param input Input dataset - must be univariate
    * @param degree maximum desired derivative >= 1
    */
-  [[nodiscard]] inline std::vector<DTS> derive(const DTS& input, size_t degree) {
+  [[nodiscard]] inline std::vector<DatasetTransform<TSeries>> derive(DatasetTransform<TSeries> const& input, size_t degree) {
     assert(degree>0);
     assert(input.header().nb_dimensions()==1);
 
-    std::vector<DTS> result;
+    std::vector<DatasetTransform<TSeries>> result;
 
     // 1st derivative
     {
@@ -51,7 +50,7 @@ namespace tempo::transform {
         series.push_back(TSeries::mk_from_rowmajor(ts, std::move(d)));
       }
 
-      result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)1)));
+      result.emplace_back(input, "d1", std::move(series));
     }
 
     // Following derivative
@@ -66,7 +65,7 @@ namespace tempo::transform {
         series.push_back(TSeries::mk_from_rowmajor(ts, std::move(d)));
       }
 
-      result.emplace_back(input, "derivative", std::move(series), std::optional(Json::Value((int)deg)));
+      result.emplace_back(input, "d"+std::to_string(deg), std::move(series));
     }
 
     return result;

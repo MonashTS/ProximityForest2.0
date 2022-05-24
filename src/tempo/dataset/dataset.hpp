@@ -14,7 +14,7 @@ namespace tempo {
    *  - It contains a label encoder. A model trained with a given label encoder must be used with the same encoder
    *    (or a super set, even though the "new label" can't be predicted)
    *
-   * DatasetTransform
+   * DatasetTransform<T>
    *  - By definition, a transform is an element obtained from another by transformation
    *    A dataset has "raw data". This data can be transformed, e.g. scaling, taking the derivative...
    *    There is no reason to treat the data and the transforms differently
@@ -24,7 +24,7 @@ namespace tempo {
    *  - Transforms only contain the data; their relation to a given dataset header is established through
    *    a link to such a header (here, a std::shared_ptr<DatasetHeader>), and by matching indexes in [0, N[
    *
-   * DatasetSplit (with IndexSet and ByClassMap)
+   * DatasetSplit<T> (with IndexSet and ByClassMap)
    *  - The previous classes works on all the data from a dataset. However, we usually want to work with splits,
    *    such as train/evaluation/test splits.
    *
@@ -131,7 +131,7 @@ namespace tempo {
       size_t dimensions,
       std::vector<std::optional<L>>&& labels,
       std::vector<size_t>&& instance_with_missing,
-      LabelEncoder encoder={}
+      LabelEncoder encoder = {}
     ) :
       _name(std::move(name)),
       _length_min(minlength),
@@ -213,7 +213,7 @@ namespace tempo {
   class DatasetTransform : tempo::utils::Uncopyable {
 
     std::shared_ptr<DatasetHeader> _header;
-    std::string _name{"AnonDatasetTransform"};
+    std::vector<std::string> _vname{};
     std::vector<T> _storage;
 
   public:
@@ -223,12 +223,17 @@ namespace tempo {
 
     DatasetTransform() = default;
 
-    DatasetTransform(std::shared_ptr<DatasetHeader> header, std::string name, std::vector<T>&& data) :
-      _header(std::move(header)), _name(std::move(name)), _storage(std::move(data)) {}
-
     DatasetTransform(DatasetTransform&& other) = default;
 
     DatasetTransform& operator =(DatasetTransform&& other) = default;
+
+    DatasetTransform(std::shared_ptr<DatasetHeader> header, std::string name, std::vector<T>&& data) :
+      _header(std::move(header)), _vname({std::move(name)}), _storage(std::move(data)) {}
+
+    DatasetTransform(DatasetTransform const& other, std::string name, std::vector<T>&& data) :
+      _header(other.header_ptr()), _vname(other._vname), _storage(std::move(data)) {
+      _vname.push_back(std::move(name));
+    }
 
 
     // --- --- --- --- --- ---
@@ -248,7 +253,7 @@ namespace tempo {
     inline static std::string sep = ";";
 
     /// Transform name
-    std::string const& name() const { return _name; }
+    std::string name() const { return utils::cat(_vname, sep); }
 
     /// Access to the header
     inline DatasetHeader const& header() const { return *_header; }
@@ -530,6 +535,8 @@ namespace tempo {
       size_t real_index = _index_set[idx];
       return _transform->at(real_index);
     }
+
+    T const& at(size_t idx) const { return this->operator [](idx); }
 
     size_t size() const { return _index_set.size(); }
 

@@ -169,6 +169,20 @@ namespace tempo::utils {
     return std::any_cast<T>(capsule.get());
   }
 
+
+  // --- --- --- --- --- ---
+  // --- Misc
+  // --- --- --- --- --- ---
+
+  inline std::string cat(std::vector<std::string> v, std::string sep) {
+    if (v.empty()) { return ""; }
+    else {
+      std::string res = v.front();
+      for (size_t i{1}; i<res.size(); ++i) { res += sep + v[i]; }
+      return res;
+    }
+  }
+
 } // End of namespace tempo::utils
 
 // --- --- --- --- --- ---

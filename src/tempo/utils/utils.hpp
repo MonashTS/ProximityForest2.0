@@ -178,7 +178,7 @@ namespace tempo::utils {
     if (v.empty()) { return ""; }
     else {
       std::string res = v.front();
-      for (size_t i{1}; i<res.size(); ++i) { res += sep + v[i]; }
+      for (size_t i{1}; i<v.size(); ++i) { res += sep + v[i]; }
       return res;
     }
   }

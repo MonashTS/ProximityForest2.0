@@ -110,15 +110,13 @@ namespace tempo {
       const size_t nb_cols = vsize/nbvar;
 
       // --- Take ownership of the incoming vector
-      auto capsule = lu::make_capsule<vector<F>>
-      (std::move(v));
+      auto capsule = lu::make_capsule<vector<F>>(std::move(v));
 
       // --- Build Armadillo matrix
       // Armadillo works with column major data, but we are given a row major one.
       // Build the data, and proceed with an "in place" transposition
       // This transposition **will** change the underlying vector, which is fine.
-      F *rawptr = lu::get_capsule_ptr<vector<F>>
-      (capsule)->data();
+      F *rawptr = lu::get_capsule_ptr<vector<F>>(capsule)->data();
       // Invert line/column here: we get the "right" matrix after transposition
       arma::Mat<F> matrix(rawptr, nb_cols, nb_lines,
                           false,   // copy_aux_mem = false: use the auxiliary memory (i.e. no copying)
@@ -148,7 +146,7 @@ namespace tempo {
 
     /// Copy data from other, except for the actual data. Allow to easily do transforms. No checking done.
     static TSeries mk_from_rowmajor(TSeries const& other, std::vector<F>&& v) {
-      return mk_from_rowmajor(std::move(v), other.nvar(), other.label(), {other.missing()});
+      return mk_from_rowmajor(std::move(v), other.nb_dimensions(), other.label(), {other.missing()});
     }
 
 
@@ -158,7 +156,7 @@ namespace tempo {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Access number of variable
-    [[nodiscard]] inline size_t nvar() const { return _matrix.n_rows; }
+    [[nodiscard]] inline size_t nb_dimensions() const { return _matrix.n_rows; }
 
     /// Access the length
     [[nodiscard]] inline size_t length() const { return _matrix.n_cols; }
@@ -187,7 +185,7 @@ namespace tempo {
 
     /// As row vector, only for univariate
     [[nodiscard]] inline arma::Row<F> rowvec() const {
-      if (nvar()!=1) { throw std::logic_error("rowvec can only be used with univariate series"); }
+      if (nb_dimensions()!=1) { throw std::logic_error("rowvec can only be used with univariate series"); }
       return arma::Row<F>(data());
     }
 

@@ -68,7 +68,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
       const double dtw_ref_v = reference::dtw_matrix(s, s);
       REQUIRE(dtw_ref_v==0);
 
-      const auto dtw_v = dtw<double>(s.size(), s.size(), dist(s, s), NO_WINDOW);
+      const auto dtw_v = dtw(s.size(), s.size(), dist(s, s), NO_WINDOW);
       REQUIRE(dtw_v==0);
     }
   }
@@ -81,7 +81,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
       const double dtw_ref_v = reference::dtw_matrix(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto dtw_tempo_v = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
+      const auto dtw_tempo_v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
       REQUIRE(dtw_ref_v==dtw_tempo_v);
     }
   }
@@ -114,7 +114,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
+        const auto v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -123,7 +123,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo);
+        const auto v_tempo = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;
@@ -146,7 +146,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
       const double dtw_ref_v = reference::dtw_matrix(s, s);
       REQUIRE(dtw_ref_v==0);
 
-      const auto dtw_v = dtw<double>(s.size(), s.size(), dist(s, s), NO_WINDOW);
+      const auto dtw_v = dtw(s.size(), s.size(), dist(s, s), NO_WINDOW);
       REQUIRE(dtw_v==0);
     }
   }
@@ -159,7 +159,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
       const double dtw_ref_v = reference::dtw_matrix(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto dtw_tempo_v = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
+      const auto dtw_tempo_v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
       REQUIRE(dtw_ref_v==dtw_tempo_v);
     }
   }
@@ -192,7 +192,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
+        const auto v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW);
         if (v<bsf) {
           idx = j;
           bsf = v;
@@ -201,7 +201,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
         REQUIRE(idx_ref==idx);
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v_tempo = dtw<double>(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo);
+        const auto v_tempo = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo);
         if (v_tempo<bsf_tempo) {
           idx_tempo = j;
           bsf_tempo = v_tempo;

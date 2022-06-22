@@ -18,7 +18,6 @@ namespace tempo::distance {
      *  Worst case scenario has a O(L²) time complexity (no pruning nor early abandoning).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist          Distance function of type FDist
@@ -30,13 +29,11 @@ namespace tempo::distance {
      * Note: nblines and nbcols are the length of the series - if multivariate series are encoded in a vector<double>,
      * this is not the size of the vector, but the size of the vector divided by the number of dimensions.
      */
-    template<Float F>
-    [[nodiscard]] inline F dtw_w_full(
-      const size_t nblines,
-      const size_t nbcols,
-      CFun<F> auto dist,
-      const F cutoff,
-      std::vector<F> buffer_v
+    [[nodiscard]] inline F dtw_w_full(const size_t nblines,
+                                      const size_t nbcols,
+                                      CFun<F> auto dist,
+                                      const F cutoff,
+                                      std::vector<F> buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
@@ -160,7 +157,6 @@ namespace tempo::distance {
      *  Worst case scenario has a O(L*w) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist          Distance function of type FDist
@@ -170,14 +166,12 @@ namespace tempo::distance {
      * @param buffer_v      The buffer used to carry the computation.
      * @return DTW between the two series or +INF if early abandoned.
      */
-    template<Float F>
-    [[nodiscard]] inline F dtw(
-      const size_t nblines,
-      const size_t nbcols,
-      CFun<F> auto dist,
-      const size_t w,
-      const F cutoff,
-      std::vector<F>& buffer_v
+    [[nodiscard]] inline F dtw(const size_t nblines,
+                               const size_t nbcols,
+                               CFun<F> auto dist,
+                               const size_t w,
+                               const F cutoff,
+                               std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
@@ -295,9 +289,6 @@ namespace tempo::distance {
   /** Early Abandoned and Pruned Dynamic Time Warping.
    * If the warping window is w =< L-2, use the constrained implementation; else use the unconstrained one.
    * Having w > L-2 is the same as having no window.
-   * @tparam FloatType  The floating number type used to represent the series.
-   * @tparam D          Type of underlying collection - given to dist
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function of type FDist
@@ -310,13 +301,12 @@ namespace tempo::distance {
    * @return CDTW between the two series or +INF if early abandoned or maximum error (incompatible window).
    */
 
-  template<Float F>
-  [[nodiscard]] F dtw(
-    size_t nblines, size_t nbcols,
-    CFun<F> auto dist,
-    size_t w,
-    F ub,
-    std::vector<F>& buffer_v
+  [[nodiscard]] F dtw(size_t nblines,
+                      size_t nbcols,
+                      CFun<F> auto dist,
+                      size_t w,
+                      F ub,
+                      std::vector<F>& buffer_v
   ) {
     constexpr F INF = utils::PINF<F>;
     if (nblines==0&&nbcols==0) { return 0; }
@@ -339,29 +329,28 @@ namespace tempo::distance {
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed: choose the version to call
       if (w>M - 2) {
-        return internal::dtw_w_full<F>(nblines, nbcols, dist, ub, buffer_v);
+        return internal::dtw_w_full(nblines, nbcols, dist, ub, buffer_v);
       } else {
-        return internal::dtw<F>(nblines, nbcols, dist, w, ub, buffer_v);
+        return internal::dtw(nblines, nbcols, dist, w, ub, buffer_v);
       }
     }
   }
 
   /// Helper without having to provide a buffer
-  template<Float F>
   [[nodiscard]] inline F dtw(size_t nblines, size_t nbcols, CFun<F> auto dist, size_t w, F ub = utils::PINF<F>) {
     std::vector<F> v;
     return dtw(nblines, nbcols, dist, w, ub, v);
   }
 
   /// Helper for TSLike, without having to provide a buffer
-  template<Float F, TSLike T>
+  template<TSLike T>
   [[nodiscard]] inline F
   dtw(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, size_t w, F ub = utils::PINF<F>) {
     const auto ls = lines.length();
     const auto cs = cols.length();
     const CFun<F> auto dist = mkdist(lines, cols);
     std::vector<F> v;
-    return dtw<F>(ls, cs, dist, w, ub, v);
+    return dtw(ls, cs, dist, w, ub, v);
   }
 
 } // End of namespace tempo::distance

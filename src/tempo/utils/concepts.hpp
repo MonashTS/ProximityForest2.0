@@ -25,9 +25,9 @@ namespace tempo {
   /// Cost function concept for elastic distances.
   /// Given two series T and S, a cost function f(i,j) computes the cost (a Float) of aligning T_i with S_j.
   /// As T and S are not part of the signature, the cost 'fun' must capture them.
-  template<typename Fun, typename R>
-  concept CFun = Float<R> && requires(Fun fun, size_t i, size_t j){
-    { fun(i, j) }->std::same_as<R>;
+  template<typename Fun>
+  concept CFun = requires(Fun fun, size_t i, size_t j){
+    { fun(i, j) }->std::convertible_to<F>;
   };
 
   /// Function creating a CFun based on series

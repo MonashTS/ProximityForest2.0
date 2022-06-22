@@ -7,19 +7,19 @@
 
 using namespace mock;
 using namespace tempo::distance::univariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-namespace reference {
+namespace ref {
 
   using namespace std;
   using namespace mock;
-  using namespace tempo::utils;
 
-  /// Based on reference implementation by TWE author Pierre-François Marteau.
+  /// Based on ref implementation by TWE author Pierre-François Marteau.
   /// * Added some checks.
   /// * Fix degree to 2 when evaluating the distance
   /// * Return TWE instead of modifying a pointed variable
@@ -33,8 +33,8 @@ namespace reference {
 
     // Check lengths. Be explicit in the conditions.
     if (r==0 && c==0) { return 0; }
-    if (r==0 && c!=0) { return PINF<double>; }
-    if (r!=0 && c==0) { return PINF<double>; }
+    if (r==0 && c!=0) { return PINF; }
+    if (r!=0 && c==0) { return PINF; }
 
     // allocations
     double** D = (double**) calloc(r+1, sizeof(double*));
@@ -76,8 +76,8 @@ namespace reference {
 
     // border of the cost matrix initialization
     D[0][0] = 0;
-    for (i = 1; i<=r; i++) { D[i][0] = PINF<double>; }
-    for (j = 1; j<=c; j++) { D[0][j] = PINF<double>; }
+    for (i = 1; i<=r; i++) { D[i][0] = PINF; }
+    for (j = 1; j<=c; j++) { D[0][j] = PINF; }
 
     for (i = 1; i<=r; i++) {
       for (j = 1; j<=c; j++) {
@@ -116,7 +116,7 @@ namespace reference {
     return dist;
   }
 
-  /// Our own TWE reference code.
+  /// Our own TWE ref code.
   /// Warning: in the code, keep parenthesis: mimic how the costs are calculated, giving the exact same order of operations
   double twe_matrix(const vector<double>& series1, const vector<double>& series2, double nu, double lambda) {
     const size_t length1 = series1.size();
@@ -124,11 +124,11 @@ namespace reference {
 
     // Check lengths. Be explicit in the conditions.
     if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF<double>; }
-    if (length1!=0 && length2==0) { return PINF<double>; }
+    if (length1==0 && length2!=0) { return PINF; }
+    if (length1!=0 && length2==0) { return PINF; }
 
     const size_t maxLength = max(length1, length2);
-    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF<double>));
+    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF));
 
     const double nu_lambda = nu+lambda;
     const double nu2 = 2*nu;
@@ -172,13 +172,13 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
     for (const auto& s: fset) {
       for (auto nu: nus) {
         for (auto la: lambdas) {
-          const double twe_ref_v = reference::twe_Marteau(s, s, nu, la);
+          const double twe_ref_v = ref::twe_Marteau(s, s, nu, la);
           REQUIRE(twe_ref_v==0);
 
-          const double twe_ref_mat_v = reference::twe_matrix(s, s, nu, la);
+          const double twe_ref_mat_v = ref::twe_matrix(s, s, nu, la);
           REQUIRE(twe_ref_mat_v==0);
 
-          const double twe_v = twe(s, s, nu, la);
+          const double twe_v = twe(s, s, nu, la, PINF);
           REQUIRE(twe_v==0);
         }
       }
@@ -192,11 +192,11 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
 
       for (auto nu: nus) {
         for (auto la: lambdas) {
-          const double twe_ref_v = reference::twe_Marteau(s1, s2, nu, la);
-          const double tempo_v = twe(s1, s2, nu, la);
+          const double twe_ref_v = ref::twe_Marteau(s1, s2, nu, la);
+          const double tempo_v = twe(s1, s2, nu, la, PINF);
           INFO("Not exact same operation orders. Requires approximate equality. " << nu << " " << la)
           REQUIRE(twe_ref_v==Approx(tempo_v));
-          const double twe_ref_mat_v = reference::twe_matrix(s1, s2, nu, la);
+          const double twe_ref_mat_v = ref::twe_matrix(s1, s2, nu, la);
           INFO("Ref Matrix code: same order of operation, exact same float")
           REQUIRE(twe_ref_mat_v==tempo_v);
         }
@@ -210,13 +210,13 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -227,14 +227,14 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
         for (auto nu: nus) {
           for (auto la: lambdas) {
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = reference::twe_Marteau(s1, s2, nu, la);
+            const double v_ref = ref::twe_Marteau(s1, s2, nu, la);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = twe<double>(s1, s2, nu, la);
+            const auto v = twe(s1, s2, nu, la, PINF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -242,7 +242,7 @@ TEST_CASE("Univariate TWE Fixed length", "[twe][univariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = twe<double>(s1, s2, nu, la, bsf_tempo);
+            const auto v_tempo = twe(s1, s2, nu, la, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;
@@ -267,13 +267,13 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
     for (const auto& s: fset) {
       for (auto nu: nus) {
         for (auto la: lambdas) {
-          const double twe_ref_v = reference::twe_Marteau(s, s, nu, la);
+          const double twe_ref_v = ref::twe_Marteau(s, s, nu, la);
           REQUIRE(twe_ref_v==0);
 
-          const double twe_ref_mat_v = reference::twe_matrix(s, s, nu, la);
+          const double twe_ref_mat_v = ref::twe_matrix(s, s, nu, la);
           REQUIRE(twe_ref_mat_v==0);
 
-          const auto twe_v = twe<double>(s, s, nu, la);
+          const auto twe_v = twe(s, s, nu, la, PINF);
           REQUIRE(twe_v==0);
         }
       }
@@ -286,11 +286,11 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
       const auto& s2 = fset[i+1];
       for (auto nu: nus) {
         for (auto la: lambdas) {
-          const double twe_ref_v = reference::twe_Marteau(s1, s2, nu, la);
-          const double tempo_v = twe(s1, s2, nu, la);
+          const double twe_ref_v = ref::twe_Marteau(s1, s2, nu, la);
+          const double tempo_v = twe(s1, s2, nu, la, PINF);
           INFO("Not exact same operation orders. Requires approximative equality.")
           REQUIRE(twe_ref_v==Approx(tempo_v));
-          const double twe_ref_mat_v = reference::twe_matrix(s1, s2, nu, la);
+          const double twe_ref_mat_v = ref::twe_matrix(s1, s2, nu, la);
           INFO("Ref Matrix code: same order of operation, exact same float")
           REQUIRE(twe_ref_mat_v==tempo_v);
         }
@@ -304,13 +304,13 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -322,20 +322,20 @@ TEST_CASE("Univariate TWE Variable length", "[twe][univariate]") {
           for (auto la: lambdas) {
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = reference::twe_Marteau(s1, s2, nu, la);
+            const double v_ref = ref::twe_Marteau(s1, s2, nu, la);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = twe<double>(s1, s2, nu, la);
+            const auto v = twe(s1, s2, nu, la, PINF);
             if (v<bsf) {
               idx = j;
               bsf = v;
             }
             REQUIRE(idx_ref==idx);
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = twe<double>(s1, s2, nu, la, bsf_tempo);
+            const auto v_tempo = twe(s1, s2, nu, la, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

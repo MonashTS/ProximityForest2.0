@@ -7,18 +7,17 @@
 using namespace mock;
 using namespace tempo::distance;
 using namespace tempo::distance::multivariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
 constexpr size_t ndim = 3;
-constexpr double INF = tempo::utils::PINF<double>;
-constexpr auto distN = multivariate::ad2N<double, std::vector<double>>;
-constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-  using namespace tempo::utils;
   using namespace std;
 
   /// Naive Univariate DTW without a window. Reference code.
@@ -26,13 +25,13 @@ namespace {
     const auto length1 = series1.size();
     const auto length2 = series2.size();
     // Check lengths. Be explicit in the conditions.
-    if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF<double>; }
-    if (length1!=0 && length2==0) { return PINF<double>; }
+    if (length1==0&&length2==0) { return 0; }
+    if (length1==0&&length2!=0) { return PINF; }
+    if (length1!=0&&length2==0) { return PINF; }
 
     // Allocate the working space: full matrix + space for borders (first column / first line)
-    size_t msize = max(length1, length2)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+    size_t msize = max(length1, length2) + 1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
     // Initialisation (all the matrix is initialised at +INF)
     matrix[0][0] = 0;
@@ -41,12 +40,12 @@ namespace {
     // Note: series1 and series2 are 0-indexed while the matrix is 1-indexed (0 being the borders)
     //       hence, we have i-1 and j-1 when accessing series1 and series2
     for (size_t i = 1; i<=length1; i++) {
-      auto series1_i = series1[i-1];
+      auto series1_i = series1[i - 1];
       for (size_t j = 1; j<=length2; j++) {
-        double prev = matrix[i][j-1];
-        double diag = matrix[i-1][j-1];
-        double top = matrix[i-1][j];
-        matrix[i][j] = min(prev, std::min(diag, top))+sqdist(series1_i, series2[j-1]);
+        double prev = matrix[i][j - 1];
+        double diag = matrix[i - 1][j - 1];
+        double top = matrix[i - 1][j];
+        matrix[i][j] = min(prev, std::min(diag, top)) + sqdist(series1_i, series2[j - 1]);
       }
     }
 
@@ -60,13 +59,13 @@ namespace {
     const auto lb = b.size()/dim;
 
     // Check lengths. Be explicit in the conditions.
-    if (la==0 && lb==0) { return 0; }
-    if (la==0 && lb!=0) { return PINF<double>; }
-    if (la!=0 && lb==0) { return PINF<double>; }
+    if (la==0&&lb==0) { return 0; }
+    if (la==0&&lb!=0) { return PINF; }
+    if (la!=0&&lb==0) { return PINF; }
 
     // Allocate the working space: full matrix + space for borders (first column / first line)
-    size_t msize = max(la, lb)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+    size_t msize = max(la, lb) + 1;
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
     // Initialisation (all the matrix is initialised at +INF)
     matrix[0][0] = 0;
@@ -76,10 +75,10 @@ namespace {
     //       hence, we have i-1 and j-1 when accessing series1 and series2
     for (size_t i = 1; i<=la; i++) {
       for (size_t j = 1; j<=lb; j++) {
-        double prev = matrix[i][j-1];
-        double diag = matrix[i-1][j-1];
-        double top = matrix[i-1][j];
-        matrix[i][j] = min(prev, std::min(diag, top))+sqedN(a, i-1, b, j-1, dim);
+        double prev = matrix[i][j - 1];
+        double diag = matrix[i - 1][j - 1];
+        double top = matrix[i - 1][j];
+        matrix[i][j] = min(prev, std::min(diag, top)) + sqedN(a, i - 1, b, j - 1, dim);
       }
     }
     return matrix[la][lb];
@@ -97,95 +96,94 @@ TEST_CASE("Multivariate Dependent DTW Fixed length", "[dtw][multivariate]") {
   mocker._dim = ndim;
 
   const auto l = mocker._fixl;
-  const auto l1 = l * mocker._dim;
+  const auto l1 = l*mocker._dim;
 
   const auto fset = mocker.vec_randvec(nbitems);
 
   SECTION("DTW(s,s) == 0") {
-    for (const auto &s: fset) {
-      const double dtw_ref_v = dtw_matrix(s, s, ndim);
-      REQUIRE(dtw_ref_v == 0);
+    for (const auto& s : fset) {
+      const double dtw_ref_v = ref::dtw_matrix(s, s, ndim);
+      REQUIRE(dtw_ref_v==0);
 
-      const auto dtw_v = dtw(l, l, distN(s, s, ndim), NO_WINDOW, INF);
-      REQUIRE(dtw_v == 0);
+      const auto dtw_v = dtw(l, l, distN(s, s, ndim), NO_WINDOW, PINF);
+      REQUIRE(dtw_v==0);
     }
   }
 
   SECTION("DTW(s1, s2)") {
-     for (size_t i = 0; i<nbitems-1; ++i) {
-       const auto& s1 = fset[i];
-       const auto& s2 = fset[i+1];
+    for (size_t i = 0; i<nbitems - 1; ++i) {
+      const auto& s1 = fset[i];
+      const auto& s2 = fset[i + 1];
 
-       // Check Uni
-       {
-         const double dtw_ref_v = dtw_matrix(s1, s2, 1);
-         const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
-         const auto dtw_tempo_v = dtw(l1, l1, dist(s1, s2), NO_WINDOW, INF);
-         REQUIRE(dtw_ref_v==dtw_ref_uni_v);
-         REQUIRE(dtw_ref_v==dtw_tempo_v);
-       }
+      // Check Uni
+      {
+        const double dtw_ref_v = ref::dtw_matrix(s1, s2, 1);
+        const double dtw_ref_uni_v = ref::dtw_matrix_uni(s1, s2);
+        const auto dtw_tempo_v = dtw(l1, l1, dist(s1, s2), NO_WINDOW, PINF);
+        REQUIRE(dtw_ref_v==dtw_ref_uni_v);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
+      }
 
-       // Check Multi
-       {
-         const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
-         INFO("Exact same operation order. Expect exact floating point equality.")
+      // Check Multi
+      {
+        const double dtw_ref_v = ref::dtw_matrix(s1, s2, ndim);
+        INFO("Exact same operation order. Expect exact floating point equality.")
 
-         const auto dtw_tempo_v = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, INF);
-         REQUIRE(dtw_ref_v==dtw_tempo_v);
-       }
+        const auto dtw_tempo_v = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, PINF);
+        REQUIRE(dtw_ref_v==dtw_tempo_v);
+      }
 
-     }
-   }
+    }
+  }
 
-   SECTION("NN1 DTW") {
-     // Query loop
-     for (size_t i = 0; i<nbitems; i += 3) {
-       const auto& s1 = fset[i];
-       // Ref Variables
-       size_t idx_ref = 0;
-       double bsf_ref = INF;
-       // Base Variables
-       size_t idx = 0;
-       double bsf = INF;
-       // EAP Variables
-       size_t idx_tempo = 0;
-       double bsf_tempo = INF;
+  SECTION("NN1 DTW") {
+    // Query loop
+    for (size_t i = 0; i<nbitems; i += 3) {
+      const auto& s1 = fset[i];
+      // Ref Variables
+      size_t idx_ref = 0;
+      double bsf_ref = PINF;
+      // Base Variables
+      size_t idx = 0;
+      double bsf = PINF;
+      // EAP Variables
+      size_t idx_tempo = 0;
+      double bsf_tempo = PINF;
 
-       // NN1 loop
-       for (size_t j = 0; j<nbitems; j += 5) {
-         // Skip self.
-         if (i==j) { continue; }
-         const auto& s2 = fset[j];
+      // NN1 loop
+      for (size_t j = 0; j<nbitems; j += 5) {
+        // Skip self.
+        if (i==j) { continue; }
+        const auto& s2 = fset[j];
 
-         // --- --- --- --- --- --- --- --- --- --- --- ---
-         const double v_ref = dtw_matrix(s1, s2, ndim);
-         if (v_ref<bsf_ref) {
-           idx_ref = j;
-           bsf_ref = v_ref;
-         }
+        // --- --- --- --- --- --- --- --- --- --- --- ---
+        const double v_ref = ref::dtw_matrix(s1, s2, ndim);
+        if (v_ref<bsf_ref) {
+          idx_ref = j;
+          bsf_ref = v_ref;
+        }
 
-         // --- --- --- --- --- --- --- --- --- --- --- ---
-         const auto v = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, INF);
-         if (v<bsf) {
-           idx = j;
-           bsf = v;
-         }
+        // --- --- --- --- --- --- --- --- --- --- --- ---
+        const auto v = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, PINF);
+        if (v<bsf) {
+          idx = j;
+          bsf = v;
+        }
 
-         REQUIRE(idx_ref==idx);
+        REQUIRE(idx_ref==idx);
 
-         // --- --- --- --- --- --- --- --- --- --- --- ---
-         const auto v_tempo = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, bsf_tempo);
-         if (v_tempo<bsf_tempo) {
-           idx_tempo = j;
-           bsf_tempo = v_tempo;
-         }
+        // --- --- --- --- --- --- --- --- --- --- --- ---
+        const auto v_tempo = dtw(l, l, distN(s1, s2, ndim), NO_WINDOW, bsf_tempo);
+        if (v_tempo<bsf_tempo) {
+          idx_tempo = j;
+          bsf_tempo = v_tempo;
+        }
 
-         REQUIRE(idx_ref==idx_tempo);
-       }
-     }// End query loop
-   }// End section
- }
-
+        REQUIRE(idx_ref==idx_tempo);
+      }
+    }// End query loop
+  }// End section
+}
 
 TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
   // Setup univariate dataset with varying length
@@ -193,41 +191,41 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
   const auto ndim = mocker._dim;
   const auto fset = mocker.vec_rs_randvec(nbitems);
 
-  auto ld = [ndim](const std::vector<double>& v){
+  auto ld = [ndim](const std::vector<double>& v) {
     return v.size()/ndim;
   };
 
 
   SECTION("DTW(s,s) == 0") {
-    for (const auto& s: fset) {
-      const double dtw_ref_v = dtw_matrix(s, s, ndim);
+    for (const auto& s : fset) {
+      const double dtw_ref_v = ref::dtw_matrix(s, s, ndim);
       REQUIRE(dtw_ref_v==0);
 
-      const auto dtw_v = dtw(ld(s), ld(s), distN(s, s, ndim), NO_WINDOW, INF);
+      const auto dtw_v = dtw(ld(s), ld(s), distN(s, s, ndim), NO_WINDOW, PINF);
       REQUIRE(dtw_v==0);
     }
   }
 
   SECTION("DTW(s1, s2)") {
-    for (size_t i = 0; i<nbitems-1; ++i) {
+    for (size_t i = 0; i<nbitems - 1; ++i) {
       const auto& s1 = fset[i];
-      const auto& s2 = fset[i+1];
+      const auto& s2 = fset[i + 1];
 
       // Check Uni
       {
-        const double dtw_ref_v = dtw_matrix(s1, s2, 1);
-        const double dtw_ref_uni_v = dtw_matrix_uni(s1, s2);
-        const auto dtw_tempo_v = dtw(s1.size(), s2.size(), distN(s1, s2, 1), NO_WINDOW, INF);
+        const double dtw_ref_v = ref::dtw_matrix(s1, s2, 1);
+        const double dtw_ref_uni_v = ref::dtw_matrix_uni(s1, s2);
+        const auto dtw_tempo_v = dtw(s1.size(), s2.size(), distN(s1, s2, 1), NO_WINDOW, PINF);
         REQUIRE(dtw_ref_v==dtw_ref_uni_v);
         REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
 
       // Check Multi
       {
-        const double dtw_ref_v = dtw_matrix(s1, s2, ndim);
+        const double dtw_ref_v = ref::dtw_matrix(s1, s2, ndim);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto dtw_tempo_v = dtw(ld(s1), ld(s2), distN(s1, s2, ndim), NO_WINDOW, INF);
+        const auto dtw_tempo_v = dtw(ld(s1), ld(s2), distN(s1, s2, ndim), NO_WINDOW, PINF);
         REQUIRE(dtw_ref_v==dtw_tempo_v);
       }
     }
@@ -239,13 +237,13 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = INF;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = INF;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = INF;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -254,14 +252,14 @@ TEST_CASE("Multivariate Dependent DTW Variable length", "[dtw][multivariate]") {
         const auto& s2 = fset[j];
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const double v_ref = dtw_matrix(s1, s2, ndim);
+        const double v_ref = ref::dtw_matrix(s1, s2, ndim);
         if (v_ref<bsf_ref) {
           idx_ref = j;
           bsf_ref = v_ref;
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = dtw(ld(s1), ld(s2), distN(s1, s2, ndim), NO_WINDOW, INF);
+        const auto v = dtw(ld(s1), ld(s2), distN(s1, s2, ndim), NO_WINDOW, PINF);
         if (v<bsf) {
           idx = j;
           bsf = v;

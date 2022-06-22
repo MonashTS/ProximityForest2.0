@@ -31,7 +31,7 @@ namespace tempo::distance {
      */
     [[nodiscard]] inline F dtw_w_full(const size_t nblines,
                                       const size_t nbcols,
-                                      CFun<F> auto dist,
+                                      CFun auto dist,
                                       const F cutoff,
                                       std::vector<F> buffer_v
     ) {
@@ -40,7 +40,7 @@ namespace tempo::distance {
       assert(nblines!=0);
       assert(nbcols!=0);
       // Adapt constants to the floating point type
-      constexpr auto PINF = utils::PINF<F>;
+      using utils::PINF;
       using utils::min;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -168,7 +168,7 @@ namespace tempo::distance {
      */
     [[nodiscard]] inline F dtw(const size_t nblines,
                                const size_t nbcols,
-                               CFun<F> auto dist,
+                               CFun auto dist,
                                const size_t w,
                                const F cutoff,
                                std::vector<F>& buffer_v
@@ -179,7 +179,6 @@ namespace tempo::distance {
       assert(nbcols!=0);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<F>;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly used in the code).
@@ -303,20 +302,20 @@ namespace tempo::distance {
 
   [[nodiscard]] F dtw(size_t nblines,
                       size_t nbcols,
-                      CFun<F> auto dist,
+                      CFun auto dist,
                       size_t w,
                       F ub,
                       std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    using utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
-    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else if ((nblines==0)!=(nbcols==0)) { return PINF; }
     else {
       // Check that the window allows for an alignment
       // If this is accepted, we do not need to check the window when computing a new UB
       const auto m = std::min(nblines, nbcols);
       const auto M = std::max(nblines, nbcols);
-      if (M - m>w) { return INF; }
+      if (M - m>w) { return PINF; }
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
         ub = 0;
@@ -326,7 +325,7 @@ namespace tempo::distance {
         if (nblines<nbcols) { for (size_t i{nblines}; i<nbcols; ++i) { ub = ub + dist(nblines - 1, i); }}
           // Fewer columns than lines: complete the last column
         else if (nbcols<nblines) { for (size_t i{nbcols}; i<nblines; ++i) { ub = ub + dist(i, nbcols - 1); }}
-      } else if (std::isnan(ub)) { ub = INF; }
+      } else if (std::isnan(ub)) { ub = PINF; }
       // ub computed: choose the version to call
       if (w>M - 2) {
         return internal::dtw_w_full(nblines, nbcols, dist, ub, buffer_v);
@@ -337,7 +336,7 @@ namespace tempo::distance {
   }
 
   /// Helper without having to provide a buffer
-  [[nodiscard]] inline F dtw(size_t nblines, size_t nbcols, CFun<F> auto dist, size_t w, F ub = utils::PINF<F>) {
+  [[nodiscard]] inline F dtw(size_t nblines, size_t nbcols, CFun auto dist, size_t w, F ub) {
     std::vector<F> v;
     return dtw(nblines, nbcols, dist, w, ub, v);
   }
@@ -345,10 +344,10 @@ namespace tempo::distance {
   /// Helper for TSLike, without having to provide a buffer
   template<TSLike T>
   [[nodiscard]] inline F
-  dtw(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, size_t w, F ub = utils::PINF<F>) {
+  dtw(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, size_t w, F ub) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFun<F> auto dist = mkdist(lines, cols);
+    const CFun auto dist = mkdist(lines, cols);
     std::vector<F> v;
     return dtw(ls, cs, dist, w, ub, v);
   }

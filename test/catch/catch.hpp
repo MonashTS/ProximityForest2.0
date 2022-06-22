@@ -4250,7 +4250,7 @@ namespace Generators {
         // TBD: provide static assert for mapping function, for friendly error message
         GeneratorWrapper<U> m_generator;
         Func m_function;
-        // To avoid returning dangling reference, we have to save the values
+        // To avoid returning dangling ref, we have to save the values
         T m_cache;
     public:
         template <typename F2 = Func>
@@ -8560,7 +8560,7 @@ public:
 		using difference_type = std::ptrdiff_t;
 		using value_type = std::string;
 		using pointer = value_type * ;
-		using reference = value_type & ;
+		using ref = value_type & ;
 		using iterator_category = std::forward_iterator_tag;
 
 		explicit iterator(Column const& column) : m_column(column) {
@@ -8686,7 +8686,7 @@ public:
 		using difference_type = std::ptrdiff_t;
 		using value_type = std::string;
 		using pointer = value_type * ;
-		using reference = value_type & ;
+		using ref = value_type & ;
 		using iterator_category = std::forward_iterator_tag;
 
 		explicit iterator(Columns const& columns)

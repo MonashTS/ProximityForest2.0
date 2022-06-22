@@ -5,19 +5,20 @@
 #include <tempo/distance/elastic/erp.hpp>
 
 using namespace mock;
+using namespace tempo;
 using namespace tempo::distance;
 using namespace tempo::distance::multivariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
 constexpr size_t ndim = 3;
-constexpr double INF = tempo::utils::PINF<double>;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-  using namespace tempo;
-  using namespace tempo::utils;
   using namespace std;
 
   /// Naive Multivariate ERP with a window. Reference code.
@@ -27,8 +28,8 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF<double>; }
-    if (length1!=0 && length2==0) { return PINF<double>; }
+    if (length1==0 && length2!=0) { return PINF; }
+    if (length1!=0 && length2==0) { return PINF; }
 
     // We will only allocate a double-row buffer: use the smallest possible dimension as the columns.
     const vector<double>& cols = (length1<length2) ? series1 : series2;
@@ -40,11 +41,11 @@ namespace {
     if (w>nblines) { w = nblines; }
 
     // Check if, given the constralong w, we can have an alignment.
-    if (nblines-nbcols>w) { return PINF<double>; }
+    if (nblines-nbcols>w) { return PINF; }
 
     // Allocate a double buffer for the columns. Declare the index of the 'c'urrent and 'p'revious buffer.
-    // Note: we use a vector as a way to initialize the buffer with PINF<double>
-    vector<std::vector<double>> matrix(nblines+1, std::vector<double>(nbcols+1, PINF<double>));
+    // Note: we use a vector as a way to initialize the buffer with PINF
+    vector<std::vector<double>> matrix(nblines+1, std::vector<double>(nbcols+1, PINF));
 
     // Initialisation of the first line and column
     matrix[0][0] = 0;
@@ -84,8 +85,8 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (la==0 && lb==0) { return 0; }
-    if (la==0 && lb!=0) { return PINF<double>; }
-    if (la!=0 && lb==0) { return PINF<double>; }
+    if (la==0 && lb!=0) { return PINF; }
+    if (la!=0 && lb==0) { return PINF; }
 
     // We will only allocate a double-row buffer: use the smallest possible dimension as the columns.
     const vector<double>& cols = (la<lb) ? a : b;
@@ -97,11 +98,11 @@ namespace {
     if (w>nblines) { w = nblines; }
 
     // Check if, given the constralong w, we can have an alignment.
-    if (nblines-nbcols>w) { return PINF<double>; }
+    if (nblines-nbcols>w) { return PINF; }
 
     // Allocate a double buffer for the columns. Declare the index of the 'c'urrent and 'p'revious buffer.
-    // Note: we use a vector as a way to initialize the buffer with PINF<double>
-    vector<std::vector<double>> matrix(nblines+1, std::vector<double>(nbcols+1, PINF<double>));
+    // Note: we use a vector as a way to initialize the buffer with PINF
+    vector<std::vector<double>> matrix(nblines+1, std::vector<double>(nbcols+1, PINF));
 
     // Initialisation of the first line and column
     matrix[0][0] = 0;
@@ -156,10 +157,10 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
         for (auto gv_: gvalues) {
           vector<double> gv(ndim, gv_);
 
-          const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
+          const double erp_ref_v = ref::erp_matrix(s, s, ndim, gv, w);
           REQUIRE(erp_ref_v == 0);
 
-          const auto erp_v = erp<double>(l, l, ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), w, INF);
+          const auto erp_v = erp(l, l, ad2gv(s, gv), ad2gv(s, gv), distN(s, s, ndim), w, PINF);
           REQUIRE(erp_v == 0);
         }
       }
@@ -179,19 +180,19 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
 
           // Check Uni
           {
-            const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
-            const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
-            const auto erp_tempo_uni_v = erp<double>(l1, l1, univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), w, INF);
+            const double erp_ref_v = ref::erp_matrix(s1, s2, 1, gv, w);
+            const double erp_ref_uni_v = ref::erp_matrix_uni(s1, s2, gv_, w);
+            const auto erp_tempo_uni_v = erp(l1, l1, univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), distN(s1, s2, 1), w, PINF);
             REQUIRE(erp_ref_v == erp_ref_uni_v);
             REQUIRE(erp_ref_v == erp_tempo_uni_v);
           }
 
           // Check Multi
           {
-            const double erp_ref_v = erp_matrix(s1, s2, ndim, gv, w);
+            const double erp_ref_v = ref::erp_matrix(s1, s2, ndim, gv, w);
             INFO("Exact same operation order. Expect exact floating point equality.")
 
-            const auto erp_tempo_v = erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
+            const auto erp_tempo_v = erp(l, l, ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, PINF);
             REQUIRE(erp_ref_v==erp_tempo_v);
           }
 
@@ -206,13 +207,13 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -227,14 +228,14 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
             vector<double> gv(ndim, gv_);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = erp_matrix(s1, s2, ndim, gv, w);
+            const double v_ref = ref::erp_matrix(s1, s2, ndim, gv, w);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
+            const auto v = erp(l, l, ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, PINF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -243,7 +244,7 @@ TEST_CASE("Multivariate Dependent ERP Fixed length", "[erp][multivariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo =erp<double>(l, l, ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, bsf_tempo);
+            const auto v_tempo =erp(l, l, ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;
@@ -276,10 +277,10 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
         for (auto gv_: gvalues) {
           vector<double> gv(ndim, gv_);
 
-          const double erp_ref_v = erp_matrix(s, s, ndim, gv, w);
+          const double erp_ref_v = ref::erp_matrix(s, s, ndim, gv, w);
           REQUIRE(erp_ref_v == 0);
 
-          const auto erp_v = erp<double>(ld(s), ld(s), ad2gv(s, gv), ad2gv(s, gv), ad2N<double>(s, s, ndim), w, INF);
+          const auto erp_v = erp(ld(s), ld(s), ad2gv(s, gv), ad2gv(s, gv), distN(s, s, ndim), w, PINF);
           REQUIRE(erp_v == 0);
         }
       }
@@ -299,19 +300,19 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
 
           // Check Uni
           {
-            const double erp_ref_v = erp_matrix(s1, s2, 1, gv, w);
-            const double erp_ref_uni_v = erp_matrix_uni(s1, s2, gv_, w);
-            const auto erp_tempo_uni_v = erp<double>(s1.size(), s2.size(), univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), ad2N<double>(s1, s2, 1), w, INF);
+            const double erp_ref_v = ref::erp_matrix(s1, s2, 1, gv, w);
+            const double erp_ref_uni_v = ref::erp_matrix_uni(s1, s2, gv_, w);
+            const auto erp_tempo_uni_v = erp(s1.size(), s2.size(), univariate::ad2gv(s1, gv_), univariate::ad2gv(s2, gv_), distN(s1, s2, 1), w, PINF);
             REQUIRE(erp_ref_v==erp_ref_uni_v);
             REQUIRE(erp_ref_uni_v==erp_tempo_uni_v);
           }
 
           // Check Multi
           {
-            const double erp_ref_v = erp_matrix(s1, s2, ndim, gv, w);
+            const double erp_ref_v = ref::erp_matrix(s1, s2, ndim, gv, w);
             INFO("Exact same operation order. Expect exact floating point equality.")
 
-            const auto erp_tempo_v = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
+            const auto erp_tempo_v = erp(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, PINF);
             REQUIRE(erp_ref_v==erp_tempo_v);
           }
 
@@ -326,13 +327,13 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -347,14 +348,14 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
             vector<double> gv(ndim, gv_);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = erp_matrix(s1, s2, ndim, gv, w);
+            const double v_ref = ref::erp_matrix(s1, s2, ndim, gv, w);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, INF);
+            const auto v = erp(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, PINF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -363,7 +364,7 @@ TEST_CASE("Multivariate Dependent ERP Variable length", "[erp][multivariate]") {
             REQUIRE(idx_ref==idx);
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = erp<double>(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), ad2N<double>(s1, s2, ndim), w, bsf_tempo);
+            const auto v_tempo = erp(ld(s1), ld(s2), ad2gv(s1, gv), ad2gv(s2, gv), distN(s1, s2, ndim), w, bsf_tempo);
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
               bsf_tempo = v_tempo;

@@ -7,14 +7,14 @@ namespace tempo::distance {
 
   /// MSM specific cost function concept, computing the cost when taking a non diagonal step (warping the alignments)
   /// All required information (series and cost) must be captured
-  template<typename Fun, typename R>
-  concept CFunMSM = Float<R>&&requires(Fun fun, size_t i, size_t j){
-    { fun(i, j) }->std::same_as<R>;
+  template<typename Fun>
+  concept CFunMSM = requires(Fun fun, size_t i, size_t j){
+    { fun(i, j) }->std::convertible_to<F>;
   };
 
   /// CFunMSMBuilder: Function creating a CFunMSM based on two series and a cost c
-  template<typename T, typename D, typename F>
-  concept CFunMSMBuilder = Float<F>&&requires(T builder, const D& s1, const D& s2, const F c){
+  template<typename T, typename D>
+  concept CFunMSMBuilder = requires(T builder, const D& s1, const D& s2, const F c){
     builder(s1, s2, c);
   };
 
@@ -25,7 +25,6 @@ namespace tempo::distance {
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam F            Float type
      * @param nblines       Number of lines - length of the series along the lines
      * @param nbcols        Number of columns - length of the series along the columns
      * @param dist_lines    Distance for "vertical" steps
@@ -35,15 +34,13 @@ namespace tempo::distance {
      * @param buffer_v      Buffer for memory reuse
      * @return MSM value or +INF if early abandoned, or , given w, no alignment is possible
      */
-    template<Float F>
-    [[nodiscard]] inline F msm(
-      const size_t nblines,
-      const size_t nbcols,
-      CFunMSM<F> auto dist_lines,
-      CFunMSM<F> auto dist_cols,
-      CFun<F> auto dist,
-      F cutoff,
-      std::vector<F>& buffer_v
+    [[nodiscard]] inline F msm(const size_t nblines,
+                               const size_t nbcols,
+                               CFunMSM auto dist_lines,
+                               CFunMSM auto dist_cols,
+                               CFun auto dist,
+                               F cutoff,
+                               std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
@@ -52,7 +49,6 @@ namespace tempo::distance {
       assert(nbcols<=nblines);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<F>;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly used in the code).
@@ -198,7 +194,6 @@ namespace tempo::distance {
    *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
    *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
    *  Actual implementation assuming that some pre-conditions are fulfilled.
-   * @tparam F            Float type
    * @param nblines       Number of lines - length of the series along the lines
    * @param nbcols        Number of columns - length of the series along the columns
    * @param dist_lines    Distance for "vertical" steps
@@ -208,19 +203,17 @@ namespace tempo::distance {
    * @param buffer_v      Buffer for memory reuse
    * @return MSM value or +INF if early abandoned, or , given w, no alignment is possible
    */
-  template<Float F>
-  [[nodiscard]] F msm(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunMSM<F> auto dist_lines,
-    CFunMSM<F> auto dist_cols,
-    CFun<F> auto dist,
-    F ub,
-    std::vector<F>& buffer_v
+  [[nodiscard]] inline F msm(const size_t nblines,
+                             const size_t nbcols,
+                             CFunMSM auto dist_lines,
+                             CFunMSM auto dist_cols,
+                             CFun auto dist,
+                             F ub,
+                             std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    using utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
-    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else if ((nblines==0)!=(nbcols==0)) { return PINF; }
     else {
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
@@ -236,40 +229,37 @@ namespace tempo::distance {
         else if (nbcols<nblines) {
           for (size_t i{nbcols}; i<nblines; ++i) { ub = ub + dist_lines(i, nbcols - 1); }
         }
-      } else if (std::isnan(ub)) { ub = INF; }
+      } else if (std::isnan(ub)) { ub = PINF; }
       // ub computed
-      return internal::msm<F>(nblines, nbcols, dist_lines, dist_cols, dist, ub, buffer_v);
+      return internal::msm(nblines, nbcols, dist_lines, dist_cols, dist, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
-  template<Float F>
-  [[nodiscard]] inline F msm(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunMSM<F> auto dist_lines,
-    CFunMSM<F> auto dist_cols,
-    CFun<F> auto dist,
-    F ub) {
+  [[nodiscard]] inline F msm(const size_t nblines,
+                             const size_t nbcols,
+                             CFunMSM auto dist_lines,
+                             CFunMSM auto dist_cols,
+                             CFun auto dist,
+                             F ub) {
     std::vector<F> v;
-    return msm<F>(nblines, nbcols, dist_lines, dist_cols, dist, ub, v);
+    return msm(nblines, nbcols, dist_lines, dist_cols, dist, ub, v);
   }
 
   /// Helper for TSLike, without having to provide a buffer
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  msm(const T& lines, const T& cols,
-      CFunMSMBuilder<T, F> auto mkdist_lines,
-      CFunMSMBuilder<T, F> auto mkdist_cols,
-      CFunBuilder<T> auto mkdist,
-      const F c,
-      F ub = utils::PINF<F>) {
+  template<TSLike T>
+  [[nodiscard]] inline F msm(const T& lines, const T& cols,
+                             CFunMSMBuilder<T> auto mkdist_lines,
+                             CFunMSMBuilder<T> auto mkdist_cols,
+                             CFunBuilder<T> auto mkdist,
+                             const F c,
+                             F ub) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFunMSM<F> auto dist_lines = mkdist_lines(lines, cols, c);
-    const CFunMSM<F> auto dists_cols = mkdist_cols(lines, cols, c);
-    const CFun<F> auto dist = mkdist(lines, cols);
-    return msm<F>(ls, cs, dist_lines, dists_cols, dist, ub);
+    const CFunMSM auto dist_lines = mkdist_lines(lines, cols, c);
+    const CFunMSM auto dists_cols = mkdist_cols(lines, cols, c);
+    const CFun auto dist = mkdist(lines, cols);
+    return msm(ls, cs, dist_lines, dists_cols, dist, ub);
   }
 
   namespace univariate {
@@ -285,7 +275,7 @@ namespace tempo::distance {
      * @param c             cost of split and merge operation
      * @return MSM cost of the xi-yj alignment (without "recursive" part)
      */
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline F _msm_cost_ad1(const D& X, size_t xnew_, size_t xi_, const D& Y, size_t yj_, F cost) {
       F xnew = X[xnew_];
       F xi = X[xi_];
@@ -295,7 +285,7 @@ namespace tempo::distance {
     }
 
     /// Helper for the line cost function
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto msm_lines_ad1(const D& lines, const D& cols, const F c) {
       return [&, c](size_t i, size_t j) {
         return _msm_cost_ad1(lines, i, i - 1, cols, j, c);
@@ -303,7 +293,7 @@ namespace tempo::distance {
     }
 
     /// Helper for the columns cost function
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto msm_cols_ad1(const D& lines, const D& cols, const F c) {
       return [&, c](size_t i, size_t j) {
         return _msm_cost_ad1(cols, j, j - 1, lines, i, c);
@@ -311,21 +301,22 @@ namespace tempo::distance {
     }
 
     /// Default MSM using univariate ad1 - TSLike overload
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F msm(const T& lines, const T& cols, const F c, F ub = utils::PINF<F>) {
-      return tempo::distance::msm(lines, cols, msm_lines_ad1<F, T>, msm_cols_ad1<F, T>, ad1<F, T>, c, ub);
+    template<TSLike T>
+    [[nodiscard]] inline F msm(const T& lines, const T& cols, const F c, F ub) {
+      return tempo::distance::msm(lines, cols, msm_lines_ad1<T>, msm_cols_ad1<T>, ad1<F, T>, c, ub);
     }
 
     /// Default MSM using univariate ad1 - vector overload
-    template<Float F>
-    [[nodiscard]] inline F msm(const std::vector<F>& lines, const std::vector<F>& cols,
-                               const F c, F ub = utils::PINF<F>) {
+    [[nodiscard]] inline F msm(const std::vector<F>& lines,
+                               const std::vector<F>& cols,
+                               const F c,
+                               F ub) {
       const auto ls = lines.size();
       const auto cs = cols.size();
-      const CFunMSM<F> auto dist_lines = msm_lines_ad1<F, std::vector<F>>(lines, cols, c);
-      const CFunMSM<F> auto dists_cols = msm_cols_ad1<F, std::vector<F>>(lines, cols, c);
-      const CFun<F> auto dist = ad1<F, std::vector<F>>(lines, cols);
-      return tempo::distance::msm<F>(ls, cs, dist_lines, dists_cols, dist, ub);
+      const CFunMSM auto dist_lines = msm_lines_ad1<std::vector<F>>(lines, cols, c);
+      const CFunMSM auto dists_cols = msm_cols_ad1<std::vector<F>>(lines, cols, c);
+      const CFun auto dist = ad1<std::vector<F>>(lines, cols);
+      return tempo::distance::msm(ls, cs, dist_lines, dists_cols, dist, ub);
     }
   }
 
@@ -333,7 +324,6 @@ namespace tempo::distance {
 
     /** Multivariate cost function when transforming
      *  X=(x1, x2, ... xi) into Y = (y1, ..., yj) by Split or Merge (symmetric - dependening how we move in the matrix).
-     * @tparam FloatType    The floating number type used to represent the series.
      * @tparam D            Type of underlying collection - given to dist
      * @tparam FDist        Distance function, must be a (const D&, size_t, constD&, size_t)->FloatType
      * @tparam FDistMP      Distance to midpoint function, must be a (const D&, size_t, size_t, constD&, size_t)->FloatType
@@ -349,14 +339,13 @@ namespace tempo::distance {
      *   defined by xi and yi: take the midpoint between xi and yi and the sphere radius.
      *   If the distance between the midpoint and xnew > radius, xnew is not in the sphere.
      */
-    template<Float F, Subscriptable D, typename FUN, typename MIDPOINT>
-    [[nodiscard]] inline F _msm_cost(
-      const D& X, size_t xnew, size_t xi,
-      const D& Y, size_t yi,
-      size_t ndim,
-      FUN dist,
-      MIDPOINT distmpoint,
-      F cost
+    template<Subscriptable D, typename FUN, typename MIDPOINT>
+    [[nodiscard]] inline F _msm_cost(const D& X, size_t xnew, size_t xi,
+                                     const D& Y, size_t yi,
+                                     size_t ndim,
+                                     FUN dist,
+                                     MIDPOINT distmpoint,
+                                     F cost
     ) {
       const F radius = dist(X, xi, Y, yi, ndim)/2; // distance between xi and yi give us the sphere diameter
       const F d_to_mid = distmpoint(X, xnew, xi, Y, yi, ndim);
@@ -364,12 +353,12 @@ namespace tempo::distance {
       else {
         const F d_to_prev = dist(X, xnew, X, xi, ndim);
         const F d_to_other = dist(X, xnew, Y, yi, ndim);
-        return cost + std::min<F>(d_to_prev, d_to_other);
+        return cost + std::min(d_to_prev, d_to_other);
       }
     }
 
     /// Squared Euclidean Distance dim N
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline F sqedN(const D& lines, size_t li, const D& cols, size_t co, size_t ndim) {
       const size_t li_offset = li*ndim;
       const size_t co_offset = co*ndim;
@@ -382,13 +371,13 @@ namespace tempo::distance {
     }
 
     /// Euclidean Distance dim N
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline F edN(const D& lines, size_t li, const D& cols, size_t co, size_t ndim) {
-      return std::sqrt(sqedN<F, D>(lines, li, cols, co, ndim));
+      return std::sqrt(sqedN<D>(lines, li, cols, co, ndim));
     }
 
     /// Euclidean Distance to midpoint dim N
-    template<typename FloatType, typename D>
+    template<typename D>
     [[nodiscard]] inline FloatType edNmid(const D& X, size_t xnew, size_t xi, const D& Y, size_t yi, size_t ndim) {
       const size_t xnew_offset = xnew*ndim;
       const size_t xi_offset = xi*ndim;
@@ -402,24 +391,24 @@ namespace tempo::distance {
       return std::sqrt(acc);
     }
 
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto msm_lines_ed(const D& lines, const D& cols, size_t ndim, const F c) {
       return [&, ndim, c](size_t i, size_t j) {
-        return _msm_cost(lines, i, i - 1, cols, j, ndim, edN<F, D>, edNmid<F, D>, c);
+        return _msm_cost(lines, i, i - 1, cols, j, ndim, edN<D>, edNmid<D>, c);
       };
     }
 
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto msm_cols_ed(const D& lines, const D& cols, size_t ndim, const F c) {
       return [&, ndim, c](size_t i, size_t j) {
-        return _msm_cost(cols, j, j - 1, lines, i, ndim, edN<F, D>, edNmid<F, D>, c);
+        return _msm_cost(cols, j, j - 1, lines, i, ndim, edN<D>, edNmid<D>, c);
       };
     }
 
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto msm_diag_ed(const D& lines, const D& cols, size_t ndim) {
       return [&, ndim](size_t i, size_t j) {
-        return edN<F, D>(lines, i, cols, j, ndim);
+        return edN<D>(lines, i, cols, j, ndim);
       };
     }
 

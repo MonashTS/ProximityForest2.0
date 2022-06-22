@@ -6,15 +6,15 @@
 
 using namespace mock;
 using namespace tempo::distance;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
-constexpr auto dist = univariate::ad2<double, std::vector<double>>;
-constexpr double INF = tempo::utils::PINF<double>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
-namespace reference {
+namespace ref {
 
   template<typename V>
   double directa(const V& s1, const V& s2) {
-    if (s1.size()!=s2.size()) { return tempo::utils::PINF<double>; }
+    if (s1.size()!=s2.size()) { return PINF; }
     double cost = 0;
     for (size_t i = 0; i<s1.size(); ++i) {
       const auto d = s1[i]-s2[i];
@@ -36,10 +36,10 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
 
   SECTION("NORM(s,s) == 0") {
     for (const auto& s: fset) {
-      const double directa_ref_v = reference::directa(s, s);
+      const double directa_ref_v = ref::directa(s, s);
       REQUIRE(directa_ref_v==0);
 
-      const auto directa_v = directa(s.size(), s.size(), dist(s, s), INF);
+      const auto directa_v = directa(s.size(), s.size(), dist(s, s), PINF);
       REQUIRE(directa_v==0);
     }
   }
@@ -49,10 +49,10 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
 
-      const double directa_ref_v = reference::directa(s1, s2);
+      const double directa_ref_v = ref::directa(s1, s2);
       INFO("Exact same operation order. Expect exact floating point equality.")
 
-      const auto directa_tempo_v = directa(s1.size(), s2.size(), dist(s1, s2), INF);
+      const auto directa_tempo_v = directa(s1.size(), s2.size(), dist(s1, s2), PINF);
       REQUIRE(directa_ref_v==directa_tempo_v);
     }
   }
@@ -63,13 +63,13 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = INF;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = INF;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = INF;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -78,14 +78,14 @@ TEST_CASE("Univariate NORM Fixed length", "[directa][univariate]") {
         const auto& s2 = fset[j];
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const double v_ref = reference::directa(s1, s2);
+        const double v_ref = ref::directa(s1, s2);
         if (v_ref<bsf_ref) {
           idx_ref = j;
           bsf_ref = v_ref;
         }
 
         // --- --- --- --- --- --- --- --- --- --- --- ---
-        const auto v = directa(s1.size(), s2.size(), dist(s1, s2), INF);
+        const auto v = directa(s1.size(), s2.size(), dist(s1, s2), PINF);
         if (v<bsf) {
           idx = j;
           bsf = v;

@@ -8,14 +8,14 @@ namespace tempo::distance {
   /// ERP specific cost function concept, computing the distance to a point (represented by its index)
   /// to the "gap value".
   /// Both the series and the gap values must be captured
-  template<typename Fun, typename R>
-  concept CFunGV = Float<R>&&requires(Fun fun, size_t i){
-    { fun(i) }->std::same_as<R>;
+  template<typename Fun>
+  concept CFunGV = requires(Fun fun, size_t i){
+    { fun(i) }->std::convertible_to<F>;
   };
 
   /// CVFunGVBuilder: Function creating a CFunGV based on a series and a gap value
-  template<typename T, typename D, typename F>
-  concept CFunGVBuilder = Float<F>&&requires(T builder, const D& s, const F gv){
+  template<typename T, typename D>
+  concept CFunGVBuilder = requires(T builder, const D& s, const F gv){
     builder(s, gv);
   };
 
@@ -32,9 +32,6 @@ namespace tempo::distance {
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam FloatType    The floating number type used to represent the series.
-     * @tparam D            Type of underlying collection - given to dist
-     * @tparam FDist        Distance computation function, must be a (const D&, size_t, constD&, size_t)->FloatType
      * @param lines         Data for the lines
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols          Data for the lines
@@ -47,16 +44,14 @@ namespace tempo::distance {
      *                      May lead to early abandoning.
      * @return ERP value or +INF if early abandoned, or , given w, no alignment is possible
      */
-    template<Float F>
-    [[nodiscard]] inline F erp(
-      const size_t nblines,
-      const size_t nbcols,
-      CFunGV<F> auto dist_gv_lines,
-      CFunGV<F> auto dist_gv_cols,
-      CFun<F> auto dist,
-      const size_t w,
-      const F cutoff,
-      std::vector<F>& buffer_v
+    [[nodiscard]] inline F erp(const size_t nblines,
+                               const size_t nbcols,
+                               CFunGV auto dist_gv_lines,
+                               CFunGV auto dist_gv_cols,
+                               CFun auto dist,
+                               const size_t w,
+                               const F cutoff,
+                               std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
@@ -64,7 +59,7 @@ namespace tempo::distance {
       assert(nbcols!=0);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<F>;
+      using utils::PINF;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly used in the code).
@@ -250,7 +245,6 @@ namespace tempo::distance {
    *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
    *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
    *  Actual implementation assuming that some pre-conditions are fulfilled.
-   * @tparam F          The floating number type used to represent the series.
    * @param series1     Data for the first series
    * @param length1     Length of the first series.
    * @param series2     Data for the second series
@@ -266,26 +260,24 @@ namespace tempo::distance {
    *                    ub = other value: use for pruning and early abandoning
    * @return ERP value or +INF if early abandoned, or , given w, no alignment is possible
    */
-  template<Float F>
-  [[nodiscard]] F erp(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunGV<F> auto dist_gv_lines,
-    CFunGV<F> auto dist_gv_cols,
-    CFun<F> auto dist,
-    const size_t w,
-    F ub,
-    std::vector<F>& buffer_v
+  [[nodiscard]] F erp(const size_t nblines,
+                      const size_t nbcols,
+                      CFunGV auto dist_gv_lines,
+                      CFunGV auto dist_gv_cols,
+                      CFun auto dist,
+                      const size_t w,
+                      F ub,
+                      std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    using utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
-    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else if ((nblines==0)!=(nbcols==0)) { return PINF; }
     else {
       // Check that the window allows for an alignment
       // If this is accepted, we do not need to check the window when computing a new UB
       const auto m = std::min(nblines, nbcols);
       const auto M = std::max(nblines, nbcols);
-      if (M - m>w) { return INF; }
+      if (M - m>w) { return PINF; }
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
         ub = 0;
@@ -295,48 +287,47 @@ namespace tempo::distance {
         if (nblines<nbcols) { for (size_t i{nblines}; i<nbcols; ++i) { ub = ub + dist_gv_cols(i); }}
           // Fewer columns than lines: complete the last column (advancing in the lines)
         else if (nbcols<nblines) { for (size_t i{nbcols}; i<nblines; ++i) { ub = ub + dist_gv_lines(i); }}
-      } else if (std::isnan(ub)) { ub = INF; }
+      } else if (std::isnan(ub)) { ub = PINF; }
       // ub computed
-      return internal::erp<F>(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, buffer_v);
+      return internal::erp(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
-  template<Float F>
-  [[nodiscard]] inline F erp(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunGV<F> auto dist_gv_lines,
-    CFunGV<F> auto dist_gv_cols,
-    CFun<F> auto dist,
-    const size_t w,
-    F ub
+  [[nodiscard]] inline F erp(const size_t nblines,
+                             const size_t nbcols,
+                             CFunGV auto dist_gv_lines,
+                             CFunGV auto dist_gv_cols,
+                             CFun auto dist,
+                             const size_t w,
+                             F ub
   ) {
     std::vector<F> v;
     return erp(nblines, nbcols, dist_gv_lines, dist_gv_cols, dist, w, ub, v);
   }
 
   /// Helper for TSLike, without having to provide a buffer
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  erp(const T& lines, const T& cols,
-      CFunGVBuilder<T, F> auto mkdist_gv,
-      CFunBuilder <T> auto mkdist,
-      const size_t w, const F gv,
-      F ub = utils::PINF<F>
+  template<TSLike T>
+  [[nodiscard]] inline F erp(const T& lines,
+                             const T& cols,
+                             CFunGVBuilder<T> auto mkdist_gv,
+                             CFunBuilder<T> auto mkdist,
+                             const size_t w,
+                             const F gv,
+                             F ub
   ) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFunGV<F> auto lines_gv = mkdist_gv(lines, gv);
-    const CFunGV<F> auto cols_gv = mkdist_gv(cols, gv);
-    const CFun<F> auto dist = mkdist(lines, cols);
-    return erp<F>(ls, cs, lines_gv, cols_gv, dist, w, ub);
+    const CFunGV auto lines_gv = mkdist_gv(lines, gv);
+    const CFunGV auto cols_gv = mkdist_gv(cols, gv);
+    const CFun auto dist = mkdist(lines, cols);
+    return erp(ls, cs, lines_gv, cols_gv, dist, w, ub);
   }
 
   namespace univariate {
 
     /// CFunGVBuilder Univariate Absolute difference exponent 1
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     auto ad1gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
         const F d = series[i] - gv;
@@ -345,7 +336,7 @@ namespace tempo::distance {
     }
 
     /// CFunGVBuilder Univariate Absolute difference exponent 2
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     auto inline ad2gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
         const F d = series[i] - gv;
@@ -354,7 +345,7 @@ namespace tempo::distance {
     }
 
     /// CFunGVBuilder Univariate Absolute difference exponent e
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     auto inline adegv(const F e) {
       return [e](const D& series, F gv) {
         return [&, gv, e](size_t i) {
@@ -365,13 +356,11 @@ namespace tempo::distance {
     }
   }
 
-
-
   namespace multivariate {
 
     /// WARP distance based on the squared absolute difference and a vector for gv
     /// Dimension is the same as the size of gv (all dimensions used)
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     inline auto ad2gv(const D& series, const std::vector<F>& gv) {
       const auto ndim = gv.size();
       return [&, ndim](size_t i) {

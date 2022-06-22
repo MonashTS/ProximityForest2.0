@@ -6,14 +6,13 @@
 
 using namespace mock;
 using namespace tempo::distance::univariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace reference {
-
-  using namespace tempo::utils;
+namespace ref {
 
   /// Implementing cost from the original paper
   /// c is the minimal cost of an operation
@@ -32,11 +31,11 @@ namespace reference {
 
     // Check lengths. Be explicit in the conditions.
     if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF<double>; }
-    if (length1!=0 && length2==0) { return PINF<double>; }
+    if (length1==0 && length2!=0) { return PINF; }
+    if (length1!=0 && length2==0) { return PINF; }
 
     const long maxLength = max(length1, length2);
-    vector<std::vector<double>> cost(maxLength, std::vector<double>(maxLength, PINF<double>));
+    vector<std::vector<double>> cost(maxLength, std::vector<double>(maxLength, PINF));
 
     // Initialization
     cost[0][0] = abs(series1[0]-series2[0]);
@@ -76,10 +75,10 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double msm_ref_v = reference::msm_matrix(s, s, c);
+        const double msm_ref_v = ref::msm_matrix(s, s, c);
         REQUIRE(msm_ref_v==0);
 
-        const auto msm_v = msm<double>(s, s, c);
+        const auto msm_v = msm(s, s, c, PINF);
         REQUIRE(msm_v==0);
       }
     }
@@ -91,10 +90,10 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
       const auto& s2 = fset[i+1];
 
       for (auto c: msm_costs) {
-        const double msm_ref_v = reference::msm_matrix(s1, s2, c);
+        const double msm_ref_v = ref::msm_matrix(s1, s2, c);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto msm_tempo = msm<double>(s1, s2, c);
+        const auto msm_tempo = msm(s1, s2, c, PINF);
         REQUIRE(msm_ref_v==msm_tempo);
       }
     }
@@ -106,13 +105,13 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -122,20 +121,20 @@ TEST_CASE("Univariate MSM Fixed length", "[msm][univariate]") {
         // Create the univariate squared Euclidean distance for our msm functions
         for (auto c: msm_costs) {
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = reference::msm_matrix(s1, s2, c);
+          const double v_ref = ref::msm_matrix(s1, s2, c);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = msm<double>(s1, s2, c);
+          const auto v = msm(s1, s2, c, PINF);
           if (v<bsf) {
             idx = j;
             bsf = v;
           }
           REQUIRE(idx_ref==idx);
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = msm<double>(s1, s2, c, bsf_tempo);
+          const auto v_tempo = msm(s1, s2, c, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;
@@ -156,10 +155,10 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
   SECTION("MSM(s,s) == 0") {
     for (const auto& s: fset) {
       for (auto c: msm_costs) {
-        const double msm_ref_v = reference::msm_matrix(s, s, c);
+        const double msm_ref_v = ref::msm_matrix(s, s, c);
         REQUIRE(msm_ref_v==0);
 
-        const auto msm_v = msm<double>(s, s, c);
+        const auto msm_v = msm(s, s, c, PINF);
         REQUIRE(msm_v==0);
       }
     }
@@ -170,10 +169,10 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
       const auto& s1 = fset[i];
       const auto& s2 = fset[i+1];
       for (auto c: msm_costs) {
-        const double msm_ref_v = reference::msm_matrix(s1, s2, c);
+        const double msm_ref_v = ref::msm_matrix(s1, s2, c);
         INFO("Exact same operation order. Expect exact floating point equality.")
 
-        const auto msm_tempo_v = msm<double>(s1, s2, c, tempo::utils::QNAN<double>);
+        const auto msm_tempo_v = msm(s1, s2, c, tempo::utils::QNAN);
         REQUIRE(msm_ref_v==msm_tempo_v);
       }
     }
@@ -185,13 +184,13 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -201,20 +200,20 @@ TEST_CASE("Univariate MSM Variable length", "[msm][univariate]") {
         // Create the univariate squared Euclidean distance for our msm functions
         for (auto c: msm_costs) {
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = reference::msm_matrix(s1, s2, c);
+          const double v_ref = ref::msm_matrix(s1, s2, c);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = msm<double>(s1, s2, c);
+          const auto v = msm(s1, s2, c, PINF);
           if (v<bsf) {
             idx = j;
             bsf = v;
           }
           REQUIRE(idx_ref==idx);
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = msm<double>(s1, s2, c, bsf_tempo);
+          const auto v_tempo = msm(s1, s2, c, bsf_tempo);
           if (v_tempo<bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;

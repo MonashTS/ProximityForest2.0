@@ -6,18 +6,17 @@
 
 using namespace mock;
 using namespace tempo::distance;
-using namespace tempo::distance::multivariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 1000;
 constexpr size_t ndim = 3;
 constexpr size_t nbweights = 5;
-constexpr double INF = tempo::utils::PINF<double>;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-  using namespace tempo::utils;
   using namespace std;
 
   /// Naive Univariate WDTW. Reference code.
@@ -27,8 +26,8 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (length1 == 0 && length2 == 0) { return 0; }
-    if (length1 == 0 && length2 != 0) { return PINF<double>; }
-    if (length1 != 0 && length2 == 0) { return PINF<double>; }
+    if (length1 == 0 && length2 != 0) { return PINF; }
+    if (length1 != 0 && length2 == 0) { return PINF; }
     // Matrix
     vector<std::vector<double>> matrix(length1, std::vector<double>(length2, 0));
     // First value
@@ -61,8 +60,8 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (la == 0 && lb == 0) { return 0; }
-    if (la == 0 && lb != 0) { return PINF<double>; }
-    if (la != 0 && lb == 0) { return PINF<double>; }
+    if (la == 0 && lb != 0) { return PINF; }
+    if (la != 0 && lb == 0) { return PINF; }
 
     // Matrix
     vector<std::vector<double>> matrix(la, std::vector<double>(lb, 0));
@@ -108,10 +107,10 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
       for (double g : weight_factors) {
         auto weights = generate_weights(g, mocker._fixl);
 
-        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
+        const double wdtw_ref_v = ref::wdtw_matrix(s, s, ndim, weights);
         REQUIRE(wdtw_ref_v == 0);
 
-        const auto wdtw_v = wdtw<double>(l, l, ad2N<double>(s, s, ndim), weights, INF);
+        const auto wdtw_v = wdtw(l, l, distN(s, s, ndim), weights, PINF);
         REQUIRE(wdtw_v == 0);
       }
     }
@@ -128,21 +127,21 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
 
         // Check Uni
         {
-          const double wdtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          INFO("ref v " << wdtw_ref_v);
-          const double wdtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto wdtw_tempo_v = wdtw<double>(l1, l1, ad2N<double>(s1, s2, 1), weights, INF);
-          INFO("Seed " << mocker._seed);
+          const double wdtw_ref_v = ref::wdtw_matrix(s1, s2, 1, weights);
+          INFO("ref v " << wdtw_ref_v)
+          const double wdtw_ref_uni_v = ref::wdtw_matrix_uni(s1, s2, weights);
+          const auto wdtw_tempo_v = wdtw(l1, l1, distN(s1, s2, 1), weights, PINF);
+          INFO("Seed " << mocker._seed)
           REQUIRE(wdtw_ref_v == wdtw_ref_uni_v);
           REQUIRE(wdtw_ref_v == wdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double wdtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double wdtw_ref_v = ref::wdtw_matrix(s1, s2, ndim, weights);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto wdtw_tempo_v = wdtw<double>(l, l, ad2N<double>(s1, s2, ndim), weights, INF);
+          const auto wdtw_tempo_v = wdtw(l, l, distN(s1, s2, ndim), weights, PINF);
           REQUIRE(wdtw_ref_v == wdtw_tempo_v);
         }
 
@@ -156,13 +155,13 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
       const auto &s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j < nbitems; j += 5) {
@@ -174,14 +173,14 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
           auto weights = generate_weights(g, mocker._fixl);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = wdtw_matrix(s1, s2, ndim, weights);
+          const double v_ref = ref::wdtw_matrix(s1, s2, ndim, weights);
           if (v_ref < bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(l, l, ad2N<double>(s1, s2, ndim), weights, INF);
+          const auto v = wdtw(l, l, distN(s1, s2, ndim), weights, PINF);
           if (v < bsf) {
             idx = j;
             bsf = v;
@@ -190,7 +189,7 @@ TEST_CASE("Multivariate Dependent WDTW Fixed length", "[wdtw][multivariate]") {
           REQUIRE(idx_ref == idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(l, l, ad2N<double>(s1, s2, ndim), weights, bsf_tempo);
+          const auto v_tempo = wdtw(l, l, distN(s1, s2, ndim), weights, bsf_tempo);
           if (v_tempo < bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;
@@ -216,10 +215,10 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
     for (const auto &s : fset) {
       for (double g : weight_factors) {
         auto weights = generate_weights(g, s.size());
-        const double wdtw_ref_v = wdtw_matrix(s, s, ndim, weights);
+        const double wdtw_ref_v = ref::wdtw_matrix(s, s, ndim, weights);
         REQUIRE(wdtw_ref_v == 0);
 
-        const auto wdtw_tempo_v = wdtw<double>(ld(s), ld(s), ad2N<double>(s, s, ndim), weights, INF);
+        const auto wdtw_tempo_v = wdtw(ld(s), ld(s), distN(s, s, ndim), weights, PINF);
         REQUIRE(wdtw_tempo_v == 0);
       }
     }
@@ -235,19 +234,19 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
 
         // Check Uni
         {
-          const double wdtw_ref_v = wdtw_matrix(s1, s2, 1, weights);
-          const double wdtw_ref_uni_v = wdtw_matrix_uni(s1, s2, weights);
-          const auto wdtw_tempo_v = wdtw<double>(s1.size(), s2.size(), ad2N<double>(s1, s2, 1), weights, INF);
+          const double wdtw_ref_v = ref::wdtw_matrix(s1, s2, 1, weights);
+          const double wdtw_ref_uni_v = ref::wdtw_matrix_uni(s1, s2, weights);
+          const auto wdtw_tempo_v = wdtw(s1.size(), s2.size(), distN(s1, s2, 1), weights, PINF);
           REQUIRE(wdtw_ref_v == wdtw_ref_uni_v);
           REQUIRE(wdtw_ref_v == wdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double wdtw_ref_v = wdtw_matrix(s1, s2, ndim, weights);
+          const double wdtw_ref_v = ref::wdtw_matrix(s1, s2, ndim, weights);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto wdtw_tempo_v = wdtw<double>(ld(s1), ld(s2), ad2N<double>(s1, s2, ndim), weights, INF);
+          const auto wdtw_tempo_v = wdtw(ld(s1), ld(s2), distN(s1, s2, ndim), weights, PINF);
           REQUIRE(wdtw_ref_v == wdtw_tempo_v);
         }
       }
@@ -260,13 +259,13 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
       const auto &s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j < nbitems; j += 5) {
@@ -278,14 +277,14 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
           auto weights = generate_weights(g, (min(s1.size(), s2.size())));
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = wdtw_matrix(s1, s2, ndim, weights);
+          const double v_ref = ref::wdtw_matrix(s1, s2, ndim, weights);
           if (v_ref < bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = wdtw<double>(ld(s1), ld(s2), ad2N<double>(s1, s2, ndim), weights, INF);
+          const auto v = wdtw(ld(s1), ld(s2), distN(s1, s2, ndim), weights, PINF);
           if (v < bsf) {
             idx = j;
             bsf = v;
@@ -294,7 +293,7 @@ TEST_CASE("Multivariate Dependent WDTW Variable length", "[wdtw][multivariate]")
           REQUIRE(idx_ref == idx);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v_tempo = wdtw<double>(ld(s1), ld(s2), ad2N<double>(s1, s2, ndim), weights, bsf_tempo);
+          const auto v_tempo = wdtw(ld(s1), ld(s2), distN(s1, s2, ndim), weights, bsf_tempo);
           if (v_tempo < bsf_tempo) {
             idx_tempo = j;
             bsf_tempo = v_tempo;

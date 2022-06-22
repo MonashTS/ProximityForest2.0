@@ -9,7 +9,6 @@ namespace tempo::distance {
 
     /** Direct alignment (Euclidean distance like) with early abandoning. No pruning.
      * Only defined for same length series (return +INF if different length).
-     * @tparam F          The floating number type used to represent the series.
      * @param length1     Length of the first series.
      * @param length2     Length of the second series.
      * @param dist        Distance function of type FDist
@@ -17,16 +16,15 @@ namespace tempo::distance {
      *                    May lead to early abandoning.
      * @return Norm according to 'dist' between the two series, or +INF if early abandoned.
      */
-    template<Float F>
     [[nodiscard]] inline F
     directa(
       const size_t length1,
       const size_t length2,
-      CFun<F> auto dist,
+      CFun auto dist,
       const F cutoff
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-      constexpr auto PINF = utils::PINF<F>;
+      using utils::PINF;
       // Check sizes. If both series are empty, return 0, else if one is empty and not the other, maximal error.
       if (length1!=length2) { return PINF; }
       if (length1==0) { return 0; }
@@ -51,19 +49,15 @@ namespace tempo::distance {
 
     /** Direct alignment (Euclidean distance like). No early abandoning. No pruning.
      * Only defined for same length series (return +INF if different length).
-     * @tparam FloatType  The floating number type used to represent the series.
-     * @tparam D          Type of underlying collection - given to dist
-     * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
      * @param length1     Length of the first series.
      * @param length2     Length of the second series.
      * @param dist        Distance function of type FDist
      * @return Norm according to 'dist' between the two series
      */
-    template<Float F>
-    [[nodiscard]] inline F directa(const size_t length1, const size_t length2, CFun<F> auto dist) {
+    [[nodiscard]] inline F directa(const size_t length1, const size_t length2, CFun auto dist) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Max error on different length.
-      if (length1!=length2) { return utils::PINF<F>; }
+      if (length1!=length2) { return utils::PINF; }
       // Compute the Euclidean-like distance
       F cost = 0.0;
       for (size_t i{0}; i<length1; ++i) { cost += dist(i, i); }
@@ -74,7 +68,6 @@ namespace tempo::distance {
 
   /** Direct alignment distance. Can early abandon but not prune.
    * Return +INF if the series have different length.
-   * @tparam F          The floating number type used to represent the series.
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function, has to capture the series as it only gets the (li,co) coordinates
@@ -85,22 +78,25 @@ namespace tempo::distance {
    *                    ub = other value: use for pruning and early abandoning
    * @return Norm according to 'dist' between the two series
   */
-  template<Float F>
-  [[nodiscard]] F
-  directa(const size_t length1, const size_t length2, CFun<F> auto dist, F ub = utils::PINF<F>) {
+  [[nodiscard]] F directa(const size_t length1,
+                          const size_t length2,
+                          CFun auto dist,
+                          F ub) {
     if (std::isinf(ub)||std::isnan(ub)) {
-      return internal::directa<F>(length1, length2, dist);
-    } else { return internal::directa<F>(length1, length2, dist, ub); }
+      return internal::directa(length1, length2, dist);
+    } else { return internal::directa(length1, length2, dist, ub); }
   }
 
   /// Helper for TSLike
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  directa(const T& lines, const T& cols, CFunBuilder<T> auto mkdist, F ub = utils::PINF<F>) {
+  template<TSLike T>
+  [[nodiscard]] inline F directa(const T& lines,
+                                 const T& cols,
+                                 CFunBuilder<T> auto mkdist,
+                                 F ub ) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFun<F> auto dist = mkdist(lines, cols);
-    return directa<F>(ls, cs, dist, ub);
+    const CFun auto dist = mkdist(lines, cols);
+    return directa(ls, cs, dist, ub);
   }
 
 } // End of namespace tempo::distance

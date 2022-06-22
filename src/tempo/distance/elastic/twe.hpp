@@ -7,25 +7,24 @@ namespace tempo::distance {
 
   /// TWE specific cost function concept, computing the cost when taking a **non diagonal**
   /// step (warping the alignments). All required information must be captured.
-  template<typename Fun, typename R>
-  concept CFunTWE = Float<R>&&requires(Fun fun, size_t i){
-    { fun(i) }->std::same_as<R>;
+  template<typename Fun>
+  concept CFunTWE = requires(Fun fun, size_t i){
+    { fun(i) }->std::convertible_to<F>;
   };
 
   /// CFunTWEBuilder: Function creating a CFunTWE based on 1 series, nu, and lambda
   /// Use for warping step (cost matrix: step takes line or col)
-  template<typename T, typename D, typename F>
-  concept CFunWarpTWEBuilder = Float<F>&&requires(T builder, const D& s, const F nu, const F lambda){
+  template<typename T, typename D>
+  concept CFunWarpTWEBuilder = requires(T builder, const D& s, const F nu, const F lambda){
     builder(s, nu, lambda);
   };
 
   /// CFunDiagTWEBuilder: Function creating a CFunTWE based on 2 series (line, column), nu, and lambda
   /// Use for non warping step (cost matrix: set takes diagonal)
-  template<typename T, typename D, typename F>
-  concept CFunDiagTWEBuilder = Float<F>
-    &&requires(T builder, const D& lines, const D& cols, const F nu){
-      builder(lines, cols, nu);
-    };
+  template<typename T, typename D>
+  concept CFunDiagTWEBuilder = requires(T builder, const D& lines, const D& cols, const F nu){
+    builder(lines, cols, nu);
+  };
 
   namespace internal {
 
@@ -34,7 +33,6 @@ namespace tempo::distance {
      *  Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning, large window).
      *  A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      *  Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam Float        The floating number type used to represent the series.
      * @param lines         Data for the lines
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param cols          Data for the lines
@@ -45,16 +43,14 @@ namespace tempo::distance {
      *                      May lead to early abandoning.
      * @return TWE value or +INF if early abandoned, or , given w, no alignment is possible
      */
-    template<Float F>
-    [[nodiscard]] inline F twe(
-      const size_t nblines,
-      const size_t nbcols,
-      CFunTWE<F> auto dist_lines,
-      CFunTWE<F> auto dist_cols,
-      CFun<F> auto dist,
-      F nu,
-      F cutoff,
-      std::vector<F>& buffer_v
+    [[nodiscard]] inline F twe(const size_t nblines,
+                               const size_t nbcols,
+                               CFunTWE auto dist_lines,
+                               CFunTWE auto dist_cols,
+                               CFun auto dist,
+                               F nu,
+                               F cutoff,
+                               std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // In debug mode, check preconditions
@@ -62,7 +58,7 @@ namespace tempo::distance {
       assert(nbcols!=0);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<F>;
+      using utils::PINF;
 
       //  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       //  // Constants: we only consider timestamp spaced by 1, so:
@@ -228,10 +224,6 @@ namespace tempo::distance {
 
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
-   * @tparam F  The floating number type used to represent the series.
-   * @tparam D          Type of underlying collection - given to dist
-   * @tparam VecLike    Vector like datatype - type of "weights", accessed with [index]
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->F
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function of type FDist
@@ -244,18 +236,16 @@ namespace tempo::distance {
    *                    Use QNAN to run without any upper bounding.
    * @return DTW between the two series
    */
-  template<Float F>
-  [[nodiscard]] F inline twe(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunTWE<F> auto dist_lines,
-    CFunTWE<F> auto dist_cols,
-    CFun<F> auto dist,
-    const F nu,
-    F ub,
-    std::vector<F>& buffer_v
+  [[nodiscard]] F inline twe(const size_t nblines,
+                             const size_t nbcols,
+                             CFunTWE auto dist_lines,
+                             CFunTWE auto dist_cols,
+                             CFun auto dist,
+                             const F nu,
+                             F ub,
+                             std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    constexpr F INF = utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
     else if ((nblines==0)!=(nbcols==0)) { return INF; }
     else {
@@ -284,46 +274,44 @@ namespace tempo::distance {
         }
       } else if (std::isnan(ub)) { ub = INF; }
       // ub computed
-      return internal::twe<F>(nblines, nbcols, dist_lines, dist_cols, dist, nu, ub, buffer_v);
+      return internal::twe(nblines, nbcols, dist_lines, dist_cols, dist, nu, ub, buffer_v);
     }
   }
 
   // Helper without having to provide a buffer
-  template<Float F>
-  [[nodiscard]] inline F twe(
-    const size_t nblines,
-    const size_t nbcols,
-    CFunTWE<F> auto dist_lines,
-    CFunTWE<F> auto dist_cols,
-    CFun<F> auto dist,
-    F nu,
-    F ub) {
+  [[nodiscard]] inline F twe(const size_t nblines,
+                             const size_t nbcols,
+                             CFunTWE auto dist_lines,
+                             CFunTWE auto dist_cols,
+                             CFun auto dist,
+                             F nu,
+                             F ub) {
     std::vector<F> v;
-    const F r = twe<F>(nblines, nbcols, dist_lines, dist_cols, dist, nu, ub, v);
+    const F r = twe(nblines, nbcols, dist_lines, dist_cols, dist, nu, ub, v);
     return r;
   }
 
   /// Helper for TSLike, without having to provide a buffer
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  twe(const T& lines, const T& cols,
-      CFunWarpTWEBuilder<T, F> auto mkdist_lines,
-      CFunWarpTWEBuilder<T, F> auto mkdist_cols,
-      CFunBuilder<T> auto mkdist_base,
-      const F nu, const F lambda,
-      F ub = utils::PINF<F>) {
+  template<TSLike T>
+  [[nodiscard]] inline F twe(const T& lines,
+                             const T& cols,
+                             CFunWarpTWEBuilder<T> auto mkdist_lines,
+                             CFunWarpTWEBuilder<T> auto mkdist_cols,
+                             CFunBuilder<T> auto mkdist_base,
+                             const F nu, const F lambda,
+                             F ub) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFunTWE<F> auto dist_lines = mkdist_lines(lines, nu, lambda);
-    const CFunTWE<F> auto dists_cols = mkdist_cols(cols, nu, lambda);
-    const CFun<F> auto dist_base = mkdist_base(lines, cols);
-    return twe<F>(ls, cs, dist_lines, dists_cols, dist_base, nu, ub);
+    const CFunTWE auto dist_lines = mkdist_lines(lines, nu, lambda);
+    const CFunTWE auto dists_cols = mkdist_cols(cols, nu, lambda);
+    const CFun auto dist_base = mkdist_base(lines, cols);
+    return twe(ls, cs, dist_lines, dists_cols, dist_base, nu, ub);
   }
 
   namespace univariate {
 
     /// Default TWE warping step cost function, using univariate ad2
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto twe_warp_ad2(const D& s, const F nu, const F lambda) {
       const F nl = nu + lambda;
       return [&, nl](size_t i) {
@@ -333,38 +321,39 @@ namespace tempo::distance {
     }
 
     /// Default TWE using univariate ad2
-    template<Float F, TSLike T>
-    [[nodiscard]] inline F twe(const T& lines, const T& cols, const F nu, const F lambda, F ub = utils::PINF<F>) {
-      return tempo::distance::twe<F, T>(lines, cols,
-                                           twe_warp_ad2<F, T>, twe_warp_ad2<F, T>, ad2<F, T>,
-                                           nu, lambda, ub
+    template<TSLike T>
+    [[nodiscard]] inline F twe(const T& lines, const T& cols, const F nu, const F lambda, F ub) {
+      return tempo::distance::twe<T>(lines, cols,
+                                     twe_warp_ad2<T>, twe_warp_ad2<T>, ad2<T>,
+                                     nu, lambda, ub
       );
     }
 
     /// Specific overload for univariate vector
-    template<Float F>
-    [[nodiscard]] inline F twe(const std::vector<F>& lines, const std::vector<F>& cols,
-                               CFunWarpTWEBuilder<std::vector<F>, F> auto mkdist_lines,
-                               CFunWarpTWEBuilder<std::vector<F>, F> auto mkdist_cols,
+    [[nodiscard]] inline F twe(const std::vector<F>& lines,
+                               const std::vector<F>& cols,
+                               CFunWarpTWEBuilder<std::vector<F>> auto mkdist_lines,
+                               CFunWarpTWEBuilder<std::vector<F>> auto mkdist_cols,
                                CFunBuilder<std::vector<F>> auto mkdist_base,
-                               const F nu, const F lambda,
-                               F ub = utils::PINF<F>) {
+                               const F nu,
+                               const F lambda,
+                               F ub) {
       const auto ls = lines.size();
       const auto cs = cols.size();
-      const CFunTWE<F> auto dist_lines = mkdist_lines(lines, nu, lambda);
-      const CFunTWE<F> auto dists_cols = mkdist_cols(cols, nu, lambda);
-      const CFun<F> auto dist_base = mkdist_base(lines, cols);
-      return tempo::distance::twe<F>(ls, cs, dist_lines, dists_cols, dist_base, nu, ub);
+      const CFunTWE auto dist_lines = mkdist_lines(lines, nu, lambda);
+      const CFunTWE auto dists_cols = mkdist_cols(cols, nu, lambda);
+      const CFun auto dist_base = mkdist_base(lines, cols);
+      return tempo::distance::twe(ls, cs, dist_lines, dists_cols, dist_base, nu, ub);
     }
 
     /// Specific overload for univariate vector using ad2
-    template<Float F>
-    [[nodiscard]] inline F
-    twe(const std::vector<F>& lines, const std::vector<F>& cols, const F nu, const F lambda, F ub = utils::PINF<F>) {
-      return twe(lines, cols,
-                 twe_warp_ad2<F, std::vector<F>>, twe_warp_ad2<F, std::vector<F>>,
-                 ad2<F, std::vector<F>>,
-                 nu, lambda, ub
+    [[nodiscard]] inline F twe(const std::vector<F>& lines,
+                               const std::vector<F>& cols,
+                               const F nu,
+                               const F lambda,
+                               F ub) {
+      return twe(lines, cols, twe_warp_ad2<std::vector<F>>, twe_warp_ad2<std::vector<F>>, ad2<std::vector<F>>, nu,
+                 lambda, ub
       );
     }
   }
@@ -372,19 +361,19 @@ namespace tempo::distance {
   namespace multivariate {
 
     /// Default TWE warping step cost function, using multivariate ad2
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto twe_warp_ad2(const D& s, size_t ndim, const F nu, const F lambda) {
       const F nl = nu + lambda;
-      return [&, ndim, nl](size_t i) { return ad2N<F, D>(s, s, ndim)(i, i - 1) + nl; };
+      return [&, ndim, nl](size_t i) { return ad2N<D>(s, s, ndim)(i, i - 1) + nl; };
     }
 
     /// Default TWE diagonal step cost function, using multivariate ad2
-    template<Float F, Subscriptable D>
+    template<Subscriptable D>
     [[nodiscard]] inline auto twe_diag_ad2(const D& lines, const D& cols, size_t ndim, const F nu) {
       const F nu2 = nu*2;
       return [&, ndim, nu2](size_t i, size_t j) {
-        const auto da = ad2N<F, D>(lines, cols, ndim)(i, j);
-        const auto db = ad2N<F, D>(lines, cols, ndim)(i - 1, j - 1);
+        const auto da = ad2N<D>(lines, cols, ndim)(i, j);
+        const auto db = ad2N<D>(lines, cols, ndim)(i - 1, j - 1);
         const auto r = da + db + (nu2*utils::absdiff(i, j));
         return r;
       };

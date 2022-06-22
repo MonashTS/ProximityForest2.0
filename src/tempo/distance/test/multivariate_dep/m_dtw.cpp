@@ -6,18 +6,17 @@
 
 using namespace mock;
 using namespace tempo::distance;
+using namespace tempo::utils;
 constexpr size_t nbitems = 1000;
 constexpr size_t ndim = 3;
-constexpr double INF = tempo::utils::PINF<double>;
-constexpr auto distN = multivariate::ad2N<double, std::vector<double>>;
-constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-  using namespace tempo::utils;
   using namespace std;
 
   /// Naive Univariate CDTW with a window. Reference code.
@@ -27,12 +26,12 @@ namespace {
     const long w = (long) w_;
     // Check lengths. Be explicit in the conditions
     if (length1==0 && length2==0) { return 0; }
-    if (length1==0 && length2!=0) { return PINF<double>; }
-    if (length1!=0 && length2==0) { return PINF<double>; }
+    if (length1==0 && length2!=0) { return PINF; }
+    if (length1!=0 && length2==0) { return PINF; }
 
     // Allocate the working space: full matrix + space for borders (first column / first line)
     size_t msize = max(length1, length2)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
     // Initialisation (all the matrix is initialised at +INF)
     matrix[0][0] = 0;
@@ -64,12 +63,12 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (la==0 && lb==0) { return 0; }
-    if (la==0 && lb!=0) { return PINF<double>; }
-    if (la!=0 && lb==0) { return PINF<double>; }
+    if (la==0 && lb!=0) { return PINF; }
+    if (la!=0 && lb==0) { return PINF; }
 
     // Allocate the working space: full matrix + space for borders (first column / first line)
     size_t msize = max(la, lb)+1;
-    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+    vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
     // Initialisation (all the matrix is initialised at +INF)
     matrix[0][0] = 0;
@@ -111,10 +110,10 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
       for (double wr: wratios) {
         auto w = (size_t) (wr*mocker._fixl);
 
-        const double cdtw_ref_v = cdtw_matrix(s, s, ndim, w);
+        const double cdtw_ref_v = ref::cdtw_matrix(s, s, ndim, w);
         REQUIRE(cdtw_ref_v==0);
 
-        const double cdtw_v = dtw(l, l, distN(s, s, ndim), w, INF);
+        const double cdtw_v = dtw(l, l, distN(s, s, ndim), w, PINF);
         REQUIRE(cdtw_v==0);
       }
     }
@@ -130,19 +129,19 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
 
         // Check Uni
         {
-          const double cdtw_ref_v = cdtw_matrix(s1, s2, 1, w);
-          const double cdtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
-          const auto cdtw_tempo_v = dtw(l1, l1, dist(s1, s2), w, INF);
+          const double cdtw_ref_v = ref::cdtw_matrix(s1, s2, 1, w);
+          const double cdtw_ref_uni_v = ref::cdtw_matrix_uni(s1, s2, w);
+          const auto cdtw_tempo_v = dtw(l1, l1, dist(s1, s2), w, PINF);
           REQUIRE(cdtw_ref_v==cdtw_ref_uni_v);
           REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double cdtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
+          const double cdtw_ref_v = ref::cdtw_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto cdtw_tempo_v = dtw(l, l, distN(s1, s2, ndim), w, INF);
+          const auto cdtw_tempo_v = dtw(l, l, distN(s1, s2, ndim), w, PINF);
           REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
       }
@@ -155,13 +154,13 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -174,14 +173,14 @@ TEST_CASE("Multivariate Dependent CDTW Fixed length", "[cdtw][multivariate]") {
           const auto w = (size_t) (wr*mocker._fixl);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = cdtw_matrix(s1, s2, ndim, w);
+          const double v_ref = ref::cdtw_matrix(s1, s2, ndim, w);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = dtw(l, l, distN(s1, s2, ndim), w, INF);
+          const auto v = dtw(l, l, distN(s1, s2, ndim), w, PINF);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -213,10 +212,10 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
     for (const auto& s: fset) {
       for (double wr: wratios) {
         const auto w = (size_t) (wr*(s.size()));
-        const double cdtw_ref_v = cdtw_matrix(s, s, ndim, w);
+        const double cdtw_ref_v = ref::cdtw_matrix(s, s, ndim, w);
         REQUIRE(cdtw_ref_v==0);
 
-        const auto cdtw_v = dtw(s.size()/ndim, s.size()/ndim, distN(s, s, ndim), w, INF);
+        const auto cdtw_v = dtw(s.size()/ndim, s.size()/ndim, distN(s, s, ndim), w, PINF);
         REQUIRE(cdtw_v==0);
       }
     }
@@ -231,19 +230,19 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
 
         // Check Uni
         {
-          const double cdtw_ref_v = cdtw_matrix(s1, s2, 1, w);
-          const double cdtw_ref_uni_v = cdtw_matrix_uni(s1, s2, w);
-          const auto cdtw_tempo_v = dtw(s1.size(), s2.size(), distN(s1, s2, 1), w, INF);
+          const double cdtw_ref_v = ref::cdtw_matrix(s1, s2, 1, w);
+          const double cdtw_ref_uni_v = ref::cdtw_matrix_uni(s1, s2, w);
+          const auto cdtw_tempo_v = dtw(s1.size(), s2.size(), distN(s1, s2, 1), w, PINF);
           REQUIRE(cdtw_ref_v==cdtw_ref_uni_v);
           REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double cdtw_ref_v = cdtw_matrix(s1, s2, ndim, w);
+          const double cdtw_ref_v = ref::cdtw_matrix(s1, s2, ndim, w);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto cdtw_tempo_v = dtw(s1.size()/ndim, s2.size()/ndim, distN(s1, s2, ndim), w, INF);
+          const auto cdtw_tempo_v = dtw(s1.size()/ndim, s2.size()/ndim, distN(s1, s2, ndim), w, PINF);
           REQUIRE(cdtw_ref_v==cdtw_tempo_v);
         }
       }
@@ -256,13 +255,13 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -274,14 +273,14 @@ TEST_CASE("Multivariate Dependent CDTW Variable length", "[cdtw][multivariate]")
           const auto w = (size_t) (wr*(min(s1.size(), s2.size())));
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = cdtw_matrix(s1, s2, ndim, w);
+          const double v_ref = ref::cdtw_matrix(s1, s2, ndim, w);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = dtw(s1.size()/ndim, s2.size()/ndim, distN(s1, s2, ndim), w, INF);
+          const auto v = dtw(s1.size()/ndim, s2.size()/ndim, distN(s1, s2, ndim), w, PINF);
           if (v<bsf) {
             idx = j;
             bsf = v;

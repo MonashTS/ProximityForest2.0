@@ -6,19 +6,18 @@
 
 using namespace mock;
 using namespace tempo::distance;
+using namespace tempo::utils;
 constexpr size_t nbitems = 1000;
 constexpr size_t ndim = 3;
-constexpr double INF = tempo::utils::PINF<double>;
-constexpr auto distN = multivariate::ad2N<double, std::vector<double>>;
-constexpr auto dist = univariate::ad2<double, std::vector<double>>;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-using namespace tempo::utils;
 using namespace std;
 
 /// Naive univariate ADTW. Reference code.
@@ -27,12 +26,12 @@ double adtw_matrix_uni(const vector<double> &a, const vector<double> &b, double 
   const long lb = to_signed(b.size());
   // Check lengths. Be explicit in the conditions
   if (la == 0 && lb == 0) { return 0; }
-  if (la == 0 && lb != 0) { return PINF<double>; }
-  if (la != 0 && lb == 0) { return PINF<double>; }
+  if (la == 0 && lb != 0) { return PINF; }
+  if (la != 0 && lb == 0) { return PINF; }
 
   // Allocate the working space: full matrix + space for borders (first column / first line)
   size_t msize = max(la, lb) + 1;
-  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
   // Initialisation (all the matrix is initialised at +INF)
   matrix[0][0] = 0;
@@ -59,12 +58,12 @@ double adtw_matrix(const vector<double> &a, const vector<double> &b, size_t dim,
   const long lb = (long) b.size() / (long) dim;
   // Check lengths. Be explicit in the conditions
   if (la == 0 && lb == 0) { return 0; }
-  if (la == 0 && lb != 0) { return PINF<double>; }
-  if (la != 0 && lb == 0) { return PINF<double>; }
+  if (la == 0 && lb != 0) { return PINF; }
+  if (la != 0 && lb == 0) { return PINF; }
 
   // Allocate the working space: full matrix + space for borders (first column / first line)
   size_t msize = max(la, lb) + 1;
-  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF<double>));
+  vector<std::vector<double>> matrix(msize, std::vector<double>(msize, PINF));
 
   // Initialisation (all the matrix is initialised at +INF)
   matrix[0][0] = 0;
@@ -104,10 +103,10 @@ TEST_CASE("Multivariate Dependent ADTW Fixed length", "[adtw][multivariate]") {
     for (const auto &s: fset) {
       for (double p: penalties) {
 
-        const double adtw_ref_v = adtw_matrix(s, s, ndim, p);
+        const double adtw_ref_v = ref::adtw_matrix(s, s, ndim, p);
         REQUIRE(adtw_ref_v == 0);
 
-        const double adtw_v = adtw(l, l, distN(s, s, ndim), p, INF);
+        const double adtw_v = adtw(l, l, distN(s, s, ndim), p, PINF);
         REQUIRE(adtw_v == 0);
       }
     }
@@ -122,19 +121,19 @@ TEST_CASE("Multivariate Dependent ADTW Fixed length", "[adtw][multivariate]") {
 
         // Check Uni
         {
-          const double adtw_ref_v = adtw_matrix(s1, s2, 1, p);
-          const double adtw_ref_uni_v = adtw_matrix_uni(s1, s2, p);
-          const auto adtw_tempo_v = adtw(l1, l1, dist(s1, s2), p, INF);
+          const double adtw_ref_v = ref::adtw_matrix(s1, s2, 1, p);
+          const double adtw_ref_uni_v = ref::adtw_matrix_uni(s1, s2, p);
+          const auto adtw_tempo_v = adtw(l1, l1, dist(s1, s2), p, PINF);
           REQUIRE(adtw_ref_v == adtw_ref_uni_v);
           REQUIRE(adtw_ref_v == adtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double adtw_ref_v = adtw_matrix(s1, s2, ndim, p);
+          const double adtw_ref_v = ref::adtw_matrix(s1, s2, ndim, p);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto adtw_tempo_v = adtw(l, l, distN(s1, s2, ndim), p, INF);
+          const auto adtw_tempo_v = adtw(l, l, distN(s1, s2, ndim), p, PINF);
           REQUIRE(adtw_ref_v == adtw_tempo_v);
         }
       }
@@ -147,13 +146,13 @@ TEST_CASE("Multivariate Dependent ADTW Fixed length", "[adtw][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = INF;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = INF;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = INF;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -164,14 +163,14 @@ TEST_CASE("Multivariate Dependent ADTW Fixed length", "[adtw][multivariate]") {
 
         for (double p:penalties) {
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = adtw_matrix(s1, s2, ndim, p);
+          const double v_ref = ref::adtw_matrix(s1, s2, ndim, p);
           if (v_ref<bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = adtw(l, l, distN(s1, s2, ndim), p, INF);
+          const auto v = adtw(l, l, distN(s1, s2, ndim), p, PINF);
           if (v<bsf) {
             idx = j;
             bsf = v;
@@ -203,10 +202,10 @@ TEST_CASE("Multivariate Dependent ADTW Variable length", "[adtw][multivariate]")
   SECTION("ADTW(s,s) == 0") {
     for (const auto &s: fset) {
       for (double p: penalties) {
-        const double adtw_ref_v = adtw_matrix(s, s, ndim, p);
+        const double adtw_ref_v = ref::adtw_matrix(s, s, ndim, p);
         REQUIRE(adtw_ref_v == 0);
 
-        const auto adtw_v = adtw(s.size() / ndim, s.size() / ndim, distN(s, s, ndim), p, INF);
+        const auto adtw_v = adtw(s.size() / ndim, s.size() / ndim, distN(s, s, ndim), p, PINF);
         REQUIRE(adtw_v == 0);
       }
     }
@@ -220,19 +219,19 @@ TEST_CASE("Multivariate Dependent ADTW Variable length", "[adtw][multivariate]")
 
         // Check Uni
         {
-          const double adtw_ref_v = adtw_matrix(s1, s2, 1, p);
-          const double adtw_ref_uni_v = adtw_matrix_uni(s1, s2, p);
-          const auto adtw_tempo_v = adtw(s1.size(), s2.size(), distN(s1, s2, 1), p, INF);
+          const double adtw_ref_v = ref::adtw_matrix(s1, s2, 1, p);
+          const double adtw_ref_uni_v = ref::adtw_matrix_uni(s1, s2, p);
+          const auto adtw_tempo_v = adtw(s1.size(), s2.size(), distN(s1, s2, 1), p, PINF);
           REQUIRE(adtw_ref_v == adtw_ref_uni_v);
           REQUIRE(adtw_ref_v == adtw_tempo_v);
         }
 
         // Check Multi
         {
-          const double adtw_ref_v = adtw_matrix(s1, s2, ndim, p);
+          const double adtw_ref_v = ref::adtw_matrix(s1, s2, ndim, p);
           INFO("Exact same operation order. Expect exact floating point equality.")
 
-          const auto adtw_tempo_v = adtw(s1.size() / ndim, s2.size() / ndim, distN(s1, s2, ndim), p, INF);
+          const auto adtw_tempo_v = adtw(s1.size() / ndim, s2.size() / ndim, distN(s1, s2, ndim), p, PINF);
           REQUIRE(adtw_ref_v == adtw_tempo_v);
         }
       }
@@ -245,13 +244,13 @@ TEST_CASE("Multivariate Dependent ADTW Variable length", "[adtw][multivariate]")
       const auto &s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = INF;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = INF;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = INF;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j < nbitems; j += 5) {
@@ -262,14 +261,14 @@ TEST_CASE("Multivariate Dependent ADTW Variable length", "[adtw][multivariate]")
         for (double p: penalties) {
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const double v_ref = adtw_matrix(s1, s2, ndim, p);
+          const double v_ref = ref::adtw_matrix(s1, s2, ndim, p);
           if (v_ref < bsf_ref) {
             idx_ref = j;
             bsf_ref = v_ref;
           }
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto v = adtw(s1.size() / ndim, s2.size() / ndim, distN(s1, s2, ndim), p, INF);
+          const auto v = adtw(s1.size() / ndim, s2.size() / ndim, distN(s1, s2, ndim), p, PINF);
           if (v < bsf) {
             idx = j;
             bsf = v;

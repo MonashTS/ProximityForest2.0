@@ -16,7 +16,7 @@ namespace tempo::distance {
      * @tparam F            The floating number type used to represent the series.
      * @param nblines       Length of the line series.
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
-     * @param dist          Cost function of concept CFun<F>
+     * @param dist          Cost function of concept CFun
      * @param penalty       Fixed cost penalty for warping steps; must be >=0
      * @param cutoff        Attempt to prune computation of alignments with cost > cutoff.
      *                      May lead to early abandoning.
@@ -26,7 +26,7 @@ namespace tempo::distance {
     [[nodiscard]] inline F adtw(
       const size_t nblines,
       const size_t nbcols,
-      CFun<F> auto dist,
+      CFun auto dist,
       const F penalty,
       const F cutoff,
       std::vector<F>& buffer_v
@@ -37,8 +37,8 @@ namespace tempo::distance {
       assert(nbcols!=0);
 
       // Adapt constants to the floating point type
-      constexpr auto PINF = utils::PINF<F>;
       using utils::min;
+      using utils::PINF;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly uadtw in the code).
@@ -171,7 +171,7 @@ namespace tempo::distance {
    * @tparam Float      The floating number type used to represent the series.
    * @param nblines     Length of the first series.
    * @param nbcols      Length of the second series.
-   * @param dist        Cost function of concept CFun<F>, capturing the series matching the lines and columns
+   * @param dist        Cost function of concept CFun, capturing the series matching the lines and columns
    * @param omega       Additive penalty for warping steps
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
@@ -182,14 +182,14 @@ namespace tempo::distance {
    */
   [[nodiscard]] inline F adtw(size_t nblines,
                               size_t nbcols,
-                              CFun<F> auto dist,
+                              CFun auto dist,
                               F omega,
                               F ub,
                               std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    using utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
-    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else if ((nblines==0)!=(nbcols==0)) { return PINF; }
     else {
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
@@ -205,14 +205,14 @@ namespace tempo::distance {
         else if (nbcols<nblines) {
           for (size_t i{nbcols}; i<nblines; ++i) { ub = ub + dist(i, nbcols - 1) + omega; }
         }
-      } else if (std::isnan(ub)) { ub = INF; }
+      } else if (std::isnan(ub)) { ub = PINF; }
       // ub computed
       return internal::adtw(nblines, nbcols, dist, omega, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
-  [[nodiscard]] inline F adtw(size_t nblines, size_t nbcols, CFun<F> auto dist, F omega, F ub = utils::PINF<F>) {
+  [[nodiscard]] inline F adtw(size_t nblines, size_t nbcols, CFun auto dist, F omega, F ub) {
     std::vector<F> v;
     return adtw(nblines, nbcols, dist, omega, ub, v);
   }
@@ -223,10 +223,10 @@ namespace tempo::distance {
                               const T& cols,
                               CFunBuilder<T> auto mkdist,
                               F omega,
-                              F ub = utils::PINF<F>) {
+                              F ub) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFun<F> auto dist = mkdist(lines, cols);
+    const CFun auto dist = mkdist(lines, cols);
     std::vector<F> v;
     return adtw(ls, cs, dist, omega, ub, v);
   }

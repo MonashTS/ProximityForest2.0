@@ -7,18 +7,19 @@
 using namespace mock;
 using namespace tempo::distance;
 using namespace tempo::distance::multivariate;
+using namespace tempo::utils;
 constexpr size_t nbitems = 500;
 constexpr size_t l = 3;
 constexpr size_t ndim = 2;
-constexpr double INF = tempo::utils::PINF<double>;
-constexpr double QNAN = tempo::utils::PINF<double>;
+constexpr double QNAN = tempo::utils::PINF;
+constexpr auto distN = multivariate::ad2N<std::vector<double>>;
+constexpr auto dist = univariate::ad2<std::vector<double>>;
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Reference
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-namespace {
+namespace ref {
 
-  using namespace tempo::utils;
   using namespace std;
 
   /// Naive Univariate TWE. Reference code.
@@ -28,11 +29,11 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (length1==0&&length2==0) { return 0; }
-    if (length1==0&&length2!=0) { return PINF<double>; }
-    if (length1!=0&&length2==0) { return PINF<double>; }
+    if (length1==0&&length2!=0) { return PINF; }
+    if (length1!=0&&length2==0) { return PINF; }
 
     const size_t maxLength = max(length1, length2);
-    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF<double>));
+    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF));
 
     const double nu_lambda = nu + lambda;
     const double nu2 = 2*nu;
@@ -67,11 +68,11 @@ namespace {
 
     // Check lengths. Be explicit in the conditions.
     if (length1==0&&length2==0) { return 0; }
-    if (length1==0&&length2!=0) { return PINF<double>; }
-    if (length1!=0&&length2==0) { return PINF<double>; }
+    if (length1==0&&length2!=0) { return PINF; }
+    if (length1!=0&&length2==0) { return PINF; }
 
     const size_t maxLength = max(length1, length2);
-    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF<double>));
+    vector<std::vector<double>> matrix(maxLength, std::vector<double>(maxLength, PINF));
 
     const double nu_lambda = nu + lambda;
     const double nu2 = 2*nu;
@@ -119,12 +120,10 @@ TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
     for (const auto& s : fset) {
       for (const double nu : nus) {
         for (const double la : lambdas) {
-          const double twe_ref_v = twe_matrix(s, s, ndim, nu, la);
+          const double twe_ref_v = ref::twe_matrix(s, s, ndim, nu, la);
           REQUIRE(twe_ref_v==0);
           const auto twe_v =
-            twe<double>(l, l, twe_warp_ad2(s, ndim, nu, la), twe_warp_ad2(s, ndim, nu, la), ad2N<double>(s, s, ndim),
-                        nu, INF
-            );
+            twe(l, l, twe_warp_ad2(s, ndim, nu, la), twe_warp_ad2(s, ndim, nu, la), distN(s, s, ndim), nu, PINF);
           REQUIRE(twe_v==0);
         }
       }
@@ -139,25 +138,19 @@ TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
           const auto& s2 = fset[i + 1];
           // Check Uni
           {
-            const double twe_ref_v = twe_matrix(s1, s2, 1, nu, la);
-            const double twe_ref_uni_v = twe_matrix_uni(s1, s2, nu, la);
+            const double twe_ref_v = ref::twe_matrix(s1, s2, 1, nu, la);
+            const double twe_ref_uni_v = ref::twe_matrix_uni(s1, s2, nu, la);
             const double twe_tempo_v =
-              twe(l1, l1, twe_warp_ad2(s1, 1, nu, la), twe_warp_ad2(s2, 1, nu, la), ad2N<double>(s1, s2, 1), nu, INF);
+              twe(l1, l1, twe_warp_ad2(s1, 1, nu, la), twe_warp_ad2(s2, 1, nu, la), distN(s1, s2, 1), nu, PINF);
             REQUIRE(twe_ref_v==twe_ref_uni_v);
             REQUIRE(twe_ref_v==twe_tempo_v);
           }
           // Check Multi
           {
-            const double nu = 0;
-            const double la = 0;
-            const double twe_ref_v = twe_matrix(s1, s2, ndim, nu, la);
+            const double twe_ref_v = ref::twe_matrix(s1, s2, ndim, nu, la);
             INFO("Exact same operation order. Expect exact floating point equality.")
-            INFO("i = " << i << " nu = " << nu << " la = " << la)
-            INFO("l = " << l << " ndim = " << ndim)
             const double twe_tempo_v =
-              twe<double>(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-                          ad2N<double>(s1, s2, ndim), nu, INF
-              );
+              twe(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la), distN(s1, s2, ndim), nu, PINF);
             REQUIRE(twe_ref_v==twe_tempo_v);
           }
         }
@@ -173,13 +166,13 @@ TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
           const auto& s1 = fset[i];
           // Ref Variables
           size_t idx_ref = 0;
-          double bsf_ref = lu::PINF<double>;
+          double bsf_ref = PINF;
           // Base Variables
           size_t idx = 0;
-          double bsf = lu::PINF<double>;
+          double bsf = PINF;
           // EAP Variables
           size_t idx_tempo = 0;
-          double bsf_tempo = lu::PINF<double>;
+          double bsf_tempo = PINF;
 
           // NN1 loop
           for (size_t j = 0; j<nbitems; j += 5) {
@@ -188,16 +181,14 @@ TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
             const auto& s2 = fset[j];
 
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = twe_matrix(s1, s2, ndim, nu, la);
+            const double v_ref = ref::twe_matrix(s1, s2, ndim, nu, la);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto
-              v = twe<double>(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-                              ad2N<double>(s1, s2, ndim), nu, INF
-            );
+            const auto v =
+              twe(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la), distN(s1, s2, ndim), nu, PINF);
             if (v<bsf) {
               idx = j;
               bsf = v;
@@ -205,8 +196,8 @@ TEST_CASE("Multivariate Dependent TWE Fixed length", "[twe][multivariate]") {
             REQUIRE(idx_ref==idx);
             // --- --- --- --- --- --- --- --- --- --- --- ---
             const auto v_tempo =
-              twe<double>(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-                          ad2N<double>(s1, s2, ndim), nu, bsf_tempo
+              twe(l, l, twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la), distN(s1, s2, ndim), nu,
+                  bsf_tempo
               );
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;
@@ -234,11 +225,10 @@ TEST_CASE("Multivariate Dependent TWE Variable length", "[twe][multivariate]") {
     for (const auto& s : fset) {
       for (auto nu : nus) {
         for (auto la : lambdas) {
-          const double twe_ref_v = twe_matrix(s, s, ndim, nu, la);
+          const double twe_ref_v = ref::twe_matrix(s, s, ndim, nu, la);
           REQUIRE(twe_ref_v==0);
           const auto twe_v =
-            twe<double>(ld(s), ld(s), twe_warp_ad2(s, ndim, nu, la), twe_warp_ad2(s, ndim, nu, la),
-                        ad2N<double>(s, s, ndim), nu, INF
+            twe(ld(s), ld(s), twe_warp_ad2(s, ndim, nu, la), twe_warp_ad2(s, ndim, nu, la), distN(s, s, ndim), nu, PINF
             );
           REQUIRE(twe_v==0);
         }
@@ -255,22 +245,22 @@ TEST_CASE("Multivariate Dependent TWE Variable length", "[twe][multivariate]") {
         for (auto la : lambdas) {
           // Check Uni
           {
-            const double twe_ref_v = twe_matrix(s1, s2, 1, nu, la);
-            const double twe_ref_uni_v = twe_matrix_uni(s1, s2, nu, la);
+            const double twe_ref_v = ref::twe_matrix(s1, s2, 1, nu, la);
+            const double twe_ref_uni_v = ref::twe_matrix_uni(s1, s2, nu, la);
             const auto twe_tempo_v =
-              twe<double>(s1.size(), s2.size(), twe_warp_ad2(s1, 1, nu, la), twe_warp_ad2(s2, 1, nu, la),
-                          ad2N<double>(s1, s2, 1), nu, INF
+              twe(s1.size(), s2.size(), twe_warp_ad2(s1, 1, nu, la), twe_warp_ad2(s2, 1, nu, la), distN(s1, s2, 1), nu,
+                  PINF
               );
             REQUIRE(twe_ref_v==twe_ref_uni_v);
             REQUIRE(twe_ref_v==twe_tempo_v);
           }
           // Check Multi
           {
-            const double twe_ref_v = twe_matrix(s1, s2, ndim, nu, la);
+            const double twe_ref_v = ref::twe_matrix(s1, s2, ndim, nu, la);
             INFO("Exact same operation order. Expect exact floating point equality.")
             const auto twe_tempo_v =
-              twe<double>(ld(s1), ld(s2), twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-                          ad2N<double>(s1, s2, ndim), nu, INF
+              twe(ld(s1), ld(s2), twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la), distN(s1, s2, ndim),
+                  nu, PINF
               );
             REQUIRE(twe_ref_v==twe_tempo_v);
           }
@@ -285,13 +275,13 @@ TEST_CASE("Multivariate Dependent TWE Variable length", "[twe][multivariate]") {
       const auto& s1 = fset[i];
       // Ref Variables
       size_t idx_ref = 0;
-      double bsf_ref = lu::PINF<double>;
+      double bsf_ref = PINF;
       // Base Variables
       size_t idx = 0;
-      double bsf = lu::PINF<double>;
+      double bsf = PINF;
       // EAP Variables
       size_t idx_tempo = 0;
-      double bsf_tempo = lu::PINF<double>;
+      double bsf_tempo = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -301,24 +291,25 @@ TEST_CASE("Multivariate Dependent TWE Variable length", "[twe][multivariate]") {
         for (auto nu : nus) {
           for (auto la : lambdas) {
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const double v_ref = twe_matrix(s1, s2, ndim, nu, la);
+            const double v_ref = ref::twe_matrix(s1, s2, ndim, nu, la);
             if (v_ref<bsf_ref) {
               idx_ref = j;
               bsf_ref = v_ref;
             }
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v = twe<double>(ld(s1), ld(s2), twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-                                       ad2N<double>(s1, s2, ndim), nu, INF
-            );
+            const auto v =
+              twe(ld(s1), ld(s2), twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la), distN(s1, s2, ndim),
+                  nu, PINF
+              );
             if (v<bsf) {
               idx = j;
               bsf = v;
             }
             REQUIRE(idx_ref==idx);
             // --- --- --- --- --- --- --- --- --- --- --- ---
-            const auto v_tempo = twe<double>(
+            const auto v_tempo = twe(
               ld(s1), ld(s2), twe_warp_ad2(s1, ndim, nu, la), twe_warp_ad2(s2, ndim, nu, la),
-              ad2N<double>(s1, s2, ndim), nu, bsf_tempo
+              distN(s1, s2, ndim), nu, bsf_tempo
             );
             if (v_tempo<bsf_tempo) {
               idx_tempo = j;

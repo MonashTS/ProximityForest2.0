@@ -48,20 +48,16 @@ namespace tempo::utils {
   constexpr size_t NO_WINDOW{std::numeric_limits<size_t>::max()};
 
   /// Positive infinity for float types
-  template<typename FloatType>
   constexpr FloatType PINF{std::numeric_limits<FloatType>::infinity()};
 
   /// Negative infinity for float types
-  template<typename FloatType>
-  constexpr FloatType NINF{-PINF<FloatType>};
+  constexpr FloatType NINF{-PINF};
 
   /// Not A Number
-  template<typename FloatType>
   constexpr FloatType QNAN{std::numeric_limits<FloatType>::quiet_NaN()};
 
   /// Lower Bound inital value, use to deal with numerical instability
-  template<typename FloatType>
-  FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
+  inline FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
 
 
   // --- --- --- --- --- ---

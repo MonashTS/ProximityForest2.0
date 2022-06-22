@@ -25,24 +25,21 @@ namespace tempo::distance {
    * @param i Index of the point in [1..m] (m=length of the sequence)
    * @return the weight for index i
    */
-  template<typename FloatType>
-  [[nodiscard]] inline FloatType compute_weight(FloatType g, FloatType half_max_length, FloatType i, double wmax) {
+  [[nodiscard]] inline F compute_weight(F g, F half_max_length, F i, double wmax) {
     return wmax/(1 + exp(-g*(i - half_max_length)));
   }
 
   /// Populate the weights_array of size length with weights derive from the g factor
-  template<typename FloatType>
-  inline void populate_weights(FloatType g, FloatType *weights_array, size_t length, double wmax = WDTW_MAX_WEIGHT) {
-    FloatType half_max_length = FloatType(length)/2;
+  inline void populate_weights(F g, F *weights_array, size_t length, double wmax = WDTW_MAX_WEIGHT) {
+    F half_max_length = F(length)/2;
     for (size_t i{0}; i<length; ++i) {
-      weights_array[i] = compute_weight(g, half_max_length, FloatType(i), wmax);
+      weights_array[i] = compute_weight(g, half_max_length, F(i), wmax);
     }
   }
 
   /// Create a vector of weights
-  template<typename FloatType>
-  inline std::vector<FloatType> generate_weights(FloatType g, size_t length, double wmax = WDTW_MAX_WEIGHT) {
-    std::vector<FloatType> weights(length, 0);
+  inline std::vector<F> generate_weights(F g, size_t length, double wmax = WDTW_MAX_WEIGHT) {
+    std::vector<F> weights(length, 0);
     populate_weights(g, weights.data(), length, wmax);
     return weights;
   }
@@ -58,10 +55,6 @@ namespace tempo::distance {
      * Worst case scenario has a O(n²) time complexity (no pruning nor early abandoning).
      * A tight cutoff can allow a lot of pruning, speeding up the process considerably.
      * Actual implementation assuming that some pre-conditions are fulfilled.
-     * @tparam FloatType    The floating number type used to represent the series.
-     * @tparam D            Type of underlying collection - given to dist
-     * @tparam FDist        Distance computation function, must be a (size_t, size_t)->FloatType
-     * @tparam VecLike      Vector like datatype - type of "weights", accessed with [index]
      * @param nblines       Length of the line series. Must be 0 < nbcols <= nblines
      * @param nbcols        Length of the column series. Must be 0 < nbcols <= nblines
      * @param dist          Distance function of type FDist
@@ -69,11 +62,10 @@ namespace tempo::distance {
      *                      May lead to early abandoning.
      * @return WDTW between the two series or +INF if early abandoned.
      */
-    template<Float F>
     [[nodiscard]] inline F wdtw(
       const size_t nblines,
       const size_t nbcols,
-      CFun <F> auto dist,
+      CFun auto dist,
       const Subscriptable auto& weights,
       F cutoff,
       std::vector<F>& buffers_v
@@ -84,7 +76,7 @@ namespace tempo::distance {
       assert(nbcols!=0);
       // Adapt constants to the floating point type
       using namespace utils;
-      constexpr auto PINF = utils::PINF<F>;
+      using utils::PINF;
 
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Create a new tighter upper bounds (most commonly used in the code).
@@ -97,7 +89,7 @@ namespace tempo::distance {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
       // Double buffer allocation, init to +INF.
       // Base indices for the 'c'urrent row and the 'p'revious row. Account for the extra cell (+1 and +2)
-      // std::vector<FloatType> buffers_v((1+nbcols)*2, PINF);
+      // std::vector<F> buffers_v((1+nbcols)*2, PINF);
       // auto* buffers = buffers_v.data();
       buffers_v.assign((1 + nbcols)*2, PINF);
       auto *buffers = buffers_v.data();
@@ -191,10 +183,6 @@ namespace tempo::distance {
 
 
   /** Early Abandoned and Pruned Dynamic Time Warping.
-   * @tparam FloatType  The floating number type used to represent the series.
-   * @tparam D          Type of underlying collection - given to dist
-   * @tparam VecLike    Vector like datatype - type of "weights", accessed with [index]
-   * @tparam FDist      Distance computation function, must be a (size_t, size_t)->FloatType
    * @param length1     Length of the first series.
    * @param length2     Length of the second series.
    * @param dist        Distance function of type FDist
@@ -206,17 +194,16 @@ namespace tempo::distance {
    *                    Use QNAN to run without any upper bounding.
    * @return DTW between the two series
    */
-  template<Float F>
-  [[nodiscard]]
-  F wdtw(size_t nblines, size_t nbcols,
-         CFun <F> auto dist,
-         const Subscriptable auto& weights,
-         F ub,
-         std::vector<F>& buffer_v
+  [[nodiscard]] inline F wdtw(size_t nblines,
+                              size_t nbcols,
+                              CFun auto dist,
+                              const Subscriptable auto& weights,
+                              F ub,
+                              std::vector<F>& buffer_v
   ) {
-    constexpr F INF = utils::PINF<F>;
+    using utils::PINF;
     if (nblines==0&&nbcols==0) { return 0; }
-    else if ((nblines==0)!=(nbcols==0)) { return INF; }
+    else if ((nblines==0)!=(nbcols==0)) { return PINF; }
     else {
       // Compute a cutoff point using the diagonal
       if (std::isinf(ub)) {
@@ -236,16 +223,16 @@ namespace tempo::distance {
             ub = ub + dist(i, nbcols - 1)*weights[utils::absdiff(i, nbcols - 1)];
           }
         }
-      } else if (std::isnan(ub)) { ub = INF; }
+      } else if (std::isnan(ub)) { ub = PINF; }
       // ub computed
-      return internal::wdtw<F>(nblines, nbcols, dist, weights, ub, buffer_v);
+      return internal::wdtw(nblines, nbcols, dist, weights, ub, buffer_v);
     }
   }
 
   /// Helper without having to provide a buffer
-  template<Float F>
-  [[nodiscard]] inline F wdtw(size_t nblines, size_t nbcols,
-                              CFun <F> auto dist,
+  [[nodiscard]] inline F wdtw(size_t nblines,
+                              size_t nbcols,
+                              CFun auto dist,
                               const Subscriptable auto& weights,
                               F ub) {
     std::vector<F> v;
@@ -253,19 +240,17 @@ namespace tempo::distance {
   }
 
   /// Helper for TSLike, without having to provide a buffer
-  template<Float F, TSLike T>
-  [[nodiscard]] inline F
-  wdtw(const T& lines,
-       const T& cols,
-       CFunBuilder<T> auto mkdist,
-       const std::vector<F>& weights,
-       F ub = utils::PINF<F>) {
+  template<TSLike T>
+  [[nodiscard]] inline F wdtw(const T& lines,
+                              const T& cols,
+                              CFunBuilder<T> auto mkdist,
+                              const std::vector<F>& weights,
+                              F ub) {
     const auto ls = lines.length();
     const auto cs = cols.length();
-    const CFun <F> auto dist = mkdist(lines, cols);
+    const CFun auto dist = mkdist(lines, cols);
     std::vector<F> v;
-    return wdtw<F>(ls, cs, dist, weights, ub, v);
+    return wdtw(ls, cs, dist, weights, ub, v);
   }
-
 
 } // End of namespace tempo::distance

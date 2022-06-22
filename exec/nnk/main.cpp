@@ -111,8 +111,9 @@ dist_config cmd_dist(std::vector<std::string> const& args) {
         if (ow.value()>=0) { param_window = ow.value(); }
         dconf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
           return distance::dtw(
-            A.size(), B.size(),
-            distance::univariate::ade<F, TSeries>(param_cf_exponent)(A, B),
+            A.size(),
+            B.size(),
+            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
             param_window,
             ub
           );
@@ -172,6 +173,7 @@ struct ResultTable {
 int main(int argc, char **argv) {
   using namespace std;
   using namespace tempo;
+  using namespace tempo::utils;
 
 
   // --- --- --- --- --- ---
@@ -319,7 +321,7 @@ int main(int argc, char **argv) {
       candidate_idxs.erase(candidate_idxs.begin() + cc_idx);
       std::shuffle(candidate_idxs.begin(), candidate_idxs.end(), std::mt19937{local_seed});
       // Candidate loop
-      double bsf = tempo::utils::PINF<double>; // bsf = worst of the knn
+      double bsf = tempo::utils::PINF; // bsf = worst of the knn
       vector<NNCell> results;
       for (size_t c_idx : candidate_idxs) {
         TSeries const& candidate = train_split[c_idx];

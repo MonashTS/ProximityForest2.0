@@ -13,12 +13,14 @@ struct dist_config {
   distfun_t dist_fun;
   std::optional<long> param_window{};
   std::optional<double> param_cf_exponent{};
+  std::optional<double> param_omega{};
 
-  Json::Value to_json() const {
+  [[nodiscard]] Json::Value to_json() const {
     Json::Value j;
     j["name"] = dist_name;
     if (param_window) { j["window"] = param_window.value(); }
     if (param_cf_exponent) { j["cf_exponent"] = param_cf_exponent.value(); }
+    if (param_omega) { j["omega"] = param_omega.value(); }
     return j;
   }
 

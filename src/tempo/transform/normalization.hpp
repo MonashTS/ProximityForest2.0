@@ -12,7 +12,6 @@ namespace tempo::transform {
     // minv == min(A) min value of A
     // maxv == max(A) max value of A
     // For constant series (maxv-minv==0), return a copy of A unchanged
-    template<typename F>
     arma::Row<F> _meannorm(arma::Row<F> const& A, F avgv, F minv, F maxv) {
       F diffv = maxv - minv;
       if (diffv==0) { return A; }
@@ -24,7 +23,6 @@ namespace tempo::transform {
     // maxv == max(A)
     // result within [range_min, range_max]
     // For constant series (maxv-minv==0), return middle of the range
-    template<typename F>
     arma::Row<F> _minmax(arma::Row<F> const& A, F minv, F maxv, F range_min, F range_max) {
       F diffv = maxv - minv;
       F diffr = range_max - range_min;
@@ -36,7 +34,6 @@ namespace tempo::transform {
     // avgv == avg(A) average value over A
     // stdv == std(A) standard deviation value over A
     // For constant series (stdv==0), return a copy of A unchanged
-    template<typename F>
     arma::Row<F> _zscore(arma::Row<F> const& A, F avgv, F stdv) {
       if (stdv==0) { return A; }
       else { return (A - avgv)/stdv; }
@@ -52,8 +49,7 @@ namespace tempo::transform {
   ///                    max(A) - min(A)
   ///
   /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
-  template<typename F>
-  arma::Row<F> minmax(arma::Row<F> const& A, F range_min = 0, F range_max = 1) {
+  inline arma::Row<F> minmax(arma::Row<F> const& A, F range_min = 0, F range_max = 1) {
     F minv = arma::min(A);
     F maxv = arma::max(A);
     return _minmax(A, minv, maxv, range_min, range_max);
@@ -67,7 +63,7 @@ namespace tempo::transform {
   ///                    max(A) - min(A)
   ///
   /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
-  TSeries minmax(TSeries const& A, F range_min = 0, F range_max = 1) {
+  inline TSeries minmax(TSeries const& A, F range_min = 0, F range_max = 1) {
     F minv = A.min()[0];
     F maxv = A.max()[0];
     arma::Row<F> v = _minmax(A.rowvec(), minv, maxv, range_min, range_max);
@@ -81,8 +77,7 @@ namespace tempo::transform {
   ///    max(A) - min(A)
   ///
   /// If max(A) - min(A) = 0, returns A
-  template<typename F>
-  arma::Row<F> meannorm(arma::Row<F> const& A) {
+  inline arma::Row<F> meannorm(arma::Row<F> const& A) {
     F minv = arma::min(A);
     F maxv = arma::max(A);
     F avgv = arma::mean(A);
@@ -96,7 +91,7 @@ namespace tempo::transform {
   ///    max(A) - min(A)
   ///
   /// If max(A) - min(A) = 0, returns A
-  TSeries meannorm(TSeries const& A) {
+  inline TSeries meannorm(TSeries const& A) {
     F minv = A.min()[0];
     F maxv = A.max()[0];
     F avgv = A.mean()[0];
@@ -111,8 +106,7 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  template<typename F>
-  arma::Row<F> unitlenght(arma::Row<F> const& A) {
+  inline arma::Row<F> unitlenght(arma::Row<F> const& A) {
     F norm = arma::norm(A);
     if (norm==0) { return A; } else { return A/norm; }
   }
@@ -124,7 +118,7 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  TSeries unitlenght(TSeries const& A) {
+  inline TSeries unitlenght(TSeries const& A) {
     arma::Row<F> v = unitlenght(A.rowvec());
     return TSeries::mk_from(A, std::move(v));
   }
@@ -136,8 +130,7 @@ namespace tempo::transform {
   ///      stddev(A)
   ///
   /// If stddev(A) = 0, returns A
-  template<typename F>
-  arma::Row<F> zscore(arma::Row<F> const& A) {
+  inline arma::Row<F> zscore(arma::Row<F> const& A) {
     F avgv = arma::mean(A);
     F stdv = arma::stddev(A);
     return _zscore(A, avgv, stdv);
@@ -150,7 +143,7 @@ namespace tempo::transform {
   ///      stddev(A)
   ///
   /// If stddev(A) = 0, returns A
-  TSeries zscore(TSeries const& A) {
+  inline TSeries zscore(TSeries const& A) {
     F avgv = A.mean()[0];
     F stdv = A.stddev()[0];
     arma::Row<F> v = _zscore(A.rowvec(), avgv, stdv);

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <tempo/utils/simplecli.hpp>
 #include <tempo/reader/new_reader.hpp>
+#include <tempo/distance/sliding/cross_correlation.hpp>
 
 namespace fs = std::filesystem;
 
@@ -58,5 +59,43 @@ int main(int argc, char **argv) {
 
   // --- --- --- --- --- ---
   // Test your stuff here
+  /*
+  tempo::ByClassMap bcm = std::get<0>(train_split.get_BCM());
+  IndexSet IS_0 = (*bcm).begin()->second;
+  for(const auto& i: IS_0){ std::cout << i << endl; }
+
+  auto const& c0_0 = train_split.at(IS_0[0]);
+  auto const& c0_1 = train_split.at(IS_0[1]);
+  auto const& c0_2 = train_split.at(IS_0[2]);
+  auto const& c0_3 = train_split.at(IS_0[3]);
+
+  auto const& other = train_split.at(7);
+
+  cout << tempo::distance::SBD(c0_0.rowvec(), c0_0.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), c0_1.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), c0_2.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), c0_3.rowvec()) << endl;
+
+  cout << tempo::distance::SBD(c0_0.rowvec(), other.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), other.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), other.rowvec()) << endl;
+  cout << tempo::distance::SBD(c0_0.rowvec(), other.rowvec()) << endl;
+   */
+
+  arma::rowvec r0{0, 1, 2, 3, 0, 1, 2, 3};
+  arma::cx_rowvec fft0 = arma::fft(r0);
+  arma::rowvec crosscorel0 = arma::real(arma::ifft(fft0 % arma::conj(fft0)));
+
+  r0.print("r0");
+  fft0.print("fft0");
+  crosscorel0.print("cc0");
+
+  std::cout << std::endl;
+
+  arma::rowvec r1{1, 1, 1, 1, 1, 1, 1};
+  arma::cx_rowvec fft1 = arma::fft(r1);
+  r1.print("r1");
+  fft1.print("fft1");
+
 
 }

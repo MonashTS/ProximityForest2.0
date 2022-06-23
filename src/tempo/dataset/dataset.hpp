@@ -318,25 +318,25 @@ namespace tempo {
     // Accesses
 
     /// Index into the indexSet, returning a "real index" usable in a dataset.
-    inline size_t get(size_t index) const { return vset->operator [](index); }
+    [[nodiscard]] inline size_t get(size_t index) const { return vset->operator [](index); }
 
     /// Const Bracket operator aliasing 'get'
-    inline size_t operator [](size_t index) const { return get(index); }
+    [[nodiscard]] inline size_t operator [](size_t index) const { return get(index); }
 
     /// Size of the set
-    inline size_t size() const { return vset->size(); }
+    [[nodiscard]] inline size_t size() const { return vset->size(); }
 
     /// Number of indexes contained
-    inline bool empty() const { return vset->empty(); }
+    [[nodiscard]] inline bool empty() const { return vset->empty(); }
 
     /// Random Access Iterator begin
-    inline auto begin() const { return vset->begin(); }
+    [[nodiscard]] inline auto begin() const { return vset->begin(); }
 
     /// Random Access Iterator end
-    inline auto end() const { return vset->end(); }
+    [[nodiscard]] inline auto end() const { return vset->end(); }
 
     /// Access to the underlying vector
-    inline const auto& vector() const { return *vset; }
+    [[nodiscard]] inline const std::vector<size_t>& vector() const { return *vset; }
   };
 
   /// ByClassMap (BCM): a type gathering indexes in a dataset by encoded label
@@ -497,8 +497,6 @@ namespace tempo {
     std::shared_ptr<DatasetTransform<T>> _transform{{}};
     IndexSet _index_set{};
 
-    IndexSet const& index_set() const { return _index_set; }
-
   public:
 
     DataSplit() = default;
@@ -539,6 +537,8 @@ namespace tempo {
     T const& at(size_t idx) const { return this->operator [](idx); }
 
     size_t size() const { return _index_set.size(); }
+
+    [[nodiscard]] IndexSet const& index_set() const { return _index_set; }
 
     // --- --- --- --- --- ---
     // Header & transform access

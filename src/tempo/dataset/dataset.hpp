@@ -77,16 +77,16 @@ namespace tempo {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Labels to indexes encoding (reverse from index_to_label)
-    inline std::map<L, EL> const& label_to_index() const { return _label_to_index; }
+    [[nodiscard]] inline std::map<L, EL> const& label_to_index() const { return _label_to_index; }
 
     /// Indexes to labels encoding (reverse from label_to_index)
-    inline std::vector<L> const& index_to_label() const { return _index_to_label; }
+    [[nodiscard]] inline std::vector<L> const& index_to_label() const { return _index_to_label; }
 
     /// Encode a label
-    inline EL encode(L const& l) const { return _label_to_index.at(l); }
+    [[nodiscard]] inline EL encode(L const& l) const { return _label_to_index.at(l); }
 
     /// Decode a label
-    inline L decode(EL el) const { return _index_to_label[el]; }
+    [[nodiscard]] inline L decode(EL el) const { return _index_to_label[el]; }
   };
 
   class DatasetHeader : tempo::utils::Uncopyable {
@@ -156,53 +156,53 @@ namespace tempo {
     // Dataset properties
 
     /// Base name of the dataset
-    inline const std::string& name() const { return _name; }
+    [[nodiscard]] inline const std::string& name() const { return _name; }
 
     /// The size of the dataset, i.e. the number of exemplars
-    inline size_t size() const { return _labels.size(); }
+    [[nodiscard]] inline size_t size() const { return _labels.size(); }
 
     /// The length of the shortest series in the dataset
-    inline size_t length_min() const { return _length_min; }
+    [[nodiscard]] inline size_t length_min() const { return _length_min; }
 
     /// The length of the longest series in the dataset
-    inline size_t length_max() const { return _length_max; }
+    [[nodiscard]] inline size_t length_max() const { return _length_max; }
 
     /// Check if all series have varying length (return true), or all have the same length (return false)
-    inline bool variable_length() const { return _length_max!=_length_min; }
+    [[nodiscard]] inline bool variable_length() const { return _length_max!=_length_min; }
 
     /// Number of dimensions
-    inline size_t nb_dimensions() const { return _nb_dimensions; }
+    [[nodiscard]] inline size_t nb_dimensions() const { return _nb_dimensions; }
 
     /// Index of instances with missing data
-    inline const std::vector<size_t>& instances_with_missing() const { return _missing; }
+    [[nodiscard]] inline const std::vector<size_t>& instances_with_missing() const { return _missing; }
 
     /// Check if any exemplar contains a missing value (encoded with "NaN")
-    inline bool has_missing_value() const { return !(_missing.empty()); }
+    [[nodiscard]] inline bool has_missing_value() const { return !(_missing.empty()); }
 
     // --- --- --- --- --- ---
     // Label access
 
     /// Access the original label of an instance
-    inline std::optional<L> const& original_label(size_t idx) const { return _labels[idx]; }
+    [[nodiscard]] inline std::optional<L> const& original_label(size_t idx) const { return _labels[idx]; }
 
     /// Get the encoded label of an instance
-    inline std::optional<EL> label(size_t idx) const {
+    [[nodiscard]] inline std::optional<EL> label(size_t idx) const {
       std::optional<L> const& ol = original_label(idx);
       if (ol) { return {_label_encoder.encode(ol.value())}; }
       else { return {}; }
     }
 
     /// Encode a Label
-    inline EL encode(L const& l) const { return _label_encoder.encode(l); }
+    [[nodiscard]] inline EL encode(L const& l) const { return _label_encoder.encode(l); }
 
     /// Decode an Encoded Label (EL)
-    inline L decode(EL el) const { return _label_encoder.decode(el); }
+    [[nodiscard]] inline L decode(EL el) const { return _label_encoder.decode(el); }
 
     /// Get the number of classes
-    inline size_t nbclasses() const { return _label_encoder.index_to_label().size(); }
+    [[nodiscard]] inline size_t nbclasses() const { return _label_encoder.index_to_label().size(); }
 
     /// Direct access to the label encoder
-    inline LabelEncoder const& label_encoder() const { return _label_encoder; }
+    [[nodiscard]] inline LabelEncoder const& label_encoder() const { return _label_encoder; }
 
   };
 
@@ -223,9 +223,9 @@ namespace tempo {
 
     DatasetTransform() = default;
 
-    DatasetTransform(DatasetTransform&& other) = default;
+    DatasetTransform(DatasetTransform&& other) noexcept = default;
 
-    DatasetTransform& operator =(DatasetTransform&& other) = default;
+    DatasetTransform& operator =(DatasetTransform&& other) noexcept = default;
 
     DatasetTransform(std::shared_ptr<DatasetHeader> header, std::string name, std::vector<T>&& data) :
       _header(std::move(header)), _vname({std::move(name)}), _storage(std::move(data)) {}
@@ -247,19 +247,19 @@ namespace tempo {
 
     auto end() const { return _storage.cend(); }
 
-    size_t size() const { return _storage.size(); }
+    [[nodiscard]] size_t size() const { return _storage.size(); }
 
     /// Name separator
     inline static std::string sep = ";";
 
     /// Transform name
-    std::string name() const { return utils::cat(_vname, sep); }
+    [[nodiscard]] std::string name() const { return utils::cat(_vname, sep); }
 
     /// Access to the header
-    inline DatasetHeader const& header() const { return *_header; }
+    [[nodiscard]] inline DatasetHeader const& header() const { return *_header; }
 
     /// Access to the header pointer
-    inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
+    [[nodiscard]] inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
 
   };
 

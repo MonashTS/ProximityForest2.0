@@ -32,29 +32,11 @@ std::string usage =
   exit(code);
 }
 
-
-/// Command line parsing: special helper for the distance configuration
-dist_config cmd_dist(std::vector<std::string> const& args) {
+/// Minkowski -d:minkowski:<e>
+bool p_minkowski(std::vector<std::string> const& v, dist_config& dconf) {
   using namespace std;
   using namespace tempo;
-
-  dist_config dconf;
-
-  static string minkowski = "minkoski";
-  static string dtw = "dtw";
-
-  // We must find a '-d' flag, else error
-  auto parg_dist = tempo::scli::get_parameter<string>(args, "-d", tempo::scli::extract_string);
-  if (!parg_dist) { do_exit(1, "specify a distance to use with '-d'"); }
-
-  // Split on ':'
-  auto v = tempo::reader::split(parg_dist.value(), ':');
-
-  dconf.dist_name = v[0];
-
-  // --- --- --- --- --- ---
-  // Minkowski -d:minkowski:<e>
-  if (v[0]==minkowski) {
+  if (v[0]=="minkowski") {
     bool ok = v.size()==2;
     if (ok) {
       auto oe = tempo::reader::as_double(v[1]);
@@ -71,10 +53,17 @@ dist_config cmd_dist(std::vector<std::string> const& args) {
     }
     // Catchall
     if (!ok) { do_exit(1, "Minkowski parameter error"); }
+    return true;
   }
-    // --- --- --- --- --- ---
-    // DTW -d:dtw:<e>:<w>
-  else if (v[0]==dtw) {
+  return false;
+}
+
+/// DTW -d:dtw:<e>:<w>
+bool p_dtw(std::vector<std::string> const& v, dist_config& dconf) {
+  using namespace std;
+  using namespace tempo;
+
+  if (v[0]=="dtw") {
     bool ok = v.size()==3;
     if (ok) {
       auto oe = tempo::reader::as_double(v[1]);
@@ -102,9 +91,33 @@ dist_config cmd_dist(std::vector<std::string> const& args) {
     }
     // Catchall
     if (!ok) { do_exit(1, "DTW parameter error"); }
+    return true;
   }
-    // --- --- --- --- --- ---
-    // Unknown distance
+
+  return false;
+}
+
+/// Command line parsing: special helper for the distance configuration
+dist_config cmd_dist(std::vector<std::string> const& args) {
+  using namespace std;
+  using namespace tempo;
+
+  dist_config dconf;
+
+  // We must find a '-d' flag, else error
+  auto parg_dist = tempo::scli::get_parameter<string>(args, "-d", tempo::scli::extract_string);
+  if (!parg_dist) { do_exit(1, "specify a distance to use with '-d'"); }
+
+  // Split on ':'
+  std::vector<std::string> v = tempo::reader::split(parg_dist.value(), ':');
+  dconf.dist_name = v[0];
+
+  // --- --- --- --- --- ---
+  // Try distances
+  if (p_minkowski(v, dconf)) {}
+  else if (p_dtw(v, dconf)) {}
+  // --- --- --- --- --- ---
+  // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }
 
   return dconf;

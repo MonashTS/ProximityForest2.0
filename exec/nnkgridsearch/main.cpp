@@ -5,27 +5,29 @@
 
 namespace fs = std::filesystem;
 
-/// --- --- --- --- --- ---
-/// NN cell structure for the result tables
-/// In the table, each line corresponds to a test exemplar.
-/// Each column corresponds to a neighbor: 1st column is the nearest, follow by the one in the second column, etc...
-/// Each cell in the table is of the following type:
-///   * storing the idx of the candidate (in the train set),
-///   * its class (encoded),
-///   * and the resulting distance.
-/// Insertion strategy, and how to deal with ties (how to select which one to keep?)
-/// We insert a candidate in the table (in a column) if:
-///   - we have less than k column (no ties to manage)
-///   - if we have k column and the current distance is =< than the one stored in the last column,
-///     insert the new record in the right position in the line, removing the last cell (previous kth NN)
-/// This means that, on ties, the last encountered one "wins" (stays in the table).
-/// To avoid any bias due to the ordering of the train set, we take candidate in a random order
+// For the given configuration (train set, test set, distance, parameters),
+// this program looks for the k nearest neighbours of each train exemplar (within train but itself),
+// and for each test exemplar (withing train).
+// We also report ties, i.e. we can have several candidates as the first NN (or the second, or the third...).
+//
+// The results are compiled in a table for the train part, and another table for the test part.
+// The row in the table correspond to the exemplar, in the order specified in the dataset
+// (i.e. first exemplar is in the first row, etc...)
+// The columns represent the NN: the first column store the 1st NN (maybe several on ties),
+// the 2nd column store the 2nd NN (again, more than one).
+// A candidate NN (which is always from the train set) is stored by its index,
+// and its class (to ease the computation of the result), and the distance to the exemplar.
+// Several indexes and classes can be stored on ties.
+
+
+/// NN Cell structure for the table result
 struct NNCell {
-  size_t candidate_nn_idx{std::numeric_limits<size_t>::max()};
-  tempo::EL candidate_nn_elabel{};
-  double distance{-1.0};
+  std::vector<size_t> idxs{};
+  std::vector<tempo::EL> classes{};
+  double distance{tempo::utils::PINF};
 };
 
+/// Result table
 struct ResultTable {
 
   std::vector<std::vector<NNCell>> table;
@@ -40,6 +42,69 @@ struct ResultTable {
   NNCell& at(size_t exemplar_idx, size_t k_idx) { return table[exemplar_idx][k_idx]; }
 
 };
+
+/// Update a NNCell row
+void update_row(size_t k, std::vector<NNCell>& row, size_t idx, tempo::EL el, double dist) {
+  assert(row.size()==k);
+  // Find insertion position
+  size_t ipos = 0;
+  for (; ipos<k&&row[ipos].distance<dist; ++ipos) {}
+  // Insertion possible
+  if (ipos<k) {
+    NNCell& cell = row[ipos];
+    // Ties
+    if (cell.distance==dist) {
+      cell.idxs.push_back(idx);
+      cell.classes.push_back(el);
+    } else {
+      // Replace by insertion removal of the last
+      row.insert(row.begin() + ipos, NNCell{{idx}, {el}, dist});
+      row.pop_back();
+    }
+  }
+  assert(row.size()==k);
+}
+
+/// NNk on the train set. Operate row by row: return a full row of the table
+std::vector<NNCell> nnk_train(distfun_t& distance, tempo::DTS const& train_split, size_t self_idx, size_t k) {
+  using namespace tempo;
+  TSeries const& self = train_split[self_idx];
+  // Index set: remove self from the list
+  std::vector<size_t> is = train_split.index_set().vector();
+  is.erase(is.begin() + self_idx);
+  //
+  double bsf = utils::PINF;
+  std::vector<NNCell> results(k, NNCell());
+  // Loop over other train exemplars
+  for (const auto idx : is) {
+    TSeries const& candidate = train_split[idx];
+    EL el = train_split.label(idx).value();
+    double dist = distance(self, candidate, bsf);
+    if (dist<bsf) {
+      update_row(k, results, idx, el, dist);
+      bsf = results.back().distance;
+    }
+  }
+  return results;
+}
+
+/// NNk on the test set. Operate row by row: return a full row of the table
+std::vector<NNCell> nnk_test(distfun_t& distance, tempo::DTS const& train_split, tempo::TSeries const& self, size_t k) {
+  using namespace tempo;
+  double bsf = utils::PINF;
+  std::vector<NNCell> results(k, NNCell());
+  // Loop over train exemplars
+  for (const auto idx : train_split.index_set()) {
+    TSeries const& candidate = train_split[idx];
+    EL el = train_split.label(idx).value();
+    double dist = distance(self, candidate, bsf);
+    if (dist<bsf) {
+      update_row(k, results, idx, el, dist);
+      bsf = results.back().distance;
+    }
+  }
+  return results;
+}
 
 int main(int argc, char **argv) {
   using namespace std;
@@ -182,47 +247,85 @@ int main(int argc, char **argv) {
     utils::ParTasks ptasks;
     std::mutex mutex;
 
-    // Task implemented over the train exemplar (cc = current candidate)
-    auto task = [&](size_t cc_idx) {
-      size_t local_seed = seed + cc_idx;
-      TSeries const& cc_series = train_split[cc_idx];
-      // Take candidates in random order: first generate them, remove cc_idx, and shuffle
-      std::vector<size_t> candidate_idxs(train_top);
-      std::iota(candidate_idxs.begin(), candidate_idxs.end(), 0);
-      candidate_idxs.erase(candidate_idxs.begin() + cc_idx);
-      std::shuffle(candidate_idxs.begin(), candidate_idxs.end(), std::mt19937{local_seed});
-      // Candidate loop
-      double bsf = tempo::utils::PINF; // bsf = worst of the knn
-      vector<NNCell> results;
-      for (size_t c_idx : candidate_idxs) {
-        TSeries const& candidate = train_split[c_idx];
-        double dist = dconf.dist_fun(cc_series, candidate, bsf);
-        // Update knn
-        if (dist<=bsf) {
-          // Find position and insert
-          size_t i = 0;
-          for (; i<results.size()&&dist>results[i].distance; ++i) {}
-          NNCell n{c_idx, train_split.label(c_idx).value(), dist};
-          results.insert(results.begin() + i, n);
-          // Remove last neighbour if we have too many candidates
-          if (results.size()>k) { results.pop_back(); }
-          // Update bsf
-          bsf = results.back().distance;
-        }
-      }
+    // Task implemented over the train exemplars (self_idx = current train exemplar)
+    auto task = [&](size_t self_idx) {
+      std::vector<NNCell> results = nnk_train(dconf.dist_fun, train_split, self_idx, k);
       {
         std::lock_guard lock(mutex);
         nbdone++;
         pm.print_progress(cout, nbdone);
-        train_table.row(cc_idx) = move(results);
+        train_table.row(self_idx) = move(results);
       }
     };
 
     // Create the tasks per tree. Note that we clone the state.
     tempo::utils::ParTasks p;
     p.execute(nbthreads, task, 0, train_top, 1);
-
   }
+
+
+  // --- --- --- --- --- ---
+  // Test accuracy
+  ResultTable test_table(test_top, k);
+  {
+    // Multithreading control
+    utils::ParTasks ptasks;
+    std::mutex mutex;
+
+    // Task implemented over the test exemplars (self_idx = current test exemplars)
+    auto task = [&](size_t self_idx) {
+      auto const& self = test_split[self_idx];
+      std::vector<NNCell> results = nnk_test(dconf.dist_fun, train_split, self, k);
+      {
+        std::lock_guard lock(mutex);
+        nbdone++;
+        pm.print_progress(cout, nbdone);
+        test_table.row(self_idx) = move(results);
+      }
+    };
+
+    // Create the tasks per tree. Note that we clone the state.
+    tempo::utils::ParTasks p;
+    p.execute(nbthreads, task, 0, test_top, 1);
+  }
+
+
+
+
+
+
+  // --- --- --- --- --- ---
+  // Display
+
+  std::cout << "TRAIN TABLE";
+  for (size_t i = 0; i<train_table.table.size(); ++i) {
+    std::cout << std::endl << i << " cl " << train_split.label(i).value();
+
+    for (const auto& cell : train_table.table[i]) {
+      assert(cell.idxs.size()==cell.classes.size());
+      std::cout << " | " << cell.distance << " ";
+      for (size_t j = 0; j<cell.idxs.size(); ++j) {
+        std::cout << "(" << cell.idxs[j] << ", " << cell.classes[j] << ") ";
+      }
+    }
+  }
+  std::cout << std::endl << std::endl;
+
+
+  std::cout << "TEST TABLE";
+  for (size_t i = 0; i<test_table.table.size(); ++i) {
+    std::cout << std::endl << i << " cl " << test_split.label(i).value();
+
+    for (const auto& cell : test_table.table[i]) {
+      assert(cell.idxs.size()==cell.classes.size());
+      std::cout << " | " << cell.distance << " ";
+      for (size_t j = 0; j<cell.idxs.size(); ++j) {
+        std::cout << "(" << cell.idxs[j] << ", " << cell.classes[j] << ") ";
+      }
+    }
+  }
+  std::cout << std::endl;
+
 
 
 

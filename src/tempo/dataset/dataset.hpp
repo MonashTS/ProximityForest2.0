@@ -518,7 +518,11 @@ namespace tempo {
 
     DataSplit(DataSplit const& other) = default;
 
-    DataSplit(DataSplit&& other) = default;
+    DataSplit(DataSplit&& other) noexcept = default;
+
+    DataSplit& operator =(DataSplit&& other) noexcept = default;
+
+    DataSplit& operator =(DataSplit const& other) = default;
 
     /// Split with a name, store, and a subset of the transform
     DataSplit(std::string name, std::shared_ptr<DatasetTransform<T>> store, IndexSet is) :

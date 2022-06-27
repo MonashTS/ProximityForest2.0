@@ -598,7 +598,7 @@ namespace tempo {
     std::string const& get_dataset_name() const { return _transform->header().name(); }
 
     /// Name of the associated data store
-    std::string const& get_transform_name() const { return _transform->name(); }
+    std::string get_transform_name() const { return _transform->name(); }
 
     /// Name of this split
     std::string const& get_split_name() const { return _name; }

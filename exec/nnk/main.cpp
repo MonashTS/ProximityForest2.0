@@ -64,7 +64,7 @@ dist_config cmd_dist(std::vector<std::string> const& args) {
 
   dist_config dconf;
 
-  static string minkowski = "minkoski";
+  static string minkowski = "minkowski";
   static string dtw = "dtw";
 
   // We must find a '-d' flag, else error

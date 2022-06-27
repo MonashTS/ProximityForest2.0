@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tempo/dataset/dts.hpp>
 #include <tempo/utils/utils.hpp>
 #include <tempo/distance/elastic/dtw.hpp>
 #include <tempo/distance/lockstep/direct.hpp>

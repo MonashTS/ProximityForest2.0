@@ -204,6 +204,21 @@ namespace tempo {
     /// Direct access to the label encoder
     [[nodiscard]] inline LabelEncoder const& label_encoder() const { return _label_encoder; }
 
+    // --- --- --- --- --- ---
+
+    /// Json representation of the dataset header
+    [[nodiscard]] inline Json::Value to_json() const {
+      Json::Value jv;
+      jv["name"] = name();
+      jv["size"] = (int)size();
+      jv["dimension"] = (int)(nb_dimensions());
+      // Warning: use initializer list for the vector; constructor with 2 variables (n, v) means n times v values.
+      jv["length"] = utils::to_json(std::vector<int>{(int)length_min(), (int)length_max()});
+      jv["has_missing_value"] = has_missing_value();
+      jv["index_to_label"] = utils::to_json(_label_encoder.index_to_label());
+      return jv;
+    }
+
   };
 
 

@@ -148,12 +148,10 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Json Record
   Json::Value jv;
-  jv["prng_type"] = std::string(typeid(PRNG).name());
-  jv["prng_seed"] = std::to_string(seed);
   jv["dataset"] = train_header.name();
 
   // --- --- --- --- --- ---
-
+  // Compute Info for train and test
   {
     Json::Value train_v = compute_info(train_header, train_split, conf, prng);
     train_v.removeMember("name");
@@ -165,6 +163,8 @@ int main(int argc, char **argv) {
     jv["test"] = std::move(test_v);
   }
 
+  // --- --- --- --- --- ---
+  // Print
   cout << endl << jv.toStyledString() << endl;
   if (outpath) {
     auto out = ofstream(outpath.value());

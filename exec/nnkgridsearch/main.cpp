@@ -338,7 +338,41 @@ int main(int argc, char **argv) {
 
 
   // --- --- --- --- --- ---
-  // Display
+  // Create JSON
+  { // Train
+    Json::Value train_results = Json::arrayValue;
+    for (size_t i = 0; i<train_table.table.size(); ++i) {
+      Json::Value train_row = Json::objectValue;
+      {
+        train_row["idx"] = (int)i;
+        train_row["label"] = conf.train_split.label(i).value();
+      }
+      //
+      Json::Value row = Json::arrayValue;
+      for (const auto& cell : train_table.table[i]) {
+        assert(cell.idxs.size()==cell.classes.size());
+        Json::Value jscell = Json::objectValue;
+        Json::Value candidates = Json::arrayValue;
+        Json::Value labels = Json::arrayValue;
+        for (auto [idx, label] : cell.idx_label_v) {
+          candidates.append(idx);
+          labels.append(label);
+        }
+        jscell["distance"] = cell.distance;
+        jscell["candidates"] = candidates;
+        jscell["labels"] = labels;
+        //
+        row.append(jscell);
+      }
+      train_row["nn"] = row;
+      train_results.append(train_row);
+    }
+
+    jv["train_table"] = train_results;
+
+  }
+
+  /*
 
   std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
@@ -352,7 +386,6 @@ int main(int argc, char **argv) {
   }
   std::cout << std::endl << std::endl;
 
-  /*
 
   std::cout << "TEST TABLE";
   for (size_t i = 0; i<test_table.table.size(); ++i) {
@@ -373,7 +406,6 @@ int main(int argc, char **argv) {
     out << jv << endl;
   }
 
-  /*
   // Test accuracy
   cout << endl;
   for (size_t kk = 1; kk<=conf.k; ++kk) {
@@ -381,7 +413,6 @@ int main(int argc, char **argv) {
     double acc = (double)(nbc)/(double)(test_top);
     cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
   }
-   */
 
   return 0;
 }

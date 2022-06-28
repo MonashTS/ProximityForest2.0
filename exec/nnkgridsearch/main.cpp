@@ -49,6 +49,41 @@ struct ResultTable {
 
   NNCell& at(size_t exemplar_idx, size_t k_idx) { return table[exemplar_idx][k_idx]; }
 
+  Json::Value to_json(std::function<tempo::EL(size_t)> get_label) {
+    Json::Value results = Json::arrayValue;
+    for (size_t i = 0; i<table.size(); ++i) {
+      // For each row in the table, store the idx and the actual label
+      Json::Value full_row = Json::objectValue;
+      full_row["idx"] = (int)i;
+      full_row["label"] = get_label(i);
+      // Create the cells of the table (list of nearest neighbours grouped by increasing distances)
+      Json::Value columns = Json::arrayValue;
+      for (const auto& cell : table[i]) {
+        assert(cell.idxs.size()==cell.classes.size());
+        // For each cell, collect all candidates and associated label
+        Json::Value candidates = Json::arrayValue;
+        Json::Value labels = Json::arrayValue;
+        for (auto [idx, label] : cell.idx_label_v) {
+          candidates.append(idx);
+          labels.append(label);
+        }
+        // Create the cell object
+        Json::Value jscell = Json::objectValue;
+        jscell["distance"] = cell.distance;
+        jscell["candidates"] = candidates;
+        jscell["labels"] = labels;
+        // add the cell to the columns
+        columns.append(jscell);
+      }
+      // Add the columns (cells) to the row
+      full_row["nn"] = columns;
+      // Add the row to the table
+      results.append(full_row);
+    }
+
+    return results;
+  }
+
 };
 
 /// Compute the number of correct classification for a given k with majority vote and random cutting of ties
@@ -333,46 +368,8 @@ int main(int argc, char **argv) {
     p.execute(conf.nbthreads, task, 0, test_top, 1);
   }
 
-  cout << endl;
 
 
-
-  // --- --- --- --- --- ---
-  // Create JSON
-  { // Train
-    Json::Value train_results = Json::arrayValue;
-    for (size_t i = 0; i<train_table.table.size(); ++i) {
-      Json::Value train_row = Json::objectValue;
-      {
-        train_row["idx"] = (int)i;
-        train_row["label"] = conf.train_split.label(i).value();
-      }
-      //
-      Json::Value row = Json::arrayValue;
-      for (const auto& cell : train_table.table[i]) {
-        assert(cell.idxs.size()==cell.classes.size());
-        Json::Value jscell = Json::objectValue;
-        Json::Value candidates = Json::arrayValue;
-        Json::Value labels = Json::arrayValue;
-        for (auto [idx, label] : cell.idx_label_v) {
-          candidates.append(idx);
-          labels.append(label);
-        }
-        jscell["distance"] = cell.distance;
-        jscell["candidates"] = candidates;
-        jscell["labels"] = labels;
-        //
-        row.append(jscell);
-      }
-      train_row["nn"] = row;
-      train_results.append(train_row);
-    }
-
-    jv["train_table"] = train_results;
-
-  }
-
-  /*
 
   std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
@@ -386,6 +383,7 @@ int main(int argc, char **argv) {
   }
   std::cout << std::endl << std::endl;
 
+  /*
 
   std::cout << "TEST TABLE";
   for (size_t i = 0; i<test_table.table.size(); ++i) {
@@ -400,10 +398,29 @@ int main(int argc, char **argv) {
   std::cout << std::endl;
    */
 
+  // --- --- --- --- --- ---
+  // JSON Tables
+  auto get_train_label = [&](int i)->tempo::EL { return conf.train_split.label(i).value(); };
+  jv["train_table"] = train_table.to_json(get_train_label);
+
+  // auto get_test_label = [&](int i)->tempo::EL { return conf.test_split.label(i).value(); };
+  // jv["test_table"] = test_table.to_json(get_test_label);
+
+
+
   cout << endl << jv.toStyledString() << endl;
   if (conf.outpath) {
     auto out = ofstream(conf.outpath.value());
     out << jv << endl;
+  }
+
+  //--- --- --- --- --- ---
+  // Train accuracy
+  cout << endl;
+  for (size_t kk = 1; kk<=conf.k; ++kk) {
+    size_t nbc = nb_correct_01loss(kk, train_table, conf.train_split, *conf.pprng);
+    double acc = (double)(nbc)/(double)(test_top);
+    cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
   }
 
   // Test accuracy

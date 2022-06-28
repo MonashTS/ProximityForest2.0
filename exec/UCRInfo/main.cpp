@@ -59,6 +59,32 @@ Json::Value compute_info(
     }
     v["modminkowki_sample"] = std::move(mmv);
   }
+  // --- Check for duplicated series
+  {
+    std::map<size_t, std::vector<size_t>> same;
+    std::set<size_t> visited;
+    for (size_t i = 0; i<dts.size(); ++i) {
+      TSeries const& ref = dts[i];
+      for (size_t j = i + 1; j<dts.size(); ++j) {
+        if(visited.contains(j)){continue;}
+        TSeries const& other = dts[j];
+        if (arma::norm(ref.data() - other.data())==0) {
+          visited.insert(j);
+          same[i].push_back(j);
+        }
+      }
+    }
+    Json::Value duplicated = Json::arrayValue;
+    size_t n=0;
+    for (auto [k, vec] : same) {
+      vec.insert(vec.begin(), k);
+      n+=vec.size();
+      duplicated.append(utils::to_json(vec));
+    }
+    v["duplicated_nb"] = (int)n;
+    v["duplicated"] = duplicated;
+
+  }
   return v;
 }
 

@@ -14,16 +14,20 @@ namespace fs = std::filesystem;
 // The row in the table correspond to the exemplar, in the order specified in the dataset
 // (i.e. first exemplar is in the first row, etc...)
 // The columns represent the NN: the first column store the 1st NN (maybe several on ties),
-// the 2nd column store the 2nd NN (again, more than one).
+// the 2nd column store the 2nd NN (again, possibly more than one).
 // A candidate NN (which is always from the train set) is stored by its index,
 // and its class (to ease the computation of the result), and the distance to the exemplar.
 // Several indexes and classes can be stored on ties.
+//
+// This setting actually records the k nearest "distance values", and for each "distance value", it stores
+// the corresponding train exemplars. Hence, we can have e.g. k=2 and have in the table 5 exemplar:
+// | dv=5, ex1, ex2, ex3 | dv = 6, ex4, ex5 |
+// In a "usual" NN, we would only have a subset of {ex1, ex2, ex3}.
 
 
 /// NN Cell structure for the table result
 struct NNCell {
-  std::vector<size_t> idxs{};
-  std::vector<tempo::EL> classes{};
+  std::vector<std::tuple<size_t, tempo::EL>> idx_label_v;
   double distance{tempo::utils::PINF};
 };
 
@@ -37,11 +41,76 @@ struct ResultTable {
   ResultTable(size_t nbexemplars, size_t k) :
     table(nbexemplars, std::vector<NNCell>(k)) {}
 
-  std::vector<NNCell>& row(size_t exemplar_id) { return table[exemplar_id]; }
+  std::vector<NNCell>& row(size_t idx) { return table[idx]; }
+
+  std::vector<NNCell>& operator [](size_t idx) { return table[idx]; }
+
+  std::vector<NNCell> const& operator [](size_t idx) const { return table[idx]; }
 
   NNCell& at(size_t exemplar_idx, size_t k_idx) { return table[exemplar_idx][k_idx]; }
 
 };
+
+/// Compute the number of correct classification for a given k with majority vote and random cutting of ties
+size_t nb_correct_01loss(size_t const k, ResultTable const& table, tempo::DTS const& split, tempo::PRNG& prng) {
+  size_t nbcorrect = 0;
+  assert(table.table.size() == split.size());
+
+  for (size_t i = 0; i<split.size(); ++i) {
+    std::vector<NNCell> const& row = table[i];
+
+    // Count votes and cumulative distance per label
+    std::map<tempo::EL, size_t> votes;
+    std::map<tempo::EL, double> votes_dist;
+    int remaining_k = (int)k;
+
+    for (size_t j = 0; remaining_k>0&&j<k; ++j) {
+      NNCell const& cell = row[j];
+      int cellcard = (int)cell.idx_label_v.size();
+      if (cellcard<=remaining_k) {
+        // Get them all
+        remaining_k = remaining_k - cellcard;
+        assert(remaining_k>=0);
+        for (auto [idx, label] : cell.idx_label_v) {
+          votes[label] += 1;
+          votes_dist[label] += cell.distance;
+        }
+      } else {
+        // Sample in the cell (thx c++17)
+        std::vector<std::tuple<size_t, tempo::EL>> samples;
+        std::sample(cell.idx_label_v.begin(), cell.idx_label_v.end(), std::back_inserter(samples), remaining_k, prng);
+        remaining_k = 0;
+        for (auto [idx, label] : samples) {
+          votes[label] += 1;
+          votes_dist[label] += cell.distance;
+        }
+      }
+    }
+
+    // Get classes with highest votes, split ties with smallest cumulative distance
+    double bsf = tempo::utils::PINF;
+    size_t maxvote = 0;
+    std::vector<tempo::EL> best_classes;
+
+    for (auto [label, nbv] : votes) {
+      assert(votes_dist.contains(label));
+      double dist = votes_dist[label];
+      if (nbv>maxvote||(nbv==maxvote&&dist<bsf)) {
+        maxvote = nbv;
+        bsf = dist;
+        best_classes.clear();
+        best_classes.push_back(label);
+      }
+    }
+
+    tempo::EL true_class = split.label(i).value();
+    tempo::EL prediction = tempo::utils::pick_one(best_classes, prng);
+    if (prediction==true_class) { nbcorrect++; }
+  }
+
+  return nbcorrect;
+
+}
 
 /// Update a NNCell row
 void update_row(size_t k, std::vector<NNCell>& row, size_t idx, tempo::EL el, double dist) {
@@ -54,13 +123,15 @@ void update_row(size_t k, std::vector<NNCell>& row, size_t idx, tempo::EL el, do
     NNCell& cell = row[ipos];
     // Ties
     if (cell.distance==dist) {
-      cell.idxs.push_back(idx);
-      cell.classes.push_back(el);
+      std::cerr << "TIES" << std::endl;
+      cell.idx_label_v.emplace_back(idx, el);
     } else {
       // Replace by insertion removal of the last
-      row.insert(row.begin() + ipos, NNCell{{idx}, {el}, dist});
+      row.insert(row.begin() + ipos, NNCell{std::vector<std::tuple<size_t, tempo::EL>>{{idx, el}}, dist});
       row.pop_back();
     }
+  } else {
+    std::cout << "nope: " << ipos << " >= " << k << std::endl;
   }
   assert(row.size()==k);
 }
@@ -111,48 +182,20 @@ int main(int argc, char **argv) {
   using namespace tempo;
   using namespace tempo::utils;
 
+  Json::Value jv;
 
-  // --- --- --- --- --- ---
-  // Program Arguments
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Parse Arg and setup
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   string program_name(*argv);
   vector<string> args(argv + 1, argv + argc);
   if (args.empty()) { do_exit(0, usage); }
+  Config conf;
 
-  // --- --- ---
-  // Optional
+  // --- --- --- 1: Optional args
+  cmd_optional(args, conf);
 
-  // Value for k
-  size_t k;
-  {
-    auto p_k = tempo::scli::get_parameter<long long>(args, "-k", tempo::scli::extract_int, 1);
-    if (p_k<=0) { do_exit(1, "-k must be followed by a integer >= 1"); }
-    k = p_k;
-  }
-
-  // Number of threads
-  size_t nbthreads;
-  {
-    auto p_et = tempo::scli::get_parameter<long long>(args, "-et", tempo::scli::extract_int, 0);
-    if (p_et<0) { do_exit(1, "-et must specify a number of threads > 0, or 0 for auto-detect"); }
-    if (p_et==0) { nbthreads = std::thread::hardware_concurrency() + 2; } else { nbthreads = p_et; }
-  }
-
-  // Random
-  size_t seed;
-  {
-    auto p_seed = tempo::scli::get_parameter<long long>(args, "-seed", tempo::scli::extract_int, 0);
-    if (p_seed<0) { seed = std::random_device()(); } else { seed = p_seed; }
-  }
-
-  // Output file
-  optional<fs::path> outpath{};
-  {
-    auto p_out = tempo::scli::get_parameter<string>(args, "-out", tempo::scli::extract_string);
-    if (p_out) { outpath = {fs::path{p_out.value()}}; }
-  }
-
-  // --- --- ---
-  // Mandatory
+  // --- --- --- 2: Load dataset (must be done before 'check_transform')
 
   // Path to UCR
   fs::path UCRPATH;
@@ -170,30 +213,24 @@ int main(int argc, char **argv) {
     dsname = parg_UCRNAME.value();
   }
 
-  // distance
-  dist_config dconf = cmd_dist(args);
+  // Load train and test
+  {
+    fs::path dspath = UCRPATH/dsname;
+    conf.loaded_train_split = std::get<1>(reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train"));
+    conf.loaded_test_split = std::get<1>(
+      reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"),
+                              "test",
+                              conf.loaded_train_split.header().label_encoder()
+      )
+    );
+  }
 
-  // --- --- --- --- --- ---
-  // Read the dataset TRAIN.ts and TEST.ts files
-  fs::path dspath = UCRPATH/dsname;
+  auto const& train_header = conf.loaded_train_split.header();
+  const auto train_top = train_header.size();
 
-  DataSplit<TSeries> train_split = std::get<1>(reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train"));
-  DatasetHeader const& train_header = train_split.header();
-  size_t train_top = train_header.size();
+  auto const& test_header = conf.loaded_test_split.header();
+  const auto test_top = test_header.size();
 
-  DataSplit<TSeries> test_split =
-    std::get<1>(reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"), "test", train_header.label_encoder()));
-  DatasetHeader const& test_header = test_split.header();
-  size_t test_top = test_header.size();
-
-  // --- --- --- --- --- ---
-  // Json Record
-  Json::Value jv;
-
-  jv["dataset"] = train_header.name();
-  jv["distance"] = dconf.to_json();
-
-  // --- --- --- --- --- ---
   // Sanity check
   {
     std::vector<std::string> errors = {};
@@ -206,7 +243,7 @@ int main(int argc, char **argv) {
       errors.emplace_back("Test set: variable length or missing data");
     }
 
-    auto [bcm, remainder] = train_split.get_BCM();
+    auto [bcm, remainder] = conf.loaded_train_split.get_BCM();
 
     if (!remainder.empty()) {
       errors.emplace_back("Train set: contains exemplar without label");
@@ -220,93 +257,105 @@ int main(int argc, char **argv) {
     }
 
     if (!errors.empty()) {
+      jv = conf.to_json();
       jv["status"] = "error";
       jv["status_message"] = utils::cat(errors, "; ");
       cout << jv.toStyledString() << endl;
-      if (outpath) {
-        auto out = ofstream(outpath.value());
+      if (conf.outpath) {
+        auto out = ofstream(conf.outpath.value());
         out << jv << endl;
       }
       exit(2);
     }
-
   }
 
+  // --- --- --- 3: Check transformation (must be done before check_dist)
+  cmd_transform(args, conf);
+
+  // --- --- --- 4: Check distance
+  cmd_dist(args, conf);
+
+  // Update info in json
+  jv = conf.to_json();
+
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Computation
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   // --- --- --- --- --- ---
   // Progress reporting
   utils::ProgressMonitor pm(train_top + test_top);  // How many to do, both train and test accuracy
   size_t nbdone = 0;                                // How many done up to "now"
 
-
   // --- --- --- --- --- ---
-  // Train accuracy
-  ResultTable train_table(train_top, k);
+  // Train table
+  ResultTable train_table(train_top, conf.k);
+
+  /*
   {
     // Multithreading control
     utils::ParTasks ptasks;
     std::mutex mutex;
 
-    // Task implemented over the train exemplars (self_idx = current train exemplar)
-    auto task = [&](size_t self_idx) {
-      std::vector<NNCell> results = nnk_train(dconf.dist_fun, train_split, self_idx, k);
+    // Task implemented over the train exemplars
+    auto task = [&](size_t train_idx) {
+      std::vector<NNCell> results = nnk_train(conf.dist_fun, conf.train_split, train_idx, conf.k);
       {
         std::lock_guard lock(mutex);
         nbdone++;
         pm.print_progress(cout, nbdone);
-        train_table.row(self_idx) = move(results);
+        train_table.row(train_idx) = move(results);
       }
     };
 
     // Create the tasks per tree. Note that we clone the state.
     tempo::utils::ParTasks p;
-    p.execute(nbthreads, task, 0, train_top, 1);
+    p.execute(conf.nbthreads, task, 0, train_top, 1);
   }
-
+  */
 
   // --- --- --- --- --- ---
-  // Test accuracy
-  ResultTable test_table(test_top, k);
+  // Test table
+  ResultTable test_table(test_top, conf.k);
   {
     // Multithreading control
     utils::ParTasks ptasks;
     std::mutex mutex;
 
-    // Task implemented over the test exemplars (self_idx = current test exemplars)
-    auto task = [&](size_t self_idx) {
-      auto const& self = test_split[self_idx];
-      std::vector<NNCell> results = nnk_test(dconf.dist_fun, train_split, self, k);
+    // Task implemented over the test exemplars
+    auto task = [&](size_t test_idx) {
+      auto const& self = conf.test_split[test_idx];
+      std::vector<NNCell> results = nnk_test(conf.dist_fun, conf.train_split, self, conf.k);
       {
         std::lock_guard lock(mutex);
         nbdone++;
         pm.print_progress(cout, nbdone);
-        test_table.row(self_idx) = move(results);
+        test_table.row(test_idx) = move(results);
       }
     };
 
     // Create the tasks per tree. Note that we clone the state.
     tempo::utils::ParTasks p;
-    p.execute(nbthreads, task, 0, test_top, 1);
+    p.execute(conf.nbthreads, task, 0, test_top, 1);
   }
 
-
-
+  cout << endl;
 
 
 
   // --- --- --- --- --- ---
   // Display
 
-  std::cout << "TRAIN TABLE";
+  /*
+  std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
-    std::cout << std::endl << i << " cl " << train_split.label(i).value();
+    std::cout << std::endl << i << " cl " << conf.train_split.label(i).value();
 
     for (const auto& cell : train_table.table[i]) {
       assert(cell.idxs.size()==cell.classes.size());
       std::cout << " | " << cell.distance << " ";
-      for (size_t j = 0; j<cell.idxs.size(); ++j) {
-        std::cout << "(" << cell.idxs[j] << ", " << cell.classes[j] << ") ";
-      }
+      for (auto [idx, label]: cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
     }
   }
   std::cout << std::endl << std::endl;
@@ -314,130 +363,29 @@ int main(int argc, char **argv) {
 
   std::cout << "TEST TABLE";
   for (size_t i = 0; i<test_table.table.size(); ++i) {
-    std::cout << std::endl << i << " cl " << test_split.label(i).value();
+    std::cout << std::endl << i << " cl " << conf.test_split.label(i).value();
 
     for (const auto& cell : test_table.table[i]) {
       assert(cell.idxs.size()==cell.classes.size());
       std::cout << " | " << cell.distance << " ";
-      for (size_t j = 0; j<cell.idxs.size(); ++j) {
-        std::cout << "(" << cell.idxs[j] << ", " << cell.classes[j] << ") ";
-      }
+      for (auto [idx, label]: cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
     }
   }
   std::cout << std::endl;
-
-
-
-
-
-  /*
-
-  Json::Value jtest;
-
-  for (size_t qidx = 0; qidx<test_top; ++qidx) {
-    auto const& vnn = kresults[qidx];
-    Json::Value result_nnidx;
-    Json::Value result_nnclass;
-    Json::Value result_distance;
-    for (auto const& nn : vnn) {
-      result_nnidx.append(nn.candidate_nn_idx);
-      result_nnclass.append(nn.candidate_nn_elabel);
-      result_distance.append(nn.distance);
-    }
-    Json::Value res;
-    res["idx"] = result_nnidx;
-    res["class"] = result_nnclass;
-    res["distance"] = result_distance;
-    res["true_class"] = test_split.label(qidx).value();
-    jtest.append(res);
-  }
-
-  jv["result_neighbour"] = jtest;
-
-  cout << jv.toStyledString() << endl;
-
-  */
-
-
-  /*
-  // PRNG used to break ties
-  PRNG prng(seed + test_top*2 + 1);
-  size_t bestnbcorrect = 0;
-  double bestaccuracy = 0;
-  size_t bestk = 0;
-
-  for (size_t kk = 1; kk<=k; ++kk) {
-
-    size_t nbcorrect = 0;
-
-    for (size_t qidx = 0; qidx<test_top; ++qidx) {
-
-      auto const& vnn = kresults[qidx];
-
-      std::map<size_t, size_t> mapcount;
-      std::map<size_t, double> mapdist;
-
-      for (size_t ikk = 0; ikk<kk&&ikk<vnn.size(); ++ikk) {
-        mapcount[vnn[ikk].candidate_nn_elabel] += 1;
-        mapdist[vnn[ikk].candidate_nn_elabel] += vnn[ikk].distance;
-      }
-
-      size_t maxcount = 0;
-      std::vector<size_t> maxclass;
-
-      for (auto const& [cl, count] : mapcount) {
-        if (count>maxcount) {
-          maxcount = count;
-          maxclass.clear();
-          maxclass.push_back(cl);
-        } else if (count==maxcount) {
-          maxclass.push_back(cl);
-        }
-      }
-
-      vector<size_t> closest_class;
-      double sumdist = utils::PINF<double>;
-      for (auto const& mc : maxclass) {
-        if (mapdist[mc]<sumdist) {
-          sumdist = mapdist[mc];
-          closest_class.clear();
-          closest_class.push_back(mc);
-        } else if (mapdist[mc]==sumdist) {
-          closest_class.push_back(mc);
-        }
-      }
-
-      size_t selected_class = utils::pick_one(closest_class, prng);
-
-      size_t true_class = test_split.label(qidx).value();
-
-      if (selected_class==true_class) { nbcorrect++; }
-
-    }
-
-    double accuracy = (double)nbcorrect/double(test_top);
-    if (nbcorrect>bestnbcorrect) {
-      bestnbcorrect = nbcorrect;
-      bestk = kk;
-      bestaccuracy = accuracy;
-    }
-
-    cout << "k = " << kk << " nb correct = " << nbcorrect << "/" << test_top
-         << " = " << accuracy << endl;
-  }
-
-
-  jv["status"] = "success";
-  jv["accuracy"] = bestaccuracy;
-  jv["k"] = bestk;
-  jv["nbcorrect"] = bestnbcorrect;
-
    */
 
   cout << endl << jv.toStyledString() << endl;
-  if (outpath) {
-    auto out = ofstream(outpath.value());
+  if (conf.outpath) {
+    auto out = ofstream(conf.outpath.value());
     out << jv << endl;
+  }
+
+  // Test accuracy
+  cout << endl;
+  for (size_t kk = 1; kk<=conf.k; ++kk) {
+    size_t nbc = nb_correct_01loss(kk, test_table, conf.test_split, *conf.pprng);
+    double acc = (double)(nbc)/(double)(test_top);
+    cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
   }
 
   return 0;

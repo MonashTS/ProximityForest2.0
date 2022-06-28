@@ -1,10 +1,16 @@
 #pragma once
 
+#include <algorithm>
+
 #include <tempo/utils/utils.hpp>
+#include <tempo/dataset/dts.hpp>
+#include <tempo/dataset/dataset.hpp>
+#include <tempo/dataset/tseries.hpp>
+#include <tempo/transform/normalization.hpp>
+#include "tempo/transform/derivative.hpp"
 #include <tempo/distance/elastic/dtw.hpp>
 #include <tempo/distance/lockstep/direct.hpp>
 #include <tempo/distance/lockstep/minkowski.hpp>
-#include <tempo/transform/normalization.hpp>
 
 
 /// Alias type for distance functions

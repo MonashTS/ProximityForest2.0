@@ -14,7 +14,7 @@ std::string usage =
   "  -p:<path to the ucr archive folder>   e.g. '-p:/home/myuser/Univariate_ts'\n"
   "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
   "  -d:<distance>\n"
-  "    -d:minkowski:<float e>     Minkowski distance with exponent 'e'\n"
+  "    -d:modminkowski:<float e>  Modified Minkowski distance with exponent 'e' (does not take the e-th root of the result)\n"
   "    -d:dtw:<float e>:<int w>   DTW with cost function exponent e and warping window w. w<0 means no window\n"
   "    -d:adtw:<e>:<omega>        ADTW with cost function exponent e and a penalty omega\n"
   "Optional arguments [with their default values]:\n"
@@ -34,11 +34,117 @@ std::string usage =
   exit(code);
 }
 
-/// Minkowski -d:minkowski:<e>
-bool p_minkowski(std::vector<std::string> const& v, dist_config& dconf) {
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// Optional args
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+void cmd_optional(std::vector<std::string> const& args, Config& conf) {
+
+  // Value for k
+  {
+    auto p_k = tempo::scli::get_parameter<long long>(args, "-k", tempo::scli::extract_int, 1);
+    if (p_k<=0) { do_exit(1, "-k must be followed by a integer >= 1"); }
+    conf.k = p_k;
+  }
+
+  // Number of threads
+  {
+    auto p_et = tempo::scli::get_parameter<long long>(args, "-et", tempo::scli::extract_int, 0);
+    if (p_et<0) { do_exit(1, "-et must specify a number of threads > 0, or 0 for auto-detect"); }
+    if (p_et==0) { conf.nbthreads = std::thread::hardware_concurrency() + 2; } else { conf.nbthreads = p_et; }
+  }
+
+  // Random
+  {
+    auto p_seed = tempo::scli::get_parameter<long long>(args, "-seed", tempo::scli::extract_int, -1);
+    if (p_seed<0) { conf.seed = std::random_device()(); } else { conf.seed = p_seed; }
+    conf.pprng = std::make_unique<tempo::PRNG>(conf.seed);
+  }
+
+  // Output file
+  {
+    auto p_out = tempo::scli::get_parameter<std::string>(args, "-out", tempo::scli::extract_string);
+    if (p_out) { conf.outpath = {std::filesystem::path{p_out.value()}}; }
+  }
+}
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// Transform
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+/// Derivative -t:derivative:<degree>
+bool t_derivative(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
   using namespace tempo;
-  if (v[0]=="minkowski") {
+
+  if (v[0]=="derivative") {
+    bool ok = v.size()==2;
+    if (ok) {
+      auto od = tempo::reader::as_int(v[1]);
+      ok = od.has_value();
+      if (ok) {
+
+        int degree = od.value();
+        conf.param_derivative_degree = {degree};
+
+        auto train_derive_t = std::make_shared<DatasetTransform<TSeries>>(
+          std::move(tempo::transform::derive(conf.loaded_train_split.transform(), degree).back())
+        );
+        conf.train_split = DTS("train", train_derive_t);
+
+        auto test_derive_t = std::make_shared<DatasetTransform<TSeries>>(
+          std::move(tempo::transform::derive(conf.loaded_test_split.transform(), degree).back())
+        );
+
+        conf.test_split = DTS("test", test_derive_t);
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "DTW parameter error"); }
+    return true;
+  }
+  return false;
+}
+
+/// Command line parsing: special helper for the configuration of the transform
+void cmd_transform(std::vector<std::string> const& args, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+
+  // Optional -t flag
+  auto parg_transform = tempo::scli::get_parameter<string>(args, "-t", tempo::scli::extract_string);
+  if (parg_transform) {
+    // Split on ':'
+    std::vector<std::string> v = tempo::reader::split(parg_transform.value(), ':');
+    conf.transform_name = v[0];
+    // --- --- --- --- --- ---
+    // Try parsing distance argument
+    if (t_derivative(v, conf)) {}
+      // --- --- --- --- --- ---
+      // Unknown transform
+    else { do_exit(1, "Unknown transform '" + v[0] + "'"); }
+
+  } else {
+    // Default transform
+    conf.transform_name = conf.loaded_train_split.get_transform_name();
+    conf.train_split = conf.loaded_train_split;
+    conf.test_split = conf.loaded_test_split;
+  }
+
+}
+
+
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// DISTANCE
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+/// Minkowski -d:minkowski:<e>
+bool d_minkowski(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+  if (v[0]=="modminkowski") {
     bool ok = v.size()==2;
     if (ok) {
       auto oe = tempo::reader::as_double(v[1]);
@@ -46,11 +152,11 @@ bool p_minkowski(std::vector<std::string> const& v, dist_config& dconf) {
       if (ok) {
         // Create the distance
         double param_cf_exponent = oe.value();
-        dconf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
           return distance::minkowski(A, B, param_cf_exponent);
         };
         // Record param
-        dconf.param_cf_exponent = {param_cf_exponent};
+        conf.param_cf_exponent = {param_cf_exponent};
       }
     }
     // Catchall
@@ -61,7 +167,7 @@ bool p_minkowski(std::vector<std::string> const& v, dist_config& dconf) {
 }
 
 /// DTW -d:dtw:<e>:<w>
-bool p_dtw(std::vector<std::string> const& v, dist_config& dconf) {
+bool d_dtw(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
   using namespace tempo;
 
@@ -76,7 +182,7 @@ bool p_dtw(std::vector<std::string> const& v, dist_config& dconf) {
         double param_cf_exponent = oe.value();
         size_t param_window = utils::NO_WINDOW;
         if (ow.value()>=0) { param_window = ow.value(); }
-        dconf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
           return distance::dtw(
             A.size(),
             B.size(),
@@ -86,9 +192,9 @@ bool p_dtw(std::vector<std::string> const& v, dist_config& dconf) {
           );
         };
         // Record param
-        dconf.param_cf_exponent = {param_cf_exponent};
-        dconf.param_window = {-1};
-        if (ow.value()>=0) { dconf.param_window = ow.value(); }
+        conf.param_cf_exponent = {param_cf_exponent};
+        conf.param_window = {-1};
+        if (ow.value()>=0) { conf.param_window = ow.value(); }
       }
     }
     // Catchall
@@ -100,7 +206,7 @@ bool p_dtw(std::vector<std::string> const& v, dist_config& dconf) {
 }
 
 /// ADTW -d:adtw:<e>:<omega>
-bool p_adtw(std::vector<std::string> const& v, dist_config& dconf){
+bool d_adtw(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
   using namespace tempo;
 
@@ -114,7 +220,7 @@ bool p_adtw(std::vector<std::string> const& v, dist_config& dconf){
         // Create the distance
         double param_cf_exponent = oe.value();
         double param_omega = oo.value();
-        dconf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
           return distance::adtw(
             A.size(),
             B.size(),
@@ -124,8 +230,8 @@ bool p_adtw(std::vector<std::string> const& v, dist_config& dconf){
           );
         };
         // Record param
-        dconf.param_cf_exponent = {param_cf_exponent};
-        dconf.param_omega = param_omega;
+        conf.param_cf_exponent = {param_cf_exponent};
+        conf.param_omega = param_omega;
       }
     }
     // Catchall
@@ -135,14 +241,10 @@ bool p_adtw(std::vector<std::string> const& v, dist_config& dconf){
   return false;
 }
 
-
-
-/// Command line parsing: special helper for the distance configuration
-dist_config cmd_dist(std::vector<std::string> const& args) {
+/// Command line parsing: special helper for the configuration of the distance
+void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   using namespace std;
   using namespace tempo;
-
-  dist_config dconf;
 
   // We must find a '-d' flag, else error
   auto parg_dist = tempo::scli::get_parameter<string>(args, "-d", tempo::scli::extract_string);
@@ -150,16 +252,15 @@ dist_config cmd_dist(std::vector<std::string> const& args) {
 
   // Split on ':'
   std::vector<std::string> v = tempo::reader::split(parg_dist.value(), ':');
-  dconf.dist_name = v[0];
+  conf.dist_name = v[0];
 
   // --- --- --- --- --- ---
   // Try parsing distance argument
-  if (p_minkowski(v, dconf)) {}
-  else if (p_dtw(v, dconf)) {}
-  else if (p_adtw(v, dconf)) {}
-  // --- --- --- --- --- ---
-  // Unknown distance
+  if (d_minkowski(v, conf)) {}
+  else if (d_dtw(v, conf)) {}
+  else if (d_adtw(v, conf)) {}
+    // --- --- --- --- --- ---
+    // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }
 
-  return dconf;
 }

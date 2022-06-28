@@ -368,9 +368,6 @@ int main(int argc, char **argv) {
     p.execute(conf.nbthreads, task, 0, test_top, 1);
   }
 
-
-
-
   std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
     std::cout << std::endl << i << " cl " << conf.train_split.label(i).value();
@@ -400,35 +397,55 @@ int main(int argc, char **argv) {
 
   // --- --- --- --- --- ---
   // JSON Tables
-  auto get_train_label = [&](int i)->tempo::EL { return conf.train_split.label(i).value(); };
+  auto get_train_label = [&](int i) -> tempo::EL { return conf.train_split.label(i).value(); };
   jv["train_table"] = train_table.to_json(get_train_label);
 
-  // auto get_test_label = [&](int i)->tempo::EL { return conf.test_split.label(i).value(); };
-  // jv["test_table"] = test_table.to_json(get_test_label);
+  auto get_test_label = [&](int i) -> tempo::EL { return conf.test_split.label(i).value(); };
+  jv["test_table"] = test_table.to_json(get_test_label);
+
+
+  //--- --- --- --- --- ---
+  // Accuracy
+  {
+    // Train accuracy
+    Json::Value train_accuracy = Json::objectValue;
+    Json::Value train_01loss_nbc = Json::arrayValue;
+    Json::Value train_01loss_acc = Json::arrayValue;
+    for (size_t kk = 1; kk<=conf.k; ++kk) {
+      size_t nbc = nb_correct_01loss(kk, train_table, conf.train_split, *conf.pprng);
+      double acc = (double)(nbc)/(double)(test_top);
+      train_01loss_nbc.append((int)nbc);
+      train_01loss_acc.append(acc);
+    }
+    train_accuracy["nb_correct"] = train_01loss_nbc;
+    train_accuracy["accuracy"] = train_01loss_acc;
+    jv["01loss_train"] = train_accuracy;
+  }
+
+  {
+    // Test accuracy
+    Json::Value test_accuracy = Json::objectValue;
+    Json::Value test_01loss_nbc = Json::arrayValue;
+    Json::Value test_01loss_acc = Json::arrayValue;
+    for (size_t kk = 1; kk<=conf.k; ++kk) {
+      size_t nbc = nb_correct_01loss(kk, test_table, conf.test_split, *conf.pprng);
+      double acc = (double)(nbc)/(double)(test_top);
+      test_01loss_nbc.append((int)nbc);
+      test_01loss_acc.append(acc);
+    }
+    test_accuracy["nb_correct"] = test_01loss_nbc;
+    test_accuracy["accuracy"] = test_01loss_acc;
+    jv["01loss_test"] = test_accuracy;
+  }
 
 
 
+  // --- --- --- --- --- ---
+  // Output
   cout << endl << jv.toStyledString() << endl;
   if (conf.outpath) {
     auto out = ofstream(conf.outpath.value());
     out << jv << endl;
-  }
-
-  //--- --- --- --- --- ---
-  // Train accuracy
-  cout << endl;
-  for (size_t kk = 1; kk<=conf.k; ++kk) {
-    size_t nbc = nb_correct_01loss(kk, train_table, conf.train_split, *conf.pprng);
-    double acc = (double)(nbc)/(double)(test_top);
-    cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
-  }
-
-  // Test accuracy
-  cout << endl;
-  for (size_t kk = 1; kk<=conf.k; ++kk) {
-    size_t nbc = nb_correct_01loss(kk, test_table, conf.test_split, *conf.pprng);
-    double acc = (double)(nbc)/(double)(test_top);
-    cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
   }
 
   return 0;

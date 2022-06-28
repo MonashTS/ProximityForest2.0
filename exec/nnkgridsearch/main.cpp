@@ -54,7 +54,7 @@ struct ResultTable {
 /// Compute the number of correct classification for a given k with majority vote and random cutting of ties
 size_t nb_correct_01loss(size_t const k, ResultTable const& table, tempo::DTS const& split, tempo::PRNG& prng) {
   size_t nbcorrect = 0;
-  assert(table.table.size() == split.size());
+  assert(table.table.size()==split.size());
 
   for (size_t i = 0; i<split.size(); ++i) {
     std::vector<NNCell> const& row = table[i];
@@ -122,16 +122,12 @@ void update_row(size_t k, std::vector<NNCell>& row, size_t idx, tempo::EL el, do
   if (ipos<k) {
     NNCell& cell = row[ipos];
     // Ties
-    if (cell.distance==dist) {
-      std::cerr << "TIES" << std::endl;
-      cell.idx_label_v.emplace_back(idx, el);
-    } else {
-      // Replace by insertion removal of the last
+    if (cell.distance==dist) { cell.idx_label_v.emplace_back(idx, el); }
+    else {
+      // Replacement by 'insertion at head + removal of the last'
       row.insert(row.begin() + ipos, NNCell{std::vector<std::tuple<size_t, tempo::EL>>{{idx, el}}, dist});
       row.pop_back();
     }
-  } else {
-    std::cout << "nope: " << ipos << " >= " << k << std::endl;
   }
   assert(row.size()==k);
 }
@@ -151,7 +147,7 @@ std::vector<NNCell> nnk_train(distfun_t& distance, tempo::DTS const& train_split
     TSeries const& candidate = train_split[idx];
     EL el = train_split.label(idx).value();
     double dist = distance(self, candidate, bsf);
-    if (dist<bsf) {
+    if (dist<=bsf) {
       update_row(k, results, idx, el, dist);
       bsf = results.back().distance;
     }
@@ -169,7 +165,7 @@ std::vector<NNCell> nnk_test(distfun_t& distance, tempo::DTS const& train_split,
     TSeries const& candidate = train_split[idx];
     EL el = train_split.label(idx).value();
     double dist = distance(self, candidate, bsf);
-    if (dist<bsf) {
+    if (dist<=bsf) {
       update_row(k, results, idx, el, dist);
       bsf = results.back().distance;
     }
@@ -291,8 +287,6 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Train table
   ResultTable train_table(train_top, conf.k);
-
-  /*
   {
     // Multithreading control
     utils::ParTasks ptasks;
@@ -313,7 +307,6 @@ int main(int argc, char **argv) {
     tempo::utils::ParTasks p;
     p.execute(conf.nbthreads, task, 0, train_top, 1);
   }
-  */
 
   // --- --- --- --- --- ---
   // Test table
@@ -347,7 +340,6 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Display
 
-  /*
   std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
     std::cout << std::endl << i << " cl " << conf.train_split.label(i).value();
@@ -355,11 +347,12 @@ int main(int argc, char **argv) {
     for (const auto& cell : train_table.table[i]) {
       assert(cell.idxs.size()==cell.classes.size());
       std::cout << " | " << cell.distance << " ";
-      for (auto [idx, label]: cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
+      for (auto [idx, label] : cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
     }
   }
   std::cout << std::endl << std::endl;
 
+  /*
 
   std::cout << "TEST TABLE";
   for (size_t i = 0; i<test_table.table.size(); ++i) {
@@ -380,6 +373,7 @@ int main(int argc, char **argv) {
     out << jv << endl;
   }
 
+  /*
   // Test accuracy
   cout << endl;
   for (size_t kk = 1; kk<=conf.k; ++kk) {
@@ -387,6 +381,7 @@ int main(int argc, char **argv) {
     double acc = (double)(nbc)/(double)(test_top);
     cout << "k = " << kk << " " << nbc << "/" << test_top << " = " << acc << endl;
   }
+   */
 
   return 0;
 }

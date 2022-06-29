@@ -28,8 +28,10 @@ std::string usage =
   "Optional arguments [with their default values]:\n"
   "  Normalisation:  applied before the transformation\n"
   "  -n:<normalisation>\n"
-  "    -n:zscore                              ZScore normalisation of the series\n"
+  "    -n:meannorm                            Mean Norm normalisation of the series\n"
   "    -n:minmax:[<min 0:max 1>]              MinMax normalisation of the series; by default in <0:1>\n"
+  "    -n:unitlength                          Unitlength normalisation of the series\n"
+  "    -n:zscore                              ZScore normalisation of the series\n"
   "\n"
   "  Transformation:  applied after the transformation\n"
   "  -t:<transformation>\n"
@@ -91,6 +93,113 @@ void cmd_optional(std::vector<std::string> const& args, Config& conf) {
 // Normalisation
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+/// MeanNorm normalisation -n:meannorm
+bool n_meannorm(std::vector<std::string> const& v, Config& conf) {
+  using namespace tempo;
+  using namespace std;
+  if (v[0]=="meannorm") {
+    bool ok = v.size()==1;
+    if (ok) {
+      // Extract params
+      // none
+
+      // Do the normalisation
+      auto f = [](TSeries const& input) -> TSeries { return transform::meannorm(input); };
+
+      auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_train_split.transform().map<TSeries>(f, "meannorm"));
+      conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
+
+      auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_test_split.transform().map<TSeries>(f, "meannorm"));
+      conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
+
+      // Record params
+      // none
+
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "MeanNorm parameter error"); }
+    return true;
+  }
+  return false;
+}
+
+/// MinMax normalisation -n:minmax
+bool n_minmax(std::vector<std::string> const& v, Config& conf) {
+  using namespace tempo;
+  using namespace std;
+  if (v[0]=="minmax") {
+    bool ok = v.size()==1||v.size()==3;
+    if (ok) {
+      // Extract params
+      double min_range = 0;
+      double max_range = 1;
+      if (v.size()==3) {
+        auto omin = tempo::reader::as_double(v[1]);
+        auto omax = tempo::reader::as_double(v[2]);
+        ok = omin.has_value()&&omax.has_value();
+        if (ok) {
+          min_range = omin.value();
+          max_range = omax.value();
+        }
+      }
+      if (ok) {
+        // Do the normalisation
+        auto f = [=](TSeries const& input) -> TSeries { return transform::minmax(input, min_range, max_range); };
+
+        auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
+        (conf.loaded_train_split.transform().map<TSeries>(f, "minmax"));
+        conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
+
+        auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
+        (conf.loaded_test_split.transform().map<TSeries>(f, "minmax"));
+        conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
+
+        // Record params
+        conf.norm_min_range = {min_range};
+        conf.norm_max_range = {max_range};
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "MinMax parameter error"); }
+    return true;
+  }
+  return false;
+}
+
+/// Unit Length normalisation -n:unitlength
+bool n_unitlength(std::vector<std::string> const& v, Config& conf) {
+  using namespace tempo;
+  using namespace std;
+  if (v[0]=="unitlength") {
+    bool ok = v.size()==1;
+    if (ok) {
+      // Extract params
+      // none
+
+      // Do the normalisation
+      auto f = [](TSeries const& input) -> TSeries { return transform::unitlength(input); };
+
+      auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_train_split.transform().map<TSeries>(f, "unitlength"));
+      conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
+
+      auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_test_split.transform().map<TSeries>(f, "unitlength"));
+      conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
+
+      // Record params
+      // none
+
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "MeanNorm parameter error"); }
+    return true;
+  }
+  return false;
+}
+
 /// Zscore normalisation -n:zscore
 bool n_zscore(std::vector<std::string> const& v, Config& conf) {
   using namespace tempo;
@@ -119,51 +228,6 @@ bool n_zscore(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
-/// MinMax normalisation -n:minmax
-bool n_minmax(std::vector<std::string> const& v, Config& conf) {
-  using namespace tempo;
-  using namespace std;
-  if (v[0]=="minmax") {
-    bool ok = v.size()==1||v.size()==3;
-    if (ok) {
-      // Extract params
-      double min_range = 0;
-      double max_range = 1;
-      if (v.size()==3) {
-        auto omin = tempo::reader::as_double(v[1]);
-        auto omax = tempo::reader::as_double(v[2]);
-        ok = omin.has_value()&&omax.has_value();
-        if (ok) {
-          min_range = omin.value();
-          max_range = omax.value();
-        }
-      }
-
-      if (ok) {
-        // Do the normalisation
-        auto f = [=](TSeries const& input) -> TSeries { return transform::minmax(input, min_range, max_range); };
-
-        auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
-        (conf.loaded_train_split.transform().map<TSeries>(f, "minmax"));
-        conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
-
-        auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
-        (conf.loaded_test_split.transform().map<TSeries>(f, "minmax"));
-        conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
-
-        // Record params
-        conf.norm_min_range = {min_range};
-        conf.norm_max_range = {max_range};
-      }
-
-    }
-    // Catchall
-    if (!ok) { do_exit(1, "MinMax parameter error"); }
-    return true;
-  }
-  return false;
-}
-
 /// Command line parsing: special helper for the configuration of the normalisation
 void cmd_normalisation(std::vector<std::string> const& args, Config& conf) {
   using namespace std;
@@ -177,8 +241,10 @@ void cmd_normalisation(std::vector<std::string> const& args, Config& conf) {
     conf.normalisation_name = v[0];
     // --- --- --- --- --- ---
     // Try parsing distance argument
-    if (n_zscore(v, conf)) {}
-    if (n_minmax(v, conf)) {}
+    if (n_meannorm(v, conf)) {}
+    else if (n_minmax(v, conf)) {}
+    else if (n_unitlength(v, conf)) {}
+    else if (n_zscore(v, conf)) {}
     else if (conf.normalisation_name=="default") {}
       // --- --- --- --- --- ---
       // Unknown transform
@@ -258,7 +324,6 @@ void cmd_transform(std::vector<std::string> const& args, Config& conf) {
   }
 
 }
-
 
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

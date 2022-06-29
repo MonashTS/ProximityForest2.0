@@ -7,10 +7,9 @@ std::string usage =
   "Dr. Matthieu Herrmann\n"
   "This application works with the UCR archive using the TS file format (or any archive following the same conventions).\n"
   "Only for univariate series.\n"
-  "nnk <-p:> <-n:> <-d:> [-k:] [-et:] [-seed:] [-out:]\n"
+  "nnk <-p:> <-d:> [-n:] [-t:] [-k:] [-et:] [-seed:] [-out:]\n"
   "Mandatory arguments:\n"
-  "  -p:<path to the ucr archive folder>   e.g. '-p:/home/myuser/Univariate_ts'\n"
-  "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
+  "  -p:<UCR path>:<dataset name>             e.g. '-p:/home/myuser/Univariate_ts:Adiac'\n"
   "  -d:<distance>\n"
   "    Lockstep:\n"
   "    -d:modminkowski:<float e>              Modified Minkowski distance with exponent 'e'\n"
@@ -27,6 +26,15 @@ std::string usage =
   "    -d:erp:<float e>:<float gv>:<int w>    ERP with cost function exponent 'e', gap value 'gv' and warping window 'w'\n"
   "                                           'w'<0 means no window\n"
   "Optional arguments [with their default values]:\n"
+  "  Normalisation:  applied before the transformation\n"
+  "  -n:<normalisation>\n"
+  "    -n:zscore                              ZScore normalisation of the series\n"
+  "\n"
+  "  Transformation:  applied after the transformation\n"
+  "  -t:<transformation>\n"
+  "    -t:derivative:<int degree>             Compute the 'degree'-th derivative of the series\n"
+  "\n"
+  "  Other:\n"
   "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
   "  -k:<int n>      Number of neighbours to search [n = 1])\n"
   "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1] !\n"
@@ -79,6 +87,60 @@ void cmd_optional(std::vector<std::string> const& args, Config& conf) {
 }
 
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+// Normalisation
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+/// Zscore normalisation -n:zscore
+bool n_zscore(std::vector<std::string> const& v, Config& conf) {
+  using namespace tempo;
+  using namespace std;
+  if (v[0]=="zscore") {
+    bool ok = v.size()==1;
+    if (ok) {
+
+      auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_train_split.transform().map<TSeries>(static_cast<TSeries(*)(TSeries const&)>(transform::zscore), "zscore"));
+      conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
+
+      auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
+      (conf.loaded_test_split.transform().map<TSeries>(static_cast<TSeries(*)(TSeries const&)>(transform::zscore), "zscore"));
+      conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
+
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "ZScore parameter error"); }
+    return true;
+  }
+  return false;
+}
+
+/// Command line parsing: special helper for the configuration of the normalisation
+void cmd_normalisation(std::vector<std::string> const& args, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+
+  // Optional -t flag
+  auto parg_transform = tempo::scli::get_parameter<string>(args, "-n", tempo::scli::extract_string);
+  if (parg_transform) {
+    // Split on ':'
+    std::vector<std::string> v = tempo::reader::split(parg_transform.value(), ':');
+    conf.normalisation_name = v[0];
+    // --- --- --- --- --- ---
+    // Try parsing distance argument
+    if (n_zscore(v, conf)) {}
+    else if (conf.normalisation_name=="default") {}
+      // --- --- --- --- --- ---
+      // Unknown transform
+    else { do_exit(1, "Unknown normalisation '" + v[0] + "'"); }
+  } else {
+    // Default normalisation
+    conf.normalisation_name = "default";
+  }
+
+}
+
+
+// --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 // Transform
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
@@ -110,7 +172,7 @@ bool t_derivative(std::vector<std::string> const& v, Config& conf) {
       }
     }
     // Catchall
-    if (!ok) { do_exit(1, "DTW parameter error"); }
+    if (!ok) { do_exit(1, "Derivative parameter error"); }
     return true;
   }
   return false;
@@ -130,13 +192,16 @@ void cmd_transform(std::vector<std::string> const& args, Config& conf) {
     // --- --- --- --- --- ---
     // Try parsing distance argument
     if (t_derivative(v, conf)) {}
+    else if (conf.transform_name=="default") {
+      conf.train_split = conf.loaded_train_split;
+      conf.test_split = conf.loaded_test_split;
+    }
       // --- --- --- --- --- ---
       // Unknown transform
     else { do_exit(1, "Unknown transform '" + v[0] + "'"); }
-
   } else {
     // Default transform
-    conf.transform_name = conf.loaded_train_split.get_transform_name();
+    conf.transform_name = "default";
     conf.train_split = conf.loaded_train_split;
     conf.test_split = conf.loaded_test_split;
   }
@@ -306,6 +371,8 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
+/// WDTW -d:wdtw
+
 /// ERP -d:erp:<e>:<gv>:<w>
 bool d_erp(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
@@ -350,6 +417,13 @@ bool d_erp(std::vector<std::string> const& v, Config& conf) {
   return false;
 
 }
+
+/// LCSS
+
+/// MSM
+
+/// TWE
+
 
 // --- --- --- All distances
 

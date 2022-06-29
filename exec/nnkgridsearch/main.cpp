@@ -227,32 +227,31 @@ int main(int argc, char **argv) {
 
   // --- --- --- 2: Load dataset (must be done before 'check_transform')
 
-  // Path to UCR
   fs::path UCRPATH;
-  {
-    auto parg_UCRPATH = tempo::scli::get_parameter<string>(args, "-p", tempo::scli::extract_string);
-    if (!parg_UCRPATH) { do_exit(1, "specify the UCR path with the -p flag, e.g. -p:/path/to/dataset"); }
-    UCRPATH = fs::path(parg_UCRPATH.value());
-  }
-
-  // Dataset name
   string dsname;
   {
-    auto parg_UCRNAME = tempo::scli::get_parameter<string>(args, "-n", tempo::scli::extract_string);
-    if (!parg_UCRNAME) { do_exit(1, "specify the UCR dataset name with the -n flag -n:NAME"); }
-    dsname = parg_UCRNAME.value();
-  }
-
-  // Load train and test
-  {
-    fs::path dspath = UCRPATH/dsname;
-    conf.loaded_train_split = std::get<1>(reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train"));
-    conf.loaded_test_split = std::get<1>(
-      reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"),
-                              "test",
-                              conf.loaded_train_split.header().label_encoder()
-      )
-    );
+    auto parg_UCRPATH = tempo::scli::get_parameter<string>(args, "-p", tempo::scli::extract_string);
+    if (!parg_UCRPATH) { do_exit(1, "Specify the UCR dataset -p flag, e.g. -p:/path/to/dataset:name"); }
+    std::vector<std::string> v = tempo::reader::split(parg_UCRPATH.value(), ':');
+    bool ok = v.size()==2;
+    if (ok) {
+      // Extract params
+      UCRPATH = fs::path(v[0]);
+      dsname = v[1];
+      // Load the datasets
+      fs::path dspath = UCRPATH/dsname;
+      // Load train set
+      auto train = reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train");
+      if (train.index()==0) { do_exit(2, "Could not load the train set: " + std::get<0>(train)); }
+      conf.loaded_train_split = std::get<1>(train);
+      // Load test set
+      auto test =
+        reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"), "test", conf.loaded_train_split.header().label_encoder());
+      if (test.index()==0) { do_exit(2, "Could not load the test set: " + std::get<0>(test)); }
+      conf.loaded_test_split = std::get<1>(test);
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "UCR Dataset (-p) parameter error"); }
   }
 
   auto const& train_header = conf.loaded_train_split.header();
@@ -299,10 +298,13 @@ int main(int argc, char **argv) {
     }
   }
 
-  // --- --- --- 3: Check transformation (must be done before check_dist)
+  // --- --- --- 4: Check normalisation (must be done before transformation)
+  cmd_normalisation(args, conf);
+
+  // --- --- --- 4: Check transformation (must be done before check_dist)
   cmd_transform(args, conf);
 
-  // --- --- --- 4: Check distance
+  // --- --- --- 5: Check distance
   cmd_dist(args, conf);
 
   // Update info in json
@@ -412,7 +414,7 @@ int main(int argc, char **argv) {
     Json::Value train_01loss_acc = Json::arrayValue;
     for (size_t kk = 1; kk<=conf.k; ++kk) {
       size_t nbc = nb_correct_01loss(kk, train_table, conf.train_split, *conf.pprng);
-      double acc = (double)(nbc)/(double)(test_top);
+      double acc = (double)(nbc)/(double)(train_top);
       train_01loss_nbc.append((int)nbc);
       train_01loss_acc.append(acc);
     }

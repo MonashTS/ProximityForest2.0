@@ -16,9 +16,11 @@ struct Config {
   std::optional<std::filesystem::path> outpath{};
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Loaded dataset
+  // Loaded dataset + normalisation
   tempo::DTS loaded_train_split;
   tempo::DTS loaded_test_split;
+  std::string normalisation_name{"default"};
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // TRANSFORM
@@ -53,10 +55,15 @@ struct Config {
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // Loaded dataset
+    // Loaded dataset & normalisation per series
     {
       jv["train"] = train_split.header().to_json();
       jv["test"] = test_split.header().to_json();
+      Json::Value j;
+      //
+      j["name"] = transform_name;
+      //
+      jv["normalisation"] = std::move(j);
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -93,6 +100,9 @@ struct Config {
 
 /// Read/init optional args from the command line
 void cmd_optional(std::vector<std::string> const& args, Config& conf);
+
+/// Updated config parsing the normalisation-related args
+void cmd_normalisation(std::vector<std::string> const& args, Config& conf);
 
 /// Updated config parsing the transform-related args
 void cmd_transform(std::vector<std::string> const& args, Config& conf);

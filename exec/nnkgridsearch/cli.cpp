@@ -6,14 +6,16 @@ std::string usage =
   "Monash University, Melbourne, Australia 2022\n"
   "Dr. Matthieu Herrmann\n"
   "This application works with the UCR archive using the TS file format (or any archive following the same conventions).\n"
-  "For each exemplar in '_TEST', search for the k nearest neighbours in _'TRAIN' and report the results as json.\n"
-  "Ties are broken randomly.\n"
-  "nnk <-p:> <-n:> <-d:> [-k:] [-et:] [-seed:]\n"
+  "Only for univariate series.\n"
+  "nnk <-p:> <-n:> <-d:> [-k:] [-et:] [-seed:] [-out:]\n"
   "Mandatory arguments:\n"
   "  -p:<path to the ucr archive folder>   e.g. '-p:/home/myuser/Univariate_ts'\n"
   "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
   "  -d:<distance>\n"
+  "    Lockstep:\n"
   "    -d:modminkowski:<float e>  Modified Minkowski distance with exponent 'e' (does not take the e-th root of the result)\n"
+  "    Sliding:\n"
+  "    Elastic:\n"
   "    -d:dtw:<float e>:<int w>               DTW with cost function exponent 'e' and warping window 'w'.\n"
   "                                           'w'<0 means no window\n"
   "    -d:adtw:<float e>:<float omega>        ADTW with cost function exponent 'e' and penalty 'omega'\n"
@@ -142,6 +144,8 @@ void cmd_transform(std::vector<std::string> const& args, Config& conf) {
 // DISTANCE
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+// --- --- --- Lockstep
+
 /// Minkowski -d:minkowski:<e>
 bool d_minkowski(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
@@ -168,6 +172,34 @@ bool d_minkowski(std::vector<std::string> const& v, Config& conf) {
   }
   return false;
 }
+
+/// Lorentzian -d:lorentzian
+bool d_lorentzian(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+  if (v[0]=="lorentzian") {
+    bool ok = v.size()==1;
+    if (ok) {
+      // Extract params
+      // none
+      // Create the distance
+      conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
+        return distance::lorentzian(A, B);
+      };
+      // Record params
+      // none
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "Lorentzian parameter error"); }
+    return true;
+  }
+  return false;
+}
+
+
+// --- --- --- Sliding
+
+// --- --- --- Elastic
 
 /// DTW -d:dtw:<e>:<w>
 bool d_dtw(std::vector<std::string> const& v, Config& conf) {
@@ -284,12 +316,14 @@ bool d_erp(std::vector<std::string> const& v, Config& conf) {
       }
     }
     // Catchall
-    if (!ok) { do_exit(1, "ADTW parameter error"); }
+    if (!ok) { do_exit(1, "ERP parameter error"); }
     return true;
   }
   return false;
 
 }
+
+// --- --- --- All distances
 
 /// Command line parsing: special helper for the configuration of the distance
 void cmd_dist(std::vector<std::string> const& args, Config& conf) {
@@ -306,7 +340,11 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
 
   // --- --- --- --- --- ---
   // Try parsing distance argument
+  // Lockstep
   if (d_minkowski(v, conf)) {}
+  else if (d_lorentzian(v, conf)) {}
+    // Sliding
+    // Elastic
   else if (d_dtw(v, conf)) {}
   else if (d_adtw(v, conf)) {}
   else if (d_erp(v, conf)) {}

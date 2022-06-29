@@ -9,10 +9,10 @@ target_sources(libtempo
         elastic/twe.hpp
         elastic/wdtw.hpp
         lockstep/direct.hpp
-        lockstep/lorentzian.hpp
-        lockstep/manhattan.hpp
-        lockstep/minkowski.hpp
+        lockstep/lockstep.hpp
         sliding/cross_correlation.hpp
+        PRIVATE
+        lockstep/lockstep.cpp
         )
 
 if (BUILD_TESTING)

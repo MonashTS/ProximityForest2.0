@@ -1,6 +1,5 @@
 #include "pch.h"
 #include <tempo/utils/simplecli.hpp>
-#include <tempo/distance/lockstep/minkowski.hpp>
 #include <tempo/reader/new_reader.hpp>
 
 namespace fs = std::filesystem;

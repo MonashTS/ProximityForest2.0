@@ -68,7 +68,7 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  arma::Row<F> unitlenght(arma::Row<F> const& A) {
+  arma::Row<F> unitlength(arma::Row<F> const& A) {
     F norm = arma::norm(A);
     if (norm==0) { return A; } else { return A/norm; }
   }
@@ -80,8 +80,8 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  TSeries unitlenght(TSeries const& A) {
-    arma::Row<F> v = unitlenght(A.rowvec());
+  TSeries unitlength(TSeries const& A) {
+    arma::Row<F> v = unitlength(A.rowvec());
     return TSeries::mk_from(A, std::move(v));
   }
 

@@ -12,7 +12,7 @@ namespace tempo::transform {
     // minv == min(A) min value of A
     // maxv == max(A) max value of A
     // For constant series (maxv-minv==0), return a copy of A unchanged
-    arma::Row<F> _meannorm(arma::Row<F> const& A, F avgv, F minv, F maxv) {
+    inline arma::Row<F> _meannorm(arma::Row<F> const& A, F avgv, F minv, F maxv) {
       F diffv = maxv - minv;
       if (diffv==0) { return A; }
       else { return (A - avgv)/diffv; }
@@ -23,7 +23,7 @@ namespace tempo::transform {
     // maxv == max(A)
     // result within [range_min, range_max]
     // For constant series (maxv-minv==0), return middle of the range
-    arma::Row<F> _minmax(arma::Row<F> const& A, F minv, F maxv, F range_min, F range_max) {
+    inline arma::Row<F> _minmax(arma::Row<F> const& A, F minv, F maxv, F range_min, F range_max) {
       F diffv = maxv - minv;
       F diffr = range_max - range_min;
       if (diffv==0) { return arma::Row<F>(A.n_elem, arma::fill::value(diffr/2)); }
@@ -34,7 +34,7 @@ namespace tempo::transform {
     // avgv == avg(A) average value over A
     // stdv == std(A) standard deviation value over A
     // For constant series (stdv==0), return a copy of A unchanged
-    arma::Row<F> _zscore(arma::Row<F> const& A, F avgv, F stdv) {
+    inline arma::Row<F> _zscore(arma::Row<F> const& A, F avgv, F stdv) {
       if (stdv==0) { return A; }
       else { return (A - avgv)/stdv; }
     }
@@ -86,7 +86,7 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  arma::Row<F> unitlenght(arma::Row<F> const& A);
+  arma::Row<F> unitlength(arma::Row<F> const& A);
 
   /// Normalisation UnitLength for univariate TSeries
   ///
@@ -95,7 +95,7 @@ namespace tempo::transform {
   ///    ||A||        (norm of A)
   ///
   ///  If ||A|| = 0, returns A
-  TSeries unitlenght(TSeries const& A);
+  TSeries unitlength(TSeries const& A);
 
   /// Normalisation Z-score for arma::Row vector
   ///

@@ -276,6 +276,22 @@ namespace tempo {
     /// Access to the header pointer
     [[nodiscard]] inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
 
+
+    // --- --- --- --- --- ---
+    // Applied a transformation per series
+
+    template<class UnaryFunction>
+    void foreach(UnaryFunction f) {
+      std::for_each(_storage.begin(), _storage.end(), f);
+    }
+
+    template<class R, class UnaryFunction>
+    DatasetTransform<R> map(UnaryFunction f, std::string n) const {
+      std::vector<R> new_storage;
+      new_storage.reserve(_storage.size());
+      for (const T& item : _storage) { new_storage.push_back(f(item)); }
+      return DatasetTransform<R>(*this, std::move(n), std::move(new_storage));
+    }
   };
 
 
@@ -541,6 +557,13 @@ namespace tempo {
       _name(std::move(name)),
       _transform(other._tranform),
       _index_set(other.index_set(), is) {}
+
+    /// Subset changing the transform
+    DataSplit(DataSplit const& other, std::shared_ptr<DatasetTransform<T>> store) :
+      _name(other._name),
+      _transform(std::move(store)),
+      _index_set(other.index_set()) {}
+
 
 
     // --- --- --- --- --- ---

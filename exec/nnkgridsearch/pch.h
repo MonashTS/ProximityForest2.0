@@ -13,6 +13,9 @@
 
 #include <tempo/distance/lockstep/direct.hpp>
 #include <tempo/distance/lockstep/lockstep.hpp>
+
+#include <tempo/distance/sliding/cross_correlation.hpp>
+
 #include <tempo/distance/elastic/dtw.hpp>
 #include "tempo/distance/elastic/adtw.hpp"
 #include "tempo/distance/elastic/erp.hpp"

@@ -13,9 +13,14 @@ std::string usage =
   "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
   "  -d:<distance>\n"
   "    Lockstep:\n"
-  "    -d:modminkowski:<float e>  Modified Minkowski distance with exponent 'e' (does not take the e-th root of the result)\n"
+  "    -d:modminkowski:<float e>              Modified Minkowski distance with exponent 'e'\n"
+  "                                           Does not take the e-th root of the result.\n"
+  "    -d:lorentzian                          Lorentzian distance\n"
+  "\n"
   "    Sliding:\n"
-  "    Elastic:\n"
+  "    -d:sbd                                 Shape Base Distance\n"
+  "\n"
+  "    *** Elastic:\n"
   "    -d:dtw:<float e>:<int w>               DTW with cost function exponent 'e' and warping window 'w'.\n"
   "                                           'w'<0 means no window\n"
   "    -d:adtw:<float e>:<float omega>        ADTW with cost function exponent 'e' and penalty 'omega'\n"
@@ -199,6 +204,29 @@ bool d_lorentzian(std::vector<std::string> const& v, Config& conf) {
 
 // --- --- --- Sliding
 
+/// SBD -d:sbd
+bool d_sbd(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+  if (v[0]=="sbd") {
+    bool ok = v.size()==1;
+    if (ok) {
+      // Extract params
+      // none
+      // Create the distance
+      conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
+        return distance::SBD(A, B);
+      };
+      // Record params
+      // none
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "SBD parameter error"); }
+    return true;
+  }
+  return false;
+}
+
 // --- --- --- Elastic
 
 /// DTW -d:dtw:<e>:<w>
@@ -344,6 +372,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   if (d_minkowski(v, conf)) {}
   else if (d_lorentzian(v, conf)) {}
     // Sliding
+  else if (d_sbd(v, conf)) {}
     // Elastic
   else if (d_dtw(v, conf)) {}
   else if (d_adtw(v, conf)) {}

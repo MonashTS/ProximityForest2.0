@@ -47,4 +47,11 @@ namespace tempo::distance {
     return ((F)1) - cross_correlation::max_ncc_c(A, B);
   }
 
+  /// SBD on TSeries (univariate only)
+  inline F SBD(TSeries const& A, TSeries const& B) {
+    arma::Row<F> a = A.rowvec();
+    arma::Row<F> b = B.rowvec();
+    return SBD(a, b);
+  }
+
 } // End of namespace tempo::distance

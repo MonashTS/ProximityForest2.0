@@ -1,12 +1,11 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/tseries.hpp>
+#include <tempo/dataset/tseries.hpp>
 
 namespace tempo::distance {
 
   /// Manhattan metric on arma row vector
-  template<Float F>
   F manhattan(arma::Row<F> const& A, arma::Row<F> const& B) {
     return arma::sum(arma::abs(A - B));
   }
@@ -15,7 +14,7 @@ namespace tempo::distance {
   inline F manhattan(TSeries const& A, TSeries const& B) {
     arma::Row<F> a = A.rowvec();
     arma::Row<F> b = B.rowvec();
-    return manhattan<F>(a, b);
+    return manhattan(a, b);
   }
 
 }  // End of namespace tempo::distance

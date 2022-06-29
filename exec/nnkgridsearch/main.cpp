@@ -59,7 +59,6 @@ struct ResultTable {
       // Create the cells of the table (list of nearest neighbours grouped by increasing distances)
       Json::Value columns = Json::arrayValue;
       for (const auto& cell : table[i]) {
-        assert(cell.idxs.size()==cell.classes.size());
         // For each cell, collect all candidates and associated label
         Json::Value candidates = Json::arrayValue;
         Json::Value labels = Json::arrayValue;
@@ -368,6 +367,7 @@ int main(int argc, char **argv) {
     p.execute(conf.nbthreads, task, 0, test_top, 1);
   }
 
+  /*
   std::cout << std::endl << "TRAIN TABLE";
   for (size_t i = 0; i<train_table.table.size(); ++i) {
     std::cout << std::endl << i << " cl " << conf.train_split.label(i).value();
@@ -380,7 +380,6 @@ int main(int argc, char **argv) {
   }
   std::cout << std::endl << std::endl;
 
-  /*
 
   std::cout << "TEST TABLE";
   for (size_t i = 0; i<test_table.table.size(); ++i) {

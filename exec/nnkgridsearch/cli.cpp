@@ -1,6 +1,5 @@
 
 #include "cli.hpp"
-#include "tempo/distance/elastic/adtw.hpp"
 
 std::string usage =
   "Time Series NNK Classification - demonstration application\n"
@@ -15,8 +14,11 @@ std::string usage =
   "  -n:<name of the dataset>              e.g. '-n:Adiac' Must correspond to the dataset's folder name\n"
   "  -d:<distance>\n"
   "    -d:modminkowski:<float e>  Modified Minkowski distance with exponent 'e' (does not take the e-th root of the result)\n"
-  "    -d:dtw:<float e>:<int w>   DTW with cost function exponent e and warping window w. w<0 means no window\n"
-  "    -d:adtw:<e>:<omega>        ADTW with cost function exponent e and a penalty omega\n"
+  "    -d:dtw:<float e>:<int w>               DTW with cost function exponent 'e' and warping window 'w'.\n"
+  "                                           'w'<0 means no window\n"
+  "    -d:adtw:<float e>:<float omega>        ADTW with cost function exponent 'e' and penalty 'omega'\n"
+  "    -d:erp:<float e>:<float gv>:<int w>    ERP with cost function exponent 'e', gap value 'gv' and warping window 'w'\n"
+  "                                           'w'<0 means no window\n"
   "Optional arguments [with their default values]:\n"
   "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
   "  -k:<int n>      Number of neighbours to search [n = 1])\n"
@@ -150,12 +152,13 @@ bool d_minkowski(std::vector<std::string> const& v, Config& conf) {
       auto oe = tempo::reader::as_double(v[1]);
       ok = oe.has_value();
       if (ok) {
-        // Create the distance
+        // Extract params
         double param_cf_exponent = oe.value();
+        // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
           return distance::minkowski(A, B, param_cf_exponent);
         };
-        // Record param
+        // Record params
         conf.param_cf_exponent = {param_cf_exponent};
       }
     }
@@ -178,10 +181,11 @@ bool d_dtw(std::vector<std::string> const& v, Config& conf) {
       optional<long> ow = tempo::reader::as_int(v[2]);
       ok = oe.has_value()&&ow.has_value();
       if (ok) {
-        // Create the distance
+        // Extract params
         double param_cf_exponent = oe.value();
         size_t param_window = utils::NO_WINDOW;
         if (ow.value()>=0) { param_window = ow.value(); }
+        // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
           return distance::dtw(
             A.size(),
@@ -191,7 +195,7 @@ bool d_dtw(std::vector<std::string> const& v, Config& conf) {
             ub
           );
         };
-        // Record param
+        // Record params
         conf.param_cf_exponent = {param_cf_exponent};
         conf.param_window = {-1};
         if (ow.value()>=0) { conf.param_window = ow.value(); }
@@ -217,9 +221,10 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
       auto oo = tempo::reader::as_double(v[2]);
       ok = oe.has_value()&&oo.has_value();
       if (ok) {
-        // Create the distance
+        // Extract params
         double param_cf_exponent = oe.value();
         double param_omega = oo.value();
+        // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
           return distance::adtw(
             A.size(),
@@ -229,7 +234,7 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
             ub
           );
         };
-        // Record param
+        // Record params
         conf.param_cf_exponent = {param_cf_exponent};
         conf.param_omega = param_omega;
       }
@@ -239,6 +244,51 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
     return true;
   }
   return false;
+}
+
+/// ERP -d:erp:<e>:<gv>:<w>
+bool d_erp(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+
+  if (v[0]=="erp") {
+    bool ok = v.size()==4;
+    if (ok) {
+      optional<double> oe = tempo::reader::as_double(v[1]);
+      optional<double> ogv = tempo::reader::as_double(v[2]);
+      optional<long> ow = tempo::reader::as_int(v[3]);
+      ok = oe.has_value()&&ogv.has_value()&&ow.has_value();
+      if (ok) {
+        // Extract params
+        double param_cf_exponent = oe.value();
+        double param_gv = ogv.value();
+        size_t param_window = utils::NO_WINDOW;
+        if (ow.value()>=0) { param_window = ow.value(); }
+        // Create the distance
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::erp(
+            A.size(),
+            B.size(),
+            tempo::distance::univariate::adegv<TSeries>(param_cf_exponent)(A, param_gv),
+            tempo::distance::univariate::adegv<TSeries>(param_cf_exponent)(B, param_gv),
+            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
+            param_window,
+            ub
+          );
+        };
+        // Record params
+        conf.param_cf_exponent = {param_cf_exponent};
+        conf.param_gap_value = {param_gv};
+        conf.param_window = {-1};
+        if (ow.value()>=0) { conf.param_window = ow.value(); }
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "ADTW parameter error"); }
+    return true;
+  }
+  return false;
+
 }
 
 /// Command line parsing: special helper for the configuration of the distance
@@ -259,6 +309,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   if (d_minkowski(v, conf)) {}
   else if (d_dtw(v, conf)) {}
   else if (d_adtw(v, conf)) {}
+  else if (d_erp(v, conf)) {}
     // --- --- --- --- --- ---
     // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }

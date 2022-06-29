@@ -35,6 +35,7 @@ struct Config {
   std::optional<long> param_window{};
   std::optional<double> param_cf_exponent{};
   std::optional<double> param_omega{};
+  std::optional<double> param_gap_value{};
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // To Json
@@ -78,6 +79,7 @@ struct Config {
       if (param_window) { j["window"] = param_window.value(); }
       if (param_cf_exponent) { j["cf_exponent"] = param_cf_exponent.value(); }
       if (param_omega) { j["omega"] = param_omega.value(); }
+      if (param_gap_value) { j["gap_value"] = param_gap_value.value(); }
       //
       jv["distance"] = std::move(j);
     }

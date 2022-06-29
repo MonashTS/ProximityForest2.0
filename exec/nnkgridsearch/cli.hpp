@@ -19,14 +19,15 @@ struct Config {
   // Loaded dataset + normalisation
   tempo::DTS loaded_train_split;
   tempo::DTS loaded_test_split;
-  std::string normalisation_name{"default"};
-
+  std::string normalisation_name{"null"};
+  std::optional<double> norm_min_range;
+  std::optional<double> norm_max_range;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // TRANSFORM
   tempo::DTS train_split;
   tempo::DTS test_split;
-  std::string transform_name;
+  std::string transform_name{"null"};
   std::optional<int> param_derivative_degree;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -59,9 +60,11 @@ struct Config {
     {
       jv["train"] = train_split.header().to_json();
       jv["test"] = test_split.header().to_json();
+      // Normalisation
       Json::Value j;
-      //
-      j["name"] = transform_name;
+      j["name"] = normalisation_name;
+      if (norm_min_range) { j["min_range"] = norm_min_range.value(); }
+      if (norm_max_range) { j["max_range"] = norm_max_range.value(); }
       //
       jv["normalisation"] = std::move(j);
     }

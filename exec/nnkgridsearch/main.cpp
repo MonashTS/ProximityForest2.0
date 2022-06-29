@@ -369,33 +369,6 @@ int main(int argc, char **argv) {
     p.execute(conf.nbthreads, task, 0, test_top, 1);
   }
 
-  /*
-  std::cout << std::endl << "TRAIN TABLE";
-  for (size_t i = 0; i<train_table.table.size(); ++i) {
-    std::cout << std::endl << i << " cl " << conf.train_split.label(i).value();
-
-    for (const auto& cell : train_table.table[i]) {
-      assert(cell.idxs.size()==cell.classes.size());
-      std::cout << " | " << cell.distance << " ";
-      for (auto [idx, label] : cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
-    }
-  }
-  std::cout << std::endl << std::endl;
-
-
-  std::cout << "TEST TABLE";
-  for (size_t i = 0; i<test_table.table.size(); ++i) {
-    std::cout << std::endl << i << " cl " << conf.test_split.label(i).value();
-
-    for (const auto& cell : test_table.table[i]) {
-      assert(cell.idxs.size()==cell.classes.size());
-      std::cout << " | " << cell.distance << " ";
-      for (auto [idx, label]: cell.idx_label_v) { std::cout << "(" << idx << ", " << label << ") "; }
-    }
-  }
-  std::cout << std::endl;
-   */
-
   // --- --- --- --- --- ---
   // JSON Tables
   auto get_train_label = [&](int i) -> tempo::EL { return conf.train_split.label(i).value(); };
@@ -403,7 +376,6 @@ int main(int argc, char **argv) {
 
   auto get_test_label = [&](int i) -> tempo::EL { return conf.test_split.label(i).value(); };
   jv["test_table"] = test_table.to_json(get_test_label);
-
 
   //--- --- --- --- --- ---
   // Accuracy

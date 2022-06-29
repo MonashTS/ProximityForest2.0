@@ -49,13 +49,14 @@ namespace tempo {
 
       // Statistics (matrix, 1==along the row)
       // Doing the statistics along the rows restul in a column vector, with statistics per dimension.
-      arma::Col<F> minv = arma::min(_matrix, 1);
-      arma::Col<F> maxv = arma::max(_matrix, 1);
-      arma::Col<F> mean = arma::mean(_matrix, 1);
-      arma::Col<F> median = arma::median(_matrix, 1);
+      _min = arma::min(_matrix, 1);
+      _max = arma::max(_matrix, 1);
+      _mean = arma::mean(_matrix, 1);
+      _median = arma::median(_matrix, 1);
       // Note:  Second argument is norm_type = 0: performs normalisation using N-1 (signal sampled in the "population")
       //        Third argument means "along the row"
-      arma::Col<F> stddev = arma::stddev(_matrix, 0, 1);
+      _stddev = arma::stddev(_matrix, 0, 1);
+      //
     }
 
   public:
@@ -200,7 +201,10 @@ namespace tempo {
     [[nodiscard]] inline const arma::Col<F>& max() const { return _max; };
 
     /// Mean value per dimension
-    [[nodiscard]] inline const arma::Col<F>& mean() const { return _mean; };
+    [[nodiscard]] inline const arma::Col<F>& mean() const {
+      assert(_mean.size() > 0);
+      return _mean;
+    };
 
     /// Median value per dimension
     [[nodiscard]] inline const arma::Col<F>& median() const { return _median; };

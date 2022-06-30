@@ -18,7 +18,11 @@
 
 #include <tempo/distance/elastic/dtw.hpp>
 #include "tempo/distance/elastic/adtw.hpp"
+#include "tempo/distance/elastic/wdtw.hpp"
 #include "tempo/distance/elastic/erp.hpp"
+#include "tempo/distance/elastic/lcss.hpp"
+#include "tempo/distance/elastic/msm.hpp"
+#include "tempo/distance/elastic/twe.hpp"
 
 
 /// Alias type for distance functions

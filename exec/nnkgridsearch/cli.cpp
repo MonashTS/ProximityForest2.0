@@ -23,6 +23,7 @@ std::string usage =
   "    -d:dtw:<float e>:<int w>               DTW with cost function exponent 'e' and warping window 'w'.\n"
   "                                           'w'<0 means no window\n"
   "    -d:adtw:<float e>:<float omega>        ADTW with cost function exponent 'e' and penalty 'omega'\n"
+  "    -d:wdtw:<flaot e>:<float g>            WDTW with cost function exponent 'e' and weight factor 'g'\n"
   "    -d:erp:<float e>:<float gv>:<int w>    ERP with cost function exponent 'e', gap value 'gv' and warping window 'w'\n"
   "                                           'w'<0 means no window\n"
   "Optional arguments [with their default values]:\n"
@@ -487,7 +488,49 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
-/// WDTW -d:wdtw
+/// WDTW -d:wdtw:<e>:<g>
+bool d_wdtw(std::vector<std::string> const& v, Config& conf) {
+
+  using namespace std;
+  using namespace tempo;
+
+  if (v[0]=="wdtw") {
+    bool ok = v.size()==3;
+    if (ok) {
+      auto oe = reader::as_double(v[1]);
+      auto og = reader::as_double(v[2]);
+      ok = oe.has_value()&&og.has_value();
+      if (ok) {
+        // Extract params
+        double param_cf_exponent = oe.value();
+        double param_g = og.value();
+        // Create the distance
+        const auto& header_train = conf.loaded_train_split.header();
+        const auto& header_test = conf.loaded_test_split.header();
+        size_t length = std::max(header_train.length_max(), header_test.length_max());
+        std::vector<F> weights = distance::generate_weights(param_g, length, distance::WDTW_MAX_WEIGHT);
+        //
+        conf.dist_fun = [=, w = std::move(weights)](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::wdtw(
+            A.size(),
+            B.size(),
+            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
+            w,
+            ub
+          );
+        };
+        // Record params
+        conf.param_cf_exponent = param_cf_exponent;
+        conf.param_g = param_g;
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "WDTW parameter error"); }
+    return true;
+  }
+  return false;
+
+}
 
 /// ERP -d:erp:<e>:<gv>:<w>
 bool d_erp(std::vector<std::string> const& v, Config& conf) {
@@ -534,11 +577,20 @@ bool d_erp(std::vector<std::string> const& v, Config& conf) {
 
 }
 
-/// LCSS
+/// LCSS -d:lcss:<epsilon>:<w>
+bool d_lcss(std::vector<std::string> const& v, Config& conf) {
 
-/// MSM
+}
 
-/// TWE
+/// MSM -d:msm:<?>:<c>
+bool d_msm(std::vector<std::string> const& v, Config& conf) {
+
+}
+
+/// TWE -d:twe:<e>:<lambda>:<nu>
+bool d_twe(std::vector<std::string> const& v, Config& conf) {
+
+}
 
 
 // --- --- --- All distances
@@ -566,6 +618,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
     // Elastic
   else if (d_dtw(v, conf)) {}
   else if (d_adtw(v, conf)) {}
+  else if (d_wdtw(v, conf)) {}
   else if (d_erp(v, conf)) {}
     // --- --- --- --- --- ---
     // Unknown distance

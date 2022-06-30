@@ -228,7 +228,6 @@ namespace tempo::distance {
    * @param length2     Length of the second series.
    * @param dist        Distance function of type FDist
    * @param nu          Stiffness parameter
-   * @param lambda      Penalty parameter
    * @param ub          Upper bound. Attempt to prune computation of alignments with cost > cutoff.
    *                    May lead to early abandoning.
    *                    If not provided, defaults to PINF,

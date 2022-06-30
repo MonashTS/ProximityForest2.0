@@ -28,6 +28,7 @@ std::string usage =
   "                                           'w'<0 means no window\n"
   "    -d:lcss:<float epsilon>:<int w>        LCSS with margin 'epsilon' and warping window 'w'\n"
   "    -d:msm:<float c>                       MSM with cost 'c'\n"
+  "    -d:twe:<float lambda>:<float nu>       TWE with penalty 'lambda' and stiffness 'nu'\n"
   "Optional arguments [with their default values]:\n"
   "  Normalisation:  applied before the transformation\n"
   "  -n:<normalisation>\n"
@@ -645,8 +646,35 @@ bool d_msm(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
-/// TWE -d:twe:<e>:<lambda>:<nu>
+/// TWE -d:twe:<lambda>:<nu>
 bool d_twe(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+
+  if (v[0]=="twe") {
+    bool ok = v.size()==3;
+    if (ok) {
+      auto ol = tempo::reader::as_double(v[1]);
+      auto on = tempo::reader::as_double(v[2]);
+      ok = ol.has_value()&&on.has_value();
+      if (ok) {
+        // Extract params
+        double param_lambda = ol.value();
+        double param_nu = on.value();
+        // Create the distance
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::univariate::twe(A, B, param_nu, param_lambda, ub);
+        };
+        // Record params
+        conf.param_lambda = param_lambda;
+        conf.param_nu = param_nu;
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "TWE parameter error"); }
+    return true;
+  }
+  return false;
 
 }
 
@@ -680,6 +708,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   else if (d_erp(v, conf)) {}
   else if (d_lcss(v, conf)) {}
   else if (d_msm(v, conf)) {}
+  else if (d_twe(v, conf)) {}
     // --- --- --- --- --- ---
     // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }

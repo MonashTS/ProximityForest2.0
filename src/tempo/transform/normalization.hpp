@@ -61,6 +61,21 @@ namespace tempo::transform {
   /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
   TSeries minmax(TSeries const& A, F range_min = 0, F range_max = 1);
 
+  /// Normalisation PercentileMinMax for arma::Row vector
+  /// By default, normalise in the 0-1 range.
+  /// minp = p percentile
+  /// maxp = 100-p percentile
+  ///
+  ///             (A - minp) * (range_max - range_min)
+  /// range_min + --------------------------------------
+  ///                    maxp - minp
+  ///
+  /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
+  /// 0<=p<50
+  arma::Row<F> percentile_minmax(arma::Row<F> const& A, size_t p, F range_min, F range_max);
+
+  TSeries percentile_minmax(TSeries const& A, size_t p, F range_min, F range_max);
+
   /// Normalisation MeanNorm for arma::Row vector
   ///
   ///    A - average(A)

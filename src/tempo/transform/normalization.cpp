@@ -17,6 +17,33 @@ namespace tempo::transform {
     return _minmax(A, minv, maxv, range_min, range_max);
   }
 
+  /// Normalisation PercentileMinMax for arma::Row vector
+  /// By default, normalise in the 0-1 range.
+  /// minp = p percentile
+  /// maxp = 100-p percentile
+  ///
+  ///             (A - minp) * (range_max - range_min)
+  /// range_min + --------------------------------------
+  ///                    maxp - minp
+  ///
+  /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
+  /// 0<=p<50
+  arma::Row<F> percentile_minmax(arma::Row<F> const& A, size_t p, F range_min, F range_max) {
+    assert(p>=0&&p<50);
+    arma::Row<F> B = arma::sort(A);
+    size_t s = A.size();
+    size_t minp = (p*s)/100;
+    size_t maxp = ((100-p)*s)/100;
+    F minv = B[minp];
+    F maxv = B[maxp];
+    return _minmax(A, minv, maxv, range_min, range_max);
+  }
+
+  TSeries percentile_minmax(TSeries const& A, size_t p, F range_min, F range_max) {
+    arma::Row<F> v = percentile_minmax(A.rowvec(), p, range_min, range_max);
+    return TSeries::mk_from(A, std::move(v));
+  }
+
   /// Normalisation MinMax for univariate TSeries
   /// By default, normalise in the 0-1 range.
   ///

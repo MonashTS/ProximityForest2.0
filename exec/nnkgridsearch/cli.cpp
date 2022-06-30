@@ -129,7 +129,7 @@ bool n_meannorm(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
-/// MinMax normalisation -n:minmax
+/// MinMax normalisation -n:minmax:[min:max]
 bool n_minmax(std::vector<std::string> const& v, Config& conf) {
   using namespace tempo;
   using namespace std;

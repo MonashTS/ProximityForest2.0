@@ -26,6 +26,7 @@ std::string usage =
   "    -d:wdtw:<flaot e>:<float g>            WDTW with cost function exponent 'e' and weight factor 'g'\n"
   "    -d:erp:<float e>:<float gv>:<int w>    ERP with cost function exponent 'e', gap value 'gv' and warping window 'w'\n"
   "                                           'w'<0 means no window\n"
+  "    -d:lcss:<float epsilon>:<int w>        LCSS with margin 'epsilon' and warping window 'w'\n"
   "Optional arguments [with their default values]:\n"
   "  Normalisation:  applied before the transformation\n"
   "  -n:<normalisation>\n"
@@ -490,7 +491,6 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
 
 /// WDTW -d:wdtw:<e>:<g>
 bool d_wdtw(std::vector<std::string> const& v, Config& conf) {
-
   using namespace std;
   using namespace tempo;
 
@@ -579,7 +579,41 @@ bool d_erp(std::vector<std::string> const& v, Config& conf) {
 
 /// LCSS -d:lcss:<epsilon>:<w>
 bool d_lcss(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
 
+  if (v[0]=="lcss") {
+    bool ok = v.size()==3;
+    if (ok) {
+      auto oe = reader::as_double(v[1]);
+      auto ow = reader::as_long(v[2]);
+      ok = oe.has_value()&&ow.has_value();
+      if (ok) {
+        // Extract params
+        double param_epsilon = oe.value();
+        size_t param_window = utils::NO_WINDOW;
+        if (ow.value()>=0) { param_window = ow.value(); }
+        // Create the distance
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::lcss(
+            A.size(),
+            B.size(),
+            distance::univariate::ad1<TSeries>(A, B),
+            param_window,
+            param_epsilon,
+            ub
+          );
+        };
+        // Record params
+        conf.param_epsilon = param_epsilon;
+        conf.param_window = param_window;
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "LCSS parameter error"); }
+    return true;
+  }
+  return false;
 }
 
 /// MSM -d:msm:<?>:<c>
@@ -620,6 +654,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   else if (d_adtw(v, conf)) {}
   else if (d_wdtw(v, conf)) {}
   else if (d_erp(v, conf)) {}
+  else if (d_lcss(v, conf)) {}
     // --- --- --- --- --- ---
     // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }

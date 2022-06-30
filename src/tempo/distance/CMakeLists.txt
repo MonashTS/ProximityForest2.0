@@ -1,6 +1,6 @@
 target_sources(libtempo
         INTERFACE
-        cost_function.hpp
+        helpers.hpp
         elastic/dtw.hpp
         elastic/adtw.hpp
         elastic/erp.hpp

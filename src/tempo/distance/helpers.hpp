@@ -54,4 +54,22 @@ namespace tempo::distance {
     }
   }
 
+  namespace WR {
+
+    /// Returns both a cost and the window validity - for distance parameterized with a warping window.
+    /// A cost of +Infinity means "early abandoned"
+    /// Windows validity: given a distance (such as DTW, ERP and LCSS),
+    /// represents the smallest window giving the same results for all other parameters being equals.
+    struct WarpingResult {
+      F cost;
+      size_t window_validity;
+
+      inline WarpingResult() : cost(tempo::utils::PINF), window_validity(tempo::utils::NO_WINDOW) {}
+
+      inline WarpingResult(F c, size_t wv) : cost(c), window_validity(wv) {}
+
+    };
+
+  } // End of namespace WR
+
 } // Enf of namespace tempo::distance

@@ -67,6 +67,10 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
 
       const auto dtw_v = dtw(s.size(), s.size(), dist(s, s), NO_WINDOW, PINF);
       REQUIRE(dtw_v==0);
+
+      const auto dtw_wr = WR::dtw(s.size(), s.size(), dist(s, s), NO_WINDOW, PINF);
+      REQUIRE(dtw_wr.cost==0);
+      REQUIRE(dtw_wr.window_validity==0);
     }
   }
 
@@ -80,6 +84,10 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
 
       const auto dtw_tempo_v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, PINF);
       REQUIRE(dtw_ref_v==dtw_tempo_v);
+
+      const auto dtw_tempo_wr = WR::dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, PINF);
+      REQUIRE(dtw_ref_v == dtw_tempo_wr.cost);
+      REQUIRE(dtw_tempo_wr.window_validity<NO_WINDOW);
     }
   }
 
@@ -96,6 +104,9 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
       // EAP Variables
       size_t idx_tempo = 0;
       double bsf_tempo = PINF;
+      // EAP Variables WR
+      size_t idx_tempo_wr = 0;
+      double bsf_tempo_wr = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -127,6 +138,15 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
         }
 
         REQUIRE(idx_ref==idx_tempo);
+
+        // --- --- --- --- --- --- --- --- --- --- --- ---
+        const auto wr_tempo = WR::dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo_wr).cost;
+        if (wr_tempo<bsf_tempo_wr) {
+          idx_tempo_wr = j;
+          bsf_tempo_wr = wr_tempo;
+        }
+
+        REQUIRE(idx_ref==idx_tempo_wr);
       }
     }// End query loop
   }// End section
@@ -145,6 +165,10 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
 
       const auto dtw_v = dtw(s.size(), s.size(), dist(s, s), NO_WINDOW, PINF);
       REQUIRE(dtw_v==0);
+
+      const auto dtw_wr = WR::dtw(s.size(), s.size(), dist(s, s), NO_WINDOW, PINF);
+      REQUIRE(dtw_wr.cost==0);
+      REQUIRE(dtw_wr.window_validity==0);
     }
   }
 
@@ -158,6 +182,9 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
 
       const auto dtw_tempo_v = dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, PINF);
       REQUIRE(dtw_ref_v==dtw_tempo_v);
+
+      const auto dtw_tempo_wr = WR::dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, PINF).cost;
+      REQUIRE(dtw_ref_v==dtw_tempo_wr);
     }
   }
 
@@ -174,6 +201,9 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
       // EAP Variables
       size_t idx_tempo = 0;
       double bsf_tempo = PINF;
+      // EAP Variables WR
+      size_t idx_tempo_wr = 0;
+      double bsf_tempo_wr = PINF;
 
       // NN1 loop
       for (size_t j = 0; j<nbitems; j += 5) {
@@ -205,6 +235,15 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
         }
 
         REQUIRE(idx_ref==idx_tempo);
+
+        // --- --- --- --- --- --- --- --- --- --- --- ---
+        const auto wr_tempo = WR::dtw(s1.size(), s2.size(), dist(s1, s2), NO_WINDOW, bsf_tempo_wr).cost;
+        if (wr_tempo<bsf_tempo_wr) {
+          idx_tempo_wr = j;
+          bsf_tempo_wr = wr_tempo;
+        }
+
+        REQUIRE(idx_ref==idx_tempo_wr);
       }
     }// End query loop
   }// End section

@@ -303,7 +303,14 @@ namespace tempo::distance {
     /// Default MSM using univariate ad1 - TSLike overload
     template<TSLike T>
     [[nodiscard]] inline F msm(const T& lines, const T& cols, const F c, F ub) {
-      return tempo::distance::msm(lines, cols, msm_lines_ad1<T>, msm_cols_ad1<T>, ad1<F, T>, c, ub);
+      return tempo::distance::msm(
+        lines.length(),
+        cols.length(),
+        msm_lines_ad1<T>(lines, cols, c),
+        msm_cols_ad1<T>(lines, cols, c),
+        ad1<T>(lines, cols),
+        ub
+      );
     }
 
     /// Default MSM using univariate ad1 - vector overload

@@ -27,6 +27,7 @@ std::string usage =
   "    -d:erp:<float e>:<float gv>:<int w>    ERP with cost function exponent 'e', gap value 'gv' and warping window 'w'\n"
   "                                           'w'<0 means no window\n"
   "    -d:lcss:<float epsilon>:<int w>        LCSS with margin 'epsilon' and warping window 'w'\n"
+  "    -d:msm:<float c>                       MSM with cost 'c'\n"
   "Optional arguments [with their default values]:\n"
   "  Normalisation:  applied before the transformation\n"
   "  -n:<normalisation>\n"
@@ -616,9 +617,32 @@ bool d_lcss(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
-/// MSM -d:msm:<?>:<c>
+/// MSM -d:msm:<c>
 bool d_msm(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
 
+  if (v[0]=="msm") {
+    bool ok = v.size()==2;
+    if (ok) {
+      auto oc = reader::as_double(v[1]);
+      ok = oc.has_value();
+      if (ok) {
+        // Extract params
+        double param_c = oc.value();
+        // Create the distance
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::univariate::msm<TSeries>(A, B, param_c, ub);
+        };
+        // Record params
+        conf.param_c = param_c;
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "MSM parameter error"); }
+    return true;
+  }
+  return false;
 }
 
 /// TWE -d:twe:<e>:<lambda>:<nu>
@@ -655,6 +679,7 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   else if (d_wdtw(v, conf)) {}
   else if (d_erp(v, conf)) {}
   else if (d_lcss(v, conf)) {}
+  else if (d_msm(v, conf)) {}
     // --- --- --- --- --- ---
     // Unknown distance
   else { do_exit(1, "Unknown distance '" + v[0] + "'"); }

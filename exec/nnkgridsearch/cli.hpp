@@ -36,11 +36,12 @@ struct Config {
   std::string dist_name;
   distfun_t dist_fun;
   std::optional<long> param_window{};             // DTW ERP LCSS
-  std::optional<double> param_cf_exponent{};      // All but LCSS
+  std::optional<double> param_cf_exponent{};      // All but LCSS and MSM
   std::optional<double> param_omega{};            // ADTW
   std::optional<double> param_gap_value{};        // ERP
   std::optional<double> param_g{};                // WDTW
   std::optional<double> param_epsilon{};          // LCSS
+  std::optional<double> param_c{};                // MSM
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // To Json
@@ -94,6 +95,7 @@ struct Config {
       if (param_gap_value) { j["gap_value"] = param_gap_value.value(); }
       if (param_g) { j["g"] = param_g.value(); }
       if (param_epsilon) { j["epsilon"] = param_epsilon.value(); }
+      if (param_c) { j["c"] = param_c.value(); }
       //
       jv["distance"] = std::move(j);
     }

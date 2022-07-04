@@ -117,53 +117,54 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- ---
   // Test accuracy
   size_t test_nb_correct = 0;
-  {
-    // --- --- ---
-    // Progress reporting
-    utils::ProgressMonitor pm(test_top);    // How many to do, both train and test accuracy
-    size_t nb_done = 0;                      // How many done up to "now"
+  auto now = utils::now();
 
-    // --- --- ---
-    // Accuracy variables
-    // Multithreading control
-    utils::ParTasks ptasks;
-    std::mutex mutex;
+  // --- --- ---
+  // Progress reporting
+  utils::ProgressMonitor pm(test_top);    // How many to do, both train and test accuracy
+  size_t nb_done = 0;                      // How many done up to "now"
 
-    auto nn1_test_task = [&](size_t test_idx) mutable {
-      // --- Test exemplar
-      TSeries const& self = conf.test_split[test_idx];
-      // --- 1NN bests with tie management
-      double bsf = tempo::utils::PINF;
-      std::set<tempo::EL> labels{};
-      // --- 1NN Loop
-      for (size_t train_idx{0}; train_idx<train_top; train_idx++) {
-        TSeries const& candidate = conf.train_split[train_idx];
-        double d = conf.dist_fun(self, candidate, bsf);
-        if (d<bsf) { // Best: clear labels and insert new
-          labels.clear();
-          labels.insert(train_header.label(train_idx).value());
-          bsf = d;
-        } else if (d==bsf) { // Same: add label in
-          labels.insert(train_header.label(train_idx).value());
-        }
+  // --- --- ---
+  // Accuracy variables
+  // Multithreading control
+  utils::ParTasks ptasks;
+  std::mutex mutex;
+
+  auto nn1_test_task = [&](size_t test_idx) mutable {
+    // --- Test exemplar
+    TSeries const& self = conf.test_split[test_idx];
+    // --- 1NN bests with tie management
+    double bsf = tempo::utils::PINF;
+    std::set<tempo::EL> labels{};
+    // --- 1NN Loop
+    for (size_t train_idx{0}; train_idx<train_top; train_idx++) {
+      TSeries const& candidate = conf.train_split[train_idx];
+      double d = conf.dist_fun(self, candidate, bsf);
+      if (d<bsf) { // Best: clear labels and insert new
+        labels.clear();
+        labels.insert(train_header.label(train_idx).value());
+        bsf = d;
+      } else if (d==bsf) { // Same: add label in
+        labels.insert(train_header.label(train_idx).value());
       }
-      // --- Update accuracy
-      {
-        std::lock_guard lock(mutex);
-        tempo::EL result=-1;
-        std::sample(labels.begin(), labels.end(), &result, 1, *conf.pprng);
-        assert(result!=-1);
-        if (result==test_header.label(test_idx).value()) { ++test_nb_correct; }
-        nb_done++;
-        pm.print_progress(std::cout, nb_done);
-      }
-    };
+    }
+    // --- Update accuracy
+    {
+      std::lock_guard lock(mutex);
+      tempo::EL result = -1;
+      std::sample(labels.begin(), labels.end(), &result, 1, *conf.pprng);
+      assert(result!=-1);
+      if (result==test_header.label(test_idx).value()) { ++test_nb_correct; }
+      nb_done++;
+      pm.print_progress(std::cout, nb_done);
+    }
+  };
 
-    // Create the tasks per tree. Note that we clone the state.
-    tempo::utils::ParTasks p;
-    p.execute(conf.nbthreads, nn1_test_task, 0, test_top, 1);
+  // Create the tasks per tree. Note that we clone the state.
+  tempo::utils::ParTasks p;
+  p.execute(conf.nbthreads, nn1_test_task, 0, test_top, 1);
 
-  } // End of test accuracy
+  auto elapsed = utils::now() - now;
 
   // --- --- --- --- --- ---
   // Output
@@ -173,6 +174,8 @@ int main(int argc, char **argv) {
     Json::Value j;
     j["nb_correct"] = test_nb_correct;
     j["accuracy"] = (double)test_nb_correct/(double)(test_top);
+    j["time_ns"] = elapsed.count();
+    j["time_human"] = utils::as_string(elapsed);
     jv["01_loss_test"] = j;
   }
 

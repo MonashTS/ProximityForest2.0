@@ -7,9 +7,8 @@
 namespace fs = std::filesystem;
 
 struct config {
-  // Modified Minkowski
-  int mm_nbsample{0};
-  std::vector<double> mm_exponents{};
+  int nbsample{0};
+  std::vector<double> exponents{};
 };
 
 // Given a UCR dataset in ts format, compute some information
@@ -33,23 +32,24 @@ Json::Value compute_info(
     v["stats"] = std::move(statsv);
   }
   // --- Sample
-  if (conf.mm_nbsample>0) {
+  if (conf.nbsample>0) {
     Json::Value mmv;
     if (header.has_missing_value()) { mmv = Json::Value("error_missing_value"); }
     else if (header.nb_dimensions()!=1) { mmv = Json::Value("error_multivariate"); }
     else {
       mmv["results"] = Json::arrayValue;
-      for (const double mm_exponent : conf.mm_exponents) {
+      for (const double exponent : conf.exponents) {
         Json::Value emmv;
-        emmv["sample_size"] = conf.mm_nbsample;
-        emmv["minkowki_exponent"] = mm_exponent;
+        emmv["sample_size"] = conf.nbsample;
+        emmv["exponent"] = exponent;
+        auto cf = tempo::distance::univariate::ade<tempo::TSeries>(exponent);
         utils::StddevWelford welford;
         size_t j = 0;
         std::uniform_int_distribution<> distrib(0, (int)dts.size() - 1);
-        for (int i = 0; i<conf.mm_nbsample; ++i) {
+        for (int i = 0; i<conf.nbsample; ++i) {
           const auto& q = dts[distrib(prng)];
           const auto& s = dts[distrib(prng)];
-          const auto& cost = tempo::distance::minkowski(q, s, mm_exponent);
+          const auto& cost = tempo::distance::directa(q, s, cf, tempo::utils::PINF);
           welford.update(cost);
         }
         emmv["mean"] = welford.get_mean();
@@ -57,7 +57,7 @@ Json::Value compute_info(
         mmv["results"].append(std::move(emmv));
       }
     }
-    v["modminkowki_sample"] = std::move(mmv);
+    v["direct_alignment_sample"] = std::move(mmv);
   }
   // --- Check for duplicated series
   {
@@ -118,24 +118,24 @@ int main(int argc, char **argv) {
     if (p_out) { outpath = {fs::path{p_out.value()}}; }
   }
 
-  // Sample with Modified Minkowsky
+  // Sample with direct alignment
   {
-    auto parg_dist = tempo::scli::get_parameter<string>(args, "-modminkowski", tempo::scli::extract_string);
+    auto parg_dist = tempo::scli::get_parameter<string>(args, "-sample", tempo::scli::extract_string);
     if (parg_dist) {
       auto v = tempo::reader::split(parg_dist.value(), ':');
       bool ok = v.size()>=2;
       if (ok) {
         auto on = tempo::reader::as_int(v[0]);
         ok = (bool)on;
-        if (ok) { conf.mm_nbsample = on.value(); }
+        if (ok) { conf.nbsample = on.value(); }
         //
         for (size_t i = 1; ok&&i<v.size(); ++i) {
           auto oe = tempo::reader::as_double(v[i]);
           ok = (bool)oe;
-          if (ok) { conf.mm_exponents.push_back(oe.value()); }
+          if (ok) { conf.exponents.push_back(oe.value()); }
         }
       }
-      if (!ok) { do_exit(1, "specify <n>:<e0>:...:<en> after '-modminkowski'"); }
+      if (!ok) { do_exit(1, "specify <n>:<e0>:...:<en> after '-sample'"); }
     }
   }
 
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   // Read the dataset TRAIN.ts and TEST.ts files
   fs::path dspath = UCRPATH/dsname;
 
-  DTS train_split = std::get<1>(reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train"));
+  DTS train_split = std::get<1>(tempo::reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train"));
   DatasetHeader const& train_header = train_split.header();
   size_t train_top = train_header.size();
 

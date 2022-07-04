@@ -111,119 +111,156 @@ int main(int argc, char **argv) {
   const auto cf = tempo::distance::univariate::ade<tempo::TSeries>(ge);
 
   // --- --- ---
-  // LOOCV Parameters generation through sampling
-  double sampled_mean_dist;
-  {
-    tempo::utils::StddevWelford welford;
-    std::uniform_int_distribution<> distrib(0, (int)train_dts.size() - 1);
-    for (size_t i = 0; i<SAMPLE_SIZE; ++i) {
-      const auto& q = train_dts[distrib(prng)];
-      const auto& s = train_dts[distrib(prng)];
-      const auto& cost = tempo::distance::directa(q, s, cf, tempo::utils::PINF);
-      welford.update(cost);
-    }
-    sampled_mean_dist = welford.get_mean();
-    // Json record
-    Json::Value j(Json::objectValue);
-    j["mean"] = welford.get_mean();
-    j["stddev"] = welford.get_stddev_s();
-    j["size"] = SAMPLE_SIZE;
-    jv["sampling"] = j;
-    cout << j.toStyledString() << endl;
-  }
-
-  // Generate parameters
-  using PType = tuple<double, double>;    // r, omega
-  vector<PType> params;
-
-  // Sample omega
-  for (size_t i = 0; i<100; i += 1) {
-    const double r = std::pow((double)i/100.0, omega_exp);
-    const double omega = r*sampled_mean_dist;
-    params.emplace_back(std::tuple{r, omega});
-  }
-
-  cout << "LOOCV NB params = " << params.size() << endl;
-
-
-  // --- --- ---
-  // Prepare distance function for LOOCV
-
+  // Prepare distance function for LOOCV/distance
   using distfun = tempo::classifier::loocv::partable::distance_fun_t;
   using ubfun = tempo::classifier::loocv::partable::upperbound_fun_t;
 
-  // ADTW distance
-  distfun dist_adtw = [&](size_t q, size_t c, size_t pidx, double bsf) {
-    tempo::TSeries const& s1 = train_dts[q];
-    tempo::TSeries const& s2 = train_dts[c];
-    const auto d = tempo::distance::adtw(s1, s2, cf, std::get<1>(params[pidx]), bsf);
-    return d;
-  };
+  distfun distance_fun;
+  ubfun upperbound_fun;
+  size_t nb_params;
 
-  // ADTW Upper Bound
-  ubfun ub_adtw = [&](size_t q, size_t c, [[maybe_unused]] size_t pidx) {
-    tempo::TSeries const& s1 = train_dts[q];
-    tempo::TSeries const& s2 = train_dts[c];
-    return tempo::distance::directa(s1, s2, cf, tempo::utils::PINF);
-  };
+  // --- --- ---
+  // ADTW LOOCV Parameters generation through sampling
+  // Generate parameters
+  using PType = tuple<double, double>;    // r, omega
+  vector<PType> params;
+  double sampled_mean_dist;
+  {
+
+    {
+      tempo::utils::StddevWelford welford;
+      std::uniform_int_distribution<> distrib(0, (int)train_dts.size() - 1);
+      for (size_t i = 0; i<SAMPLE_SIZE; ++i) {
+        const auto& q = train_dts[distrib(prng)];
+        const auto& s = train_dts[distrib(prng)];
+        const auto& cost = tempo::distance::directa(q, s, cf, tempo::utils::PINF);
+        welford.update(cost);
+      }
+      sampled_mean_dist = welford.get_mean();
+      // Json record
+      Json::Value j(Json::objectValue);
+      j["mean"] = welford.get_mean();
+      j["stddev"] = welford.get_stddev_s();
+      j["size"] = SAMPLE_SIZE;
+      jv["sampling"] = j;
+      cout << j.toStyledString() << endl;
+    }
+
+    // Sample omega
+    for (size_t i = 0; i<100; i += 1) {
+      const double r = std::pow((double)i/100.0, omega_exp);
+      const double omega = r*sampled_mean_dist;
+      params.emplace_back(std::tuple{r, omega});
+    }
+
+    // ADTW distance
+    distance_fun = [&](size_t q, size_t c, size_t pidx, double bsf) {
+      tempo::TSeries const& s1 = train_dts[q];
+      tempo::TSeries const& s2 = train_dts[c];
+      const auto d = tempo::distance::adtw(s1, s2, cf, std::get<1>(params[pidx]), bsf);
+      return d;
+    };
+
+    // ADTW Upper Bound
+    upperbound_fun = [&](size_t q, size_t c, [[maybe_unused]] size_t pidx) {
+      tempo::TSeries const& s1 = train_dts[q];
+      tempo::TSeries const& s2 = train_dts[c];
+      return tempo::distance::directa(s1, s2, cf, tempo::utils::PINF);
+    };
+
+    nb_params = params.size();
+  }
+
+  cout << "LOOCV NB params = " << nb_params << endl;
+
+
 
   // --- --- ---
   // Exec LOOCV
   tempo::utils::duration_t loocv_time;
   auto start = tempo::utils::now();
   auto [loocv_params, loocv_nbcorrect] = tempo::classifier::loocv::partable::loocv(
-    params.size(),
+    nb_params,
     train_header,
-    dist_adtw,
-    ub_adtw,
+    distance_fun,
+    upperbound_fun,
     nbthreads
   );
   loocv_time = tempo::utils::now() - start;
 
   // --- --- ---
-  // Get result out of LOOCV
-  double best_r;
-  double best_omega;
+  // Prepare test function
+  using testfun = std::function<double(tempo::TSeries const& a, tempo::TSeries const& b, double bsf)>;
+  testfun distance_test_fun;
+
+  // --- --- ---
+  // Prepare JSON output
+
+  double train_accuracy = (double)loocv_nbcorrect/(double)train_top;
+  Json::Value j_loocv;
+  j_loocv["timing_ns"] = loocv_time.count();
+  j_loocv["timing_human"] = tempo::utils::as_string(loocv_time);
+  j_loocv["nb_correct"] = loocv_nbcorrect;
+  j_loocv["accuracy"] = train_accuracy;
+
+
+  // --- --- ---
+  // ADTW result computation
   {
-    double train_accuracy = (double)loocv_nbcorrect/(double)train_top;
-    // All best parameters have the same accuracy
-    cout << dataset_name
-         << " Best parameter(s): " << loocv_nbcorrect << "/" << train_top
-         << " = " << train_accuracy << endl;
-    // Report all the best in order - extract r and omega for json report
-    std::sort(loocv_params.begin(), loocv_params.end());
-    std::vector<double> all_r;
-    std::vector<double> all_omega;
-    for (const auto& pi : loocv_params) {
-      auto [r, omega] = params[pi];
-      all_r.push_back(r);
-      all_omega.push_back(omega);
-      cout << "  ratio = " << r << " penalty = " << omega << endl;
-    }
-    // Pick the median as "the best"
+
+    // --- --- ---
+    // Get result out of LOOCV
+    double best_r;
+    double best_omega;
     {
-      auto size = loocv_params.size();
-      if (size%2==0) { // Median "without a middle" = average
-        best_r = (get<0>(params[loocv_params[size/2 - 1]]) + get<0>(params[loocv_params[size/2]]))/2;
-      } else { // Median "middle"
-        best_r = get<0>(params[loocv_params[size/2]]);
+      // All best parameters have the same accuracy
+      cout << dataset_name
+           << " Best parameter(s): " << loocv_nbcorrect << "/" << train_top
+           << " = " << train_accuracy << endl;
+      // Report all the best in order - extract r and omega for json report
+      std::sort(loocv_params.begin(), loocv_params.end());
+      std::vector<double> all_r;
+      std::vector<double> all_omega;
+      for (const auto& pi : loocv_params) {
+        auto [r, omega] = params[pi];
+        all_r.push_back(r);
+        all_omega.push_back(omega);
+        cout << "  ratio = " << r << " penalty = " << omega << endl;
       }
+      // Pick the median as "the best"
+      {
+        auto size = loocv_params.size();
+        if (size%2==0) { // Median "without a middle" = average
+          best_r = (get<0>(params[loocv_params[size/2 - 1]]) + get<0>(params[loocv_params[size/2]]))/2;
+        } else { // Median "middle"
+          best_r = get<0>(params[loocv_params[size/2]]);
+        }
+      }
+      cout << dataset_name << " Pick median ratio g=" << best_r << endl;
+      best_omega = best_r*sampled_mean_dist;
+      // Record all parameters
+      j_loocv["all_r"] = tempo::utils::to_json(all_r);
+      j_loocv["all_omega"] = tempo::utils::to_json(all_omega);
+      j_loocv["best_r"] = best_r;
+      j_loocv["best_omega"] = best_omega;
+      // Results
+      jv["loocv_results"] = j_loocv;
     }
-    cout << dataset_name << " Pick median ratio g=" << best_r << endl;
-    best_omega = best_r*sampled_mean_dist;
-    // Record all parameters
-    Json::Value j;
-    j["all_r"] = tempo::utils::to_json(all_r);
-    j["all_omega"] = tempo::utils::to_json(all_omega);
-    j["best_r"] = best_r;
-    j["best_omega"] = best_omega;
-    j["nb_correct"] = loocv_nbcorrect;
-    j["accuracy"] = train_accuracy;
-    j["timing_ns"] = loocv_time.count();
-    j["timing_human"] = tempo::utils::as_string(loocv_time);
-    // Results
-    jv["loocv_results"] = j;
+
+    distance_test_fun = [&](tempo::TSeries const& query, tempo::TSeries const& candidate, double bsf) {
+      return tempo::distance::adtw(query, candidate, cf, best_omega, bsf);
+    };
+
+    {
+      Json::Value j;
+      j["name"] = "adtw";
+      j["omega"] = best_omega;
+      jv["distance"] = j;
+    }
+
   }
+
+
 
 
   // --- --- ---
@@ -251,7 +288,7 @@ int main(int argc, char **argv) {
       // --- 1NN Loop
       for (size_t train_idx{0}; train_idx<train_top; train_idx++) {
         tempo::TSeries const& candidate = train_dts[train_idx];
-        double d = tempo::distance::adtw(self, candidate, cf, best_omega, bsf);
+        double d = distance_test_fun(self, candidate, bsf);
         if (d<bsf) { // Best: clear labels and insert new
           labels.clear();
           labels.insert(train_header.label(train_idx).value());
@@ -290,13 +327,6 @@ int main(int argc, char **argv) {
   // --- --- ---
 
   jv["status"] = "success";
-
-  {
-    Json::Value j;
-    j["name"] = "adtw";
-    j["omega"] = best_omega;
-    jv["distance"] = j;
-  }
 
   {
     Json::Value j;

@@ -39,14 +39,14 @@ int main(int argc, char **argv) {
       // Load the datasets
       fs::path dspath = UCRPATH/dsname;
       // Load train set
-      auto train = reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train");
+      auto train = tempo::reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train");
       if (train.index()==0) { do_exit(2, "Could not load the train set: " + std::get<0>(train)); }
-      conf.loaded_train_split = std::get<1>(train);
+      conf.loaded_train_split = std::move(std::get<1>(train));
       // Load test set
-      auto test =
-        reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"), "test", conf.loaded_train_split.header().label_encoder());
+      auto test = tempo::reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"), "test",
+                                                 conf.loaded_train_split.header().label_encoder());
       if (test.index()==0) { do_exit(2, "Could not load the test set: " + std::get<0>(test)); }
-      conf.loaded_test_split = std::get<1>(test);
+      conf.loaded_test_split = std::move(std::get<1>(test));
     }
     // Catchall
     if (!ok) { do_exit(1, "UCR Dataset (-p) parameter error"); }

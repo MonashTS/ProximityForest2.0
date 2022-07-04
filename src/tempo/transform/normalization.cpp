@@ -29,7 +29,7 @@ namespace tempo::transform {
   /// If max(A) - min(A) = 0, returns a constant series, with same length as A, in the middle if the range
   /// 0<=p<50
   arma::Row<F> percentile_minmax(arma::Row<F> const& A, size_t p, F range_min, F range_max) {
-    assert(p>=0&&p<50);
+    assert(p<50);
     arma::Row<F> B = arma::sort(A);
     size_t s = A.size();
     size_t minp = (p*s)/100;

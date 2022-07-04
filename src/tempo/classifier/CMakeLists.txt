@@ -1,15 +1,2 @@
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-# Libtempo Classifier
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-
-target_sources(libtempo
-        PRIVATE
-            splitting_forest/proximity_forest/pf2018.cpp
-        PUBLIC
-            splitting_forest/ipf.hpp
-            splitting_forest/pftree.hpp
-            splitting_forest/splitters.hpp
-            splitting_forest/proximity_forest/distance_splitters.hpp
-            splitting_forest/proximity_forest/pf2018.hpp
-            utils.hpp
-        )
+add_subdirectory(speedy)
+#add_subdirectory(splitting_forest)

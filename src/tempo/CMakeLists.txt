@@ -14,7 +14,7 @@ target_sources(libtempo
 )
 
 # Recurse (also run for the tests)
-#add_subdirectory(classifier)
+add_subdirectory(classifier)
 add_subdirectory(distance)
 add_subdirectory(reader)
 add_subdirectory(transform)

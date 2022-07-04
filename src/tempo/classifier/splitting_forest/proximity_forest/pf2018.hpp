@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tempo/predef.hpp>
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/dataset/dataset.hpp>
 
 namespace tempo::classifier {
 

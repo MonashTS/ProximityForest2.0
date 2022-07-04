@@ -1,3 +1,4 @@
+add_subdirectory(nn1)
 add_subdirectory(nnkgridsearch)
 add_subdirectory(pf)
 add_subdirectory(scratch)

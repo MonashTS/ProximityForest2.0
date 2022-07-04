@@ -1,5 +1,6 @@
 target_sources(libtempo
         PUBLIC
-        fastmps.hpp
+        partable.hpp
         PRIVATE
-        fastmph.cpp)
+        partable.cpp
+        )

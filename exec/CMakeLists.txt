@@ -1,4 +1,4 @@
-add_subdirectory(fastmps)
+add_subdirectory(distance_loocv)
 add_subdirectory(nn1)
 add_subdirectory(nnkgridsearch)
 add_subdirectory(pf)

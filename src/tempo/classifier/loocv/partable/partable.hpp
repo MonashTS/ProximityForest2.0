@@ -4,23 +4,35 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dataset.hpp>
+#include "tempo/distance/helpers.hpp"
 
 namespace tempo::classifier::loocv::partable {
 
-  /// Type of functions used to compute a distance while performing LOOCV (i.e. at train time)
-  /// The function must capture all that it is needed to perform its job given the parameter,
+  /// Type of functions used to compute a distance between two time series.
+  /// The function must internalise the distance's parameters.
   /// such as the train set, the parameter sequence, etc...
   /// @param query        Index of the query in the train set
   /// @param candidate    Index of the candidate in the train set
-  /// @param pidx         Index of The parameter currently being assessed
   /// @param ub           Upper bound on the process (such as the distance of the 'best so far')
-  using distance_fun_t = std::function<tempo::F(size_t query_idx, size_t candidate_idx, size_t pidx, tempo::F ub)>;
+  using distance_fun_t = std::function<tempo::F(size_t query_idx, size_t candidate_idx, tempo::F ub)>;
 
-  /// Type of functions used to compute an initial upper bound between two series
+  /// Type of functions used to compute an upper bound of a distance between two time series.
+  /// The function must internalise the computation's parameters.
   /// @param query        Index of the query in the train set
   /// @param candidate    Index of the candidate in the train set
-  /// @param pidx         Index of The parameter currently being assessed
-  using upperbound_fun_t = std::function<FloatType(size_t query_idx, size_t candidate_idx, size_t pidx)>;
+  using upperbound_fun_t = std::function<FloatType(size_t query_idx, size_t candidate_idx)>;
+
+  struct LOOCVParams {
+
+    virtual size_t get_nb_params() = 0;
+
+    virtual distance_fun_t get_distance_fun(size_t pidx) = 0;
+
+    virtual upperbound_fun_t get_upperbound_fun(size_t pidx) = 0;
+
+  };
+
+
 
   /** Search for the best parameter through LOOCV
    * @param  nb_params      Number of parameters.
@@ -45,6 +57,9 @@ namespace tempo::classifier::loocv::partable {
     upperbound_fun_t diagUBdistance,
     size_t nb_threads
   );
+
+
+
 
 } // End of namespace tempo::classifier::loocv::partable
 

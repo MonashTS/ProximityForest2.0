@@ -1,8 +1,8 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/tseries.hpp>
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/dataset/dts.hpp>
+
 
 namespace tempo::classifier::pf {
 

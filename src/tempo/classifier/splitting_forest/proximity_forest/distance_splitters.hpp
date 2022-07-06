@@ -2,7 +2,7 @@
 
 #include <tempo/utils/utils.hpp>
 
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/dataset/dts.hpp>
 #include <tempo/distance/lockstep/direct.hpp>
 #include <tempo/distance/elastic/adtw.hpp>
 #include <tempo/distance/elastic/dtw.hpp>
@@ -184,7 +184,7 @@ namespace tempo::classifier::pf {
     /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::directa(t1, t2, distance::univariate::ade<F, TSeries>(exponent), bsf);
+      return distance::directa(t1, t2, distance::univariate::ade<TSeries>(exponent), bsf);
     }
 
   };
@@ -229,7 +229,7 @@ namespace tempo::classifier::pf {
 
     /// Concept Requirement: compute the distance between two series
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries>(exponent), utils::NO_WINDOW, bsf);
+      return distance::dtw(t1, t2, distance::univariate::ade<TSeries>(exponent), utils::NO_WINDOW, bsf);
     }
 
   };
@@ -283,7 +283,7 @@ namespace tempo::classifier::pf {
 
     /// Concept Requirement: compute the distance between two series
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::dtw(t1, t2, distance::univariate::ade<F, TSeries>(exponent), window, bsf);
+      return distance::dtw(t1, t2, distance::univariate::ade<TSeries>(exponent), window, bsf);
     }
   };
 
@@ -336,7 +336,7 @@ namespace tempo::classifier::pf {
 
     /// Concept Requirement: compute the distance between two series
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::wdtw(t1, t2, distance::univariate::ade<F, TSeries>(exponent), weights, bsf);
+      return distance::wdtw(t1, t2, distance::univariate::ade<TSeries>(exponent), weights, bsf);
     }
   };
 
@@ -400,8 +400,8 @@ namespace tempo::classifier::pf {
     /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      auto gvdist = distance::univariate::adegv<F, TSeries>(exponent);
-      auto dist = distance::univariate::ade<F, TSeries>(exponent);
+      auto gvdist = distance::univariate::adegv<TSeries>(exponent);
+      auto dist = distance::univariate::ade<TSeries>(exponent);
       return distance::erp(t1, t2, gvdist, dist, window, gv, bsf);
     }
   };
@@ -458,7 +458,7 @@ namespace tempo::classifier::pf {
     /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::lcss(t1, t2, distance::univariate::ad1<F, TSeries>, window, epsilon, bsf);
+      return distance::lcss(t1, t2, distance::univariate::ad1<TSeries>, window, epsilon, bsf);
     }
   };
 
@@ -559,7 +559,7 @@ namespace tempo::classifier::pf {
     /// Concept Requirement: compute the distance between two series
     [[nodiscard]]
     F operator ()(const TSeries& t1, const TSeries& t2, double bsf) const {
-      return distance::univariate::twe<F, TSeries>(t1, t2, nu, lambda, bsf);
+      return distance::univariate::twe<TSeries>(t1, t2, nu, lambda, bsf);
     }
   };
 
@@ -592,7 +592,7 @@ namespace tempo::classifier::pf {
         const TSeries& test_exemplar = test_dataset[test_index];
         const DTS& train_dataset = data.get_train_dataset(distance.transformation_name());
         // NN1 test loop
-        F bsf = utils::PINF<F>;
+        F bsf = utils::PINF;
         std::vector<std::string> labels;
         for (size_t train_idx : train_indexset) {
           const auto& train_exemplar = train_dataset[train_idx];
@@ -660,7 +660,7 @@ namespace tempo::classifier::pf {
 
       // For each series in the incoming bcm (including selected exemplars - will eventually form pure leaves), 1NN
       for (auto query_idx : all_indexset) {
-        F bsf = utils::PINF<F>;
+        F bsf = utils::PINF;
         std::vector<std::string> labels;
         const auto& query = train_dataset[query_idx];
         for (size_t exemplar_idx : train_indexset) {
@@ -746,7 +746,7 @@ namespace tempo::classifier::pf {
 //       std::string tname = utils::pick_one(*transformation_names, *state.prng);
 //       double e = utils::pick_one(*exponents, *state.prng);
 
-//       auto dist = distance::univariate::ade<F, TSeries>(e);
+//       auto dist = distance::univariate::ade<TSeries>(e);
 
 //       // --- --- --- Sampling
 //       // lazy-shared, i.e. do not resample if already done at this node

@@ -3,7 +3,7 @@
 #include "ipf.hpp"
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/dataset/dts.hpp>
 
 
 namespace tempo::classifier::pf {
@@ -49,7 +49,7 @@ namespace tempo::classifier::pf {
      */
     Result generate(TrainState& state, const TrainData& data, const BCMVec& bcmvec) const override {
       Result best_result{};
-      double best_score = utils::PINF<double>;
+      double best_score = utils::PINF;
       for (size_t i = 0; i<nb_candidates; ++i) {
         Result result = utils::pick_one(sgvec, *state.prng)->generate(state, data, bcmvec);
         double score = weighted_gini_impurity<TrainState, TrainData, TestState, TestData>(result);
@@ -75,9 +75,9 @@ namespace tempo::classifier::pf {
 
       arma::Col<size_t> cardinality;
 
-      PureNode(size_t size, const std::map<std::string, size_t>& label_to_index, std::string label)
+      PureNode(size_t size, const std::map<std::string, size_t>& label_to_index, tempo::EL label)
         : cardinality(label_to_index.size(), arma::fill::zeros) {
-        cardinality[label_to_index.at(label)] = size_t(size);
+        cardinality[label] = size_t(size);
       }
 
       arma::Col<size_t> predict_cardinality(TestState& /* state */ ,
@@ -92,7 +92,7 @@ namespace tempo::classifier::pf {
       // Generate leaf on pure node
       if (bcm.nb_classes()==1) {
         const auto& header = data.get_header();
-        std::string label = bcm.begin()->first;
+        tempo::EL label = bcm.begin()->first;
         size_t size = bcm.size();
         return {
           Result{

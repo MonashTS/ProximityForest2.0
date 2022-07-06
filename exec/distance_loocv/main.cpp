@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
     }
 
     // ADTW distance
-    distance_fun = [&](size_t q, size_t c, size_t pidx, double bsf) {
+    distance_fun = [&](size_t pidx, size_t q, size_t c, double bsf) {
       tempo::TSeries const& s1 = train_dts[q];
       tempo::TSeries const& s2 = train_dts[c];
       const auto d = tempo::distance::adtw(s1, s2, cf, std::get<1>(params[pidx]), bsf);
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
     };
 
     // ADTW Upper Bound
-    upperbound_fun = [&](size_t q, size_t c, [[maybe_unused]] size_t pidx) {
+    upperbound_fun = [&]([[maybe_unused]] size_t pidx, size_t q, size_t c) {
       tempo::TSeries const& s1 = train_dts[q];
       tempo::TSeries const& s2 = train_dts[c];
       return tempo::distance::directa(s1, s2, cf, tempo::utils::PINF);
@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
   // Exec LOOCV
   tempo::utils::duration_t loocv_time;
   auto start = tempo::utils::now();
-  auto [loocv_params, loocv_nbcorrect] = tempo::classifier::loocv::partable::loocv(
+  auto [loocv_params, loocv_nbcorrect] = tempo::classifier::loocv::partable::loocv_incparams(
     nb_params,
     train_header,
     distance_fun,

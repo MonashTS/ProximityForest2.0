@@ -17,12 +17,12 @@ namespace tempo::classifier::loocv::partable {
 
   }
 
-  std::tuple<std::vector<size_t>, size_t> loocv(
-    size_t nb_params,
-    tempo::DatasetHeader const& train_header,
-    distance_fun_t distance,
-    upperbound_fun_t diagUBdistance,
-    size_t nb_threads
+  std::tuple<std::vector<size_t>, size_t> loocv_incparams(
+    size_t                        nb_params,
+    tempo::DatasetHeader const&   train_header,
+    distance_fun_t                distance,
+    upperbound_fun_t              upper_bound,
+    size_t                        nb_threads
   ) {
     using namespace std;
     using namespace tempo;
@@ -72,8 +72,8 @@ namespace tempo::classifier::loocv::partable {
     {
       // Start with the upper bound
       {
-        F UB = diagUBdistance(0, 1, LAST_P);
-        F d_last = distance(0, 1, LAST_P, UB);
+        F UB = upper_bound(LAST_P, 0, 1);
+        F d_last = distance(LAST_P, 0, 1, UB);
         update(0*NBCOL + NBCOL - 1, 1, d_last);
         update(1*NBCOL + NBCOL - 1, 0, d_last);
       }
@@ -82,7 +82,7 @@ namespace tempo::classifier::loocv::partable {
         --P;
         // UB = distance from the following cell
         F UB = NNTable[0*NBCOL + P + 1].NNdistance;
-        F d = distance(0, 1, P, UB);
+        F d = distance(P, 0, 1, UB);
         update(0*NBCOL + P, 1, d);
         update(1*NBCOL + P, 0, d);
       }
@@ -117,8 +117,8 @@ namespace tempo::classifier::loocv::partable {
             const F d_Ti = NNTable[Ti*NBCOL + P].NNdistance;
             const F d_nn = max(d_S, d_Ti);
             if (LB<d_nn) {
-              const F cutoff = min(dmax, diagUBdistance(S, Ti, P));
-              const F di = distance(S, Ti, P, cutoff);
+              const F cutoff = min(dmax, upper_bound(P, S, Ti));
+              const F di = distance(P, S, Ti, cutoff);
               update(S*NBCOL + P, Ti, di);
               update(Ti*NBCOL + P, S, di);
               if (di==utils::PINF) { P = NBCOL; } else { LB = di; }
@@ -148,7 +148,7 @@ namespace tempo::classifier::loocv::partable {
         }
       }
       auto sort_duration = utils::now() - sort_start;
-      cout << " sort: " << utils::as_string(filltable_duration) << endl;
+      cout << " sort: " << utils::as_string(sort_duration) << endl;
 
       filltable += filltable_duration;
       sort += sort_duration;
@@ -178,4 +178,4 @@ namespace tempo::classifier::loocv::partable {
     return {result, NBLINE - bestError};
   }
 
-} // End of namespace tempo::classifier::loocv::partable
+} // End of namespace tempo::classifier::loocv_incparams::partable

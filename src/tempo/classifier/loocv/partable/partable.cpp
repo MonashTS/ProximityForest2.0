@@ -63,6 +63,7 @@ namespace tempo::classifier::loocv::partable {
         nn.NNindex = nnindex;
         nn.NNdistance = nndist;
       } else if(nndist == nn.NNdistance){
+        // TODO: manage ties
 
       }
     };

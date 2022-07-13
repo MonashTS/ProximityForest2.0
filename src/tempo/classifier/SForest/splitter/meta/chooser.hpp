@@ -2,7 +2,7 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dataset.hpp>
-#include <tempo/classifier/SForest/sforest.hpp>
+#include "tempo/classifier/SForest/stree.hpp"
 
 namespace tempo::classifier::SForest::splitter::meta {
 

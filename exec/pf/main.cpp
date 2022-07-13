@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "tempo/reader/new_reader.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
 
-#include <tempo/classifier/SForest/sforest.hpp>
+#include "tempo/classifier/SForest/stree.hpp"
 //
 #include <tempo/classifier/SForest/splitter/nn1/nn1splitters.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/MPGenerator.hpp>
@@ -147,7 +148,7 @@ int main(int argc, char **argv) {
 
   /// Pick transform
   vector<string> transforms{"default"};
-  SForest::splitter::nn1::TransformGetter<state> transform_getter = [&](state& state) -> string {
+  NN1Splitter::TransformGetter<state> transform_getter = [&](state& state) -> string {
     return utils::pick_one(transforms, state.prng);
   };
 
@@ -157,15 +158,28 @@ int main(int argc, char **argv) {
     return utils::pick_one(exponents, state.prng);
   };
 
+  /// Random window computation function [0, Lmax/4]
+  NN1Splitter::WindowGetter<state, data> window_getter = [](state& state, data const& data) -> size_t {
+    const size_t win_top = std::ceil((double)data.get_train_header().length_max()/4.0);
+    return std::uniform_int_distribution<size_t>(0, win_top)(state.prng);
+  };
+
   // --- --- --- Build node generators
 
+  /// Direct Alignment
   auto nn1da_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
     make_shared<NN1Splitter::DAGen<state,data>>(transform_getter, exp_getter)
   );
 
+  /// DTW
+  auto nn1dtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::DTWGen<state,data>>(transform_getter, exp_getter, window_getter)
+  );
+
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
-      nn1da_gen
+      nn1da_gen,
+      nn1dtw_gen
     },
     nbc
   );

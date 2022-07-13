@@ -69,6 +69,14 @@ int main(int argc, char **argv) {
     j["dataset"] = dataset;
   }
 
+  DatasetHeader const& train_header = train_dataset.header();
+  const size_t train_size = train_header.size();
+
+  DatasetHeader const& test_header = test_dataset.header();
+  const size_t test_size = test_header.size();
+
+
+
   struct state {
     PRNG prng;
 
@@ -122,6 +130,9 @@ int main(int argc, char **argv) {
 
   data train_test_data(train_map, test_map);
 
+
+  // --- --- --- --- --- --- Train one tree
+
   // --- --- --- Train state
   auto train_state = std::make_unique<state>(train_seed);
 
@@ -159,18 +170,27 @@ int main(int argc, char **argv) {
     nbc
   );
 
-
   // --- --- --- Build leaf stopper
 
   auto leafgen_pure = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 
-
-  // --- --- --- Train one tree
+  // --- --- --- Train!
 
   SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, chooser_gen);
-  auto [train_state1, trainerd_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
-  cout << "trained" << endl;
+  auto [train_state1, trained_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
 
+
+  // --- --- --- --- --- --- Classification one tree
+
+  // --- --- --- Test state
+  auto test_state = std::make_unique<state>(test_seed);
+
+  // --- --- --- Test!
+
+  for(size_t test_idx=0; test_idx<test_size; ++test_idx) {
+    auto [test_state1, result] = trained_tree->predict(std::move(test_state), train_test_data, test_idx);
+    test_state = std::move(test_state1);  // Transmit state
+  }
 
 
 

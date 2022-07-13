@@ -7,7 +7,7 @@
 namespace tempo::classifier::SForest::leaf {
 
   /// Pure leaf generator: stop when only one class reaches the node
-  template<TreeState TrainS, TrainData TrainD, typename TestS, typename TestD>
+  template<MainState TrainS, TrainData TrainD, typename TestS, typename TestD>
   struct PureLeaf_Gen : public LeafSplitterGen_i<TrainS, TrainD, TestS, TestD> {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

@@ -174,7 +174,7 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   /// Train time NN1 Splitter Generator, to be built with a distance generator
   template<typename TrainS, typename TrainD, typename TestS, NN1TestData TestD> requires
-  TreeState<TrainS>&&HasNN1SplitterState<TrainS>
+  BaseState<TrainS>&&HasNN1SplitterState<TrainS>
   struct NN1SplitterGen : public NodeSplitterGen_i<TrainS, TrainD, TestS, TestD> {
     using R = typename NodeSplitterGen_i<TrainS, TrainD, TestS, TestD>::R;
 

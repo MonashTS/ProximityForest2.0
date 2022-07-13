@@ -11,4 +11,13 @@ namespace tempo::classifier::SForest::splitter::nn1 {
     return transformation_name;
   }
 
+
+  F DTWfull::eval(const TSeries& t1, const TSeries& t2, F bsf) {
+    return distance::dtw(t1, t2, distance::univariate::ade<TSeries>(exponent), utils::NO_WINDOW, bsf);
+  }
+
+  std::string DTWfull::get_transformation_name() {
+    return transformation_name;
+  }
+
 }

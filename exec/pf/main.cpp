@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
     void branch_merge(state&& s) { prng = move(s.prng); }
 
   };
-  static_assert(SForest::TreeState<state>);
+  static_assert(SForest::MainState<state>);
   static_assert(SForest::splitter::nn1::HasNN1SplitterState<state>);
 
   struct data {
@@ -174,6 +174,11 @@ int main(int argc, char **argv) {
   /// DTW
   auto nn1dtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
     make_shared<NN1Splitter::DTWGen<state,data>>(transform_getter, exp_getter, window_getter)
+  );
+
+  /// DTWfull
+  auto nn1dtwfull_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::DTWfullGen<state,data>>(transform_getter, exp_getter)
   );
 
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(

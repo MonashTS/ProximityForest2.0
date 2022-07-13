@@ -1,23 +1,29 @@
 #include "pch.h"
+#include "tempo/reader/new_reader.hpp"
 
-#include <tempo/utils/utils.hpp>
-#include <tempo/classifier/splitting_forest/proximity_forest/pf2018.hpp>
+#include <tempo/classifier/SForest/sforest.hpp>
+//
+#include <tempo/classifier/SForest/splitter/nn1/nn1splitters.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/MPGenerator.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_da.hpp>
+//
+#include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
+
 
 namespace fs = std::filesystem;
 
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg = {}) {
-  if (msg) {
-    std::cerr << msg.value() << std::endl;
-  }
+  if (msg) { std::cerr << msg.value() << std::endl; }
   exit(code);
 }
 
 int main(int argc, char **argv) {
   using namespace std;
   using namespace tempo;
+  namespace SForest = tempo::classifier::SForest;
+  namespace NN1Splitter = tempo::classifier::SForest::splitter::nn1;
 
   std::random_device rd;
-
 
   // ARGS
   string program_name(*argv);
@@ -42,13 +48,13 @@ int main(int argc, char **argv) {
     auto start = utils::now();
     { // Read train
       fs::path train_path = UCRPATH/dataset_name/(dataset_name + "_TRAIN.ts");
-      auto variant_train = reader::load_dataset_ts(train_path);
+      auto variant_train = tempo::reader::load_dataset_ts(train_path, "train");
       if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
       else { do_exit(1, {"Could not read train set '" + train_path.string() + "': " + std::get<0>(variant_train)}); }
     }
     { // Read test
       fs::path test_path = UCRPATH/dataset_name/(dataset_name + "_TEST.ts");
-      auto variant_test = reader::load_dataset_ts(test_path);
+      auto variant_test = tempo::reader::load_dataset_ts(test_path, "test");
       if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
       else { do_exit(1, {"Could not read train set '" + test_path.string() + "': " + std::get<0>(variant_test)}); }
     }
@@ -60,6 +66,106 @@ int main(int argc, char **argv) {
     dataset["load_time_str"] = utils::as_string(delta);
     j["dataset"] = dataset;
   }
+
+  struct state {
+    PRNG prng;
+
+    SForest::splitter::nn1::NN1SplitterState distance_splitter_state;
+
+    explicit state(size_t seed) : prng(seed) {}
+
+    explicit state(PRNG&& prng) : prng(prng) {}
+
+    state branch_fork(size_t /* branch_idx */) { return state(move(prng)); }
+
+    void branch_merge(state&& s) { prng = move(s.prng); }
+
+  };
+  static_assert(SForest::TreeState<state>);
+  static_assert(SForest::splitter::nn1::HasNN1SplitterState<state>);
+
+  struct data {
+
+    map<string, DTS> trainset;
+    map<string, DTS> testset;
+
+    inline data(map<string, DTS> trainset, map<string, DTS> testset) :
+      trainset(move(trainset)),
+      testset(move(testset)) {}
+
+    /// Concept TrainData: access to the training set
+    inline DTS get_train_dataset(const std::string& tname) const { return trainset.at(tname); }
+
+    /// Concept TrainData: access to the training header
+    inline DatasetHeader const& get_train_header() const { return trainset.begin()->second.header(); }
+
+    /// NN1TestData concepts requirement
+    inline DTS get_test_dataset(const std::string& tname) const { return testset.at(tname); }
+
+    /// Concept TestData: access to the training header
+    inline DatasetHeader const& get_test_header() const { return testset.begin()->second.header(); }
+
+  };
+  static_assert(SForest::TrainData<data>);
+  static_assert(SForest::TestData<data>);
+
+
+  // --- --- --- Train/Test data
+
+  map<string, DTS> train_map;
+  train_map["default"] = train_dataset;
+
+  map<string, DTS> test_map;
+  test_map["default"] = test_dataset;
+
+  data train_test_data(train_map, test_map);
+
+  // --- --- --- Train state
+  auto train_state = std::make_unique<state>(train_seed);
+
+  // --- --- --- Train BCM
+  auto [train_bcm, train_bcm_remains] = train_dataset.get_BCM();
+  if(!train_bcm_remains.empty()){
+    cerr << "Error: train instances without label!" << endl;
+    exit(5);
+  }
+
+  // --- --- --- Build the getters
+
+  /// Pick transform
+  vector<string> transforms{"default"};
+  SForest::splitter::nn1::TransformGetter<state> transform_getter = [&](state& state) -> string {
+    return utils::pick_one(transforms, state.prng);
+  };
+
+  /// Pick Exponent
+  vector<double> exponents{2.0};
+  NN1Splitter::ExponentGetter<state> exp_getter = [&](state& state) -> double {
+    return utils::pick_one(exponents, state.prng);
+  };
+
+  // --- --- --- Build a generator for DA
+
+  auto nn1gen_da = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::DA_Gen<state,data>>(transform_getter, exp_getter)
+  );
+
+
+  // --- --- --- Build leaf stopper
+
+  auto leafgen_pure = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
+
+  // --- --- --- Train one tree
+
+  SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, nn1gen_da);
+  auto [train_state1, trainerd_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
+  cout << "trained" << endl;
+
+
+
+
+
+  /*
 
   // --- --- --- PF2018
   // --- --- train
@@ -116,4 +222,6 @@ int main(int argc, char **argv) {
   cout << j.toStyledString() << endl;
 
   return 0;
+  */
+
 }

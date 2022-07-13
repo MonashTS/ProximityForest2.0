@@ -5,6 +5,8 @@
 
 extern std::string usage;
 
+using distfun_t = std::function<tempo::F(tempo::TSeries const&, tempo::TSeries const&, tempo::F)>;
+
 /// Structure for command line argument
 struct Config {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

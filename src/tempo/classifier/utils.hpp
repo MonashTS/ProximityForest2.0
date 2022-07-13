@@ -1,9 +1,51 @@
 #pragma once
 
 #include <tempo/predef.hpp>
-#include <tempo/tseries/dataset.hpp>
 
 namespace tempo::classifier {
+
+  /// Classifier result for one test exemplar
+  struct Result {
+
+    /// A row vector representing the classification result of one test exemplar.
+    /// In the row vector, the ith column represent the probability of the ith class,
+    /// where the ith class is determined by a label encoder.
+    arma::rowvec probabilities;
+
+    /// Column vector of length nb_test_exemplars, indicating the "weights" (can be used to indicate confidence)
+    /// associated to each row from the probabilities matrix
+    double weight;
+
+    /// Create a Result for 'cardinality' classes, with the index (coming from a label encoder) of 'proba_at_one'
+    /// being 1.0, and all the other at 0. The weight is copied as is.
+    static inline Result make_probabilities_one(size_t cardinality, EL proba_at_one, double weight) {
+      arma::rowvec p(cardinality, arma::fill::zeros);
+      p[proba_at_one] = 1.0;
+      return Result{
+        std::move(p),
+        weight
+      };
+    }
+
+  };
+
+
+
+  /*
+  struct ResultN {
+    /// Resulting (nb_test_exemplars x nb_classess) matrix of probabilities.
+    /// Each row represents the result of one test exemplar, in the order found in the test set.
+    /// Inside a row, each column represents the class probabilities.
+    /// Column indexes match the classes according to a label encoder.
+    arma::mat probabilities;
+
+    /// Column vector of length nb_test_exemplars, indicating the "weights" (can be used to indicate confidence)
+    /// associated to each row from the probabilities matrix
+    arma::colvec weights;
+  };
+   */
+
+  /* Old transposed version
 
   struct Result {
 
@@ -59,5 +101,6 @@ namespace tempo::classifier {
     out[pkey] = result_probas;
     out[wkey] = result_weights;
   }
+   */
 
 } // end of namespace tempo::classifier

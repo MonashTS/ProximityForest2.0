@@ -4,6 +4,8 @@ target_sources(libtempo
         sforest.hpp
         # Leaf
         leaf/pure_leaf.hpp
+        # Meta splitters
+        splitter/meta/chooser.hpp
         # NN1 splitters
         splitter/nn1/nn1splitters.hpp
         splitter/nn1/MPGenerator.hpp

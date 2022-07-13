@@ -23,13 +23,13 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   /// 1NN Direct Alignment Generator
   template<typename TrainState, typename TrainData>
-  struct DA_Gen : public NN1SplitterDistanceGen<TrainState, TrainData> {
+  struct DAGen : public NN1SplitterDistanceGen<TrainState, TrainData> {
     using R = typename NN1SplitterDistanceGen<TrainState, TrainData>::R;
 
     TransformGetter<TrainState> get_transform;
     ExponentGetter<TrainState> get_exponent;
 
-    DA_Gen(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
+    DAGen(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
       get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
     R generate(std::unique_ptr<TrainState> state, const TrainData& /* data */, const ByClassMap& /* bcm */) override {

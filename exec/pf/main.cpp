@@ -8,6 +8,8 @@
 #include <tempo/classifier/SForest/splitter/nn1/sp_da.hpp>
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
+//
+#include <tempo/classifier/SForest/splitter/meta/chooser.hpp>
 
 
 namespace fs = std::filesystem;
@@ -144,10 +146,17 @@ int main(int argc, char **argv) {
     return utils::pick_one(exponents, state.prng);
   };
 
-  // --- --- --- Build a generator for DA
+  // --- --- --- Build node generators
 
-  auto nn1gen_da = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DA_Gen<state,data>>(transform_getter, exp_getter)
+  auto nn1da_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::DAGen<state,data>>(transform_getter, exp_getter)
+  );
+
+  auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+    vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+      nn1da_gen
+    },
+    nbc
   );
 
 
@@ -155,9 +164,10 @@ int main(int argc, char **argv) {
 
   auto leafgen_pure = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 
+
   // --- --- --- Train one tree
 
-  SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, nn1gen_da);
+  SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, chooser_gen);
   auto [train_state1, trainerd_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
   cout << "trained" << endl;
 

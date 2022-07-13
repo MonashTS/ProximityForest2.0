@@ -187,10 +187,16 @@ int main(int argc, char **argv) {
 
   // --- --- --- Test!
 
+  size_t nb_correct = 0;
   for(size_t test_idx=0; test_idx<test_size; ++test_idx) {
     auto [test_state1, result] = trained_tree->predict(std::move(test_state), train_test_data, test_idx);
     test_state = std::move(test_state1);  // Transmit state
+    EL predicted_label = arma::index_max(result.probabilities);
+    if(predicted_label == test_header.label(test_idx)){ nb_correct++; }
   }
+
+  cout << "Nb correct = " << nb_correct << "/" << test_size << endl;
+  cout << "Accuracy   = " << (double)nb_correct/(double)test_size << endl;
 
 
 

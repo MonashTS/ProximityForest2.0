@@ -149,14 +149,14 @@ namespace tempo::classifier {
     };
 
     /// TWE nu parameters
-    inline static const auto twe_nu = [](TrainState& state) -> size_t {
+    inline static const auto twe_nu = [](TrainState& state) -> double {
       constexpr size_t N = 10;
       double nus[N]{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
       return utils::pick_one(nus, N, *state.prng);
     };
 
     /// TWE lambda parameters
-    inline static const auto twe_lambda = [](TrainState& state) -> size_t {
+    inline static const auto twe_lambda = [](TrainState& state) -> double {
       constexpr size_t N = 10;
       double lambdas[N]{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
                         0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};

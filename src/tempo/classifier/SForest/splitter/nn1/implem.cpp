@@ -15,6 +15,9 @@
 #include "sp_erp.hpp"
 #include <tempo/distance/elastic/erp.hpp>
 
+#include "sp_lcss.hpp"
+#include <tempo/distance/elastic/lcss.hpp>
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -39,5 +42,9 @@ namespace tempo::classifier::SForest::splitter::nn1 {
                          tempo::distance::univariate::ade<TSeries>(exponent),
                          w, gv, bsf);
   }
+
+  F LCSS::eval(const TSeries& t1, const TSeries& t2, F bsf) {
+    return distance::lcss(t1, t2, distance::univariate::ade<TSeries>(exponent), w, epsilon, bsf);
+  };
 
 }

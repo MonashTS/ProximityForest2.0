@@ -10,6 +10,7 @@
 #include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_erp.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
@@ -207,6 +208,12 @@ int main(int argc, char **argv) {
     make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
   );
 
+  /// LCSS
+  auto nn1lcss_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+  );
+
+
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
       nn1da_gen,
@@ -214,7 +221,8 @@ int main(int argc, char **argv) {
       nn1dtwfull_gen,
       nn1adtw_gen,
       nn1wdtw_gen,
-      nn1erp_gen
+      nn1erp_gen,
+      nn1lcss_gen
     },
     nbc
   );

@@ -13,6 +13,7 @@
 #include "tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_lorentzian.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_msm.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_twe.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
@@ -260,6 +261,11 @@ int main(int argc, char **argv) {
     make_shared<NN1Splitter::MSMGen<state, data>>(transform_getter, msm_cost)
   );
 
+  /// SBD
+  auto nn1sbd_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::SBDGen<state, data>>(transform_getter)
+  );
+
   /// TWE
   auto nn1twe_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
     make_shared<NN1Splitter::TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
@@ -276,6 +282,7 @@ int main(int argc, char **argv) {
       nn1lcss_gen,
       nn1lorentzian_gen,
       nn1msm_gen,
+      nn1sbd_gen,
       nn1twe_gen
     },
     nbc

@@ -381,7 +381,7 @@ bool d_lorentzian(std::vector<std::string> const& v, Config& conf) {
 
 // --- --- --- Sliding
 
-/// SBD -d:sbd
+/// sbd -d:sbd
 bool d_sbd(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
   using namespace tempo;
@@ -392,13 +392,13 @@ bool d_sbd(std::vector<std::string> const& v, Config& conf) {
       // none
       // Create the distance
       conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
-        return distance::SBD(A, B);
+        return distance::sbd(A, B);
       };
       // Record params
       // none
     }
     // Catchall
-    if (!ok) { do_exit(1, "SBD parameter error"); }
+    if (!ok) { do_exit(1, "sbd parameter error"); }
     return true;
   }
   return false;

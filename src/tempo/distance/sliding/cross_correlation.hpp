@@ -39,19 +39,19 @@ namespace tempo::distance {
 
   } // End of namespace cross_correlation
 
-  /// Shape-based distance (SBD)
+  /// Shape-based distance (sbd)
   /// k-Shape: Efficient and Accurate Clustering of Time Series, John Paparrizos & Luis Gravano, SIGMOD 2015
   /// Result is in [0, 2], "with 0 indicating perfect similarity".
-  /// Warning: due to numerical approximation, SBD(A, A) returns a value close to 0 but not 0!
-  inline F SBD(arma::Row<F> const& A, arma::Row<F> const& B) {
+  /// Warning: due to numerical approximation, sbd(A, A) returns a value close to 0 but not 0!
+  inline F sbd(arma::Row<F> const& A, arma::Row<F> const& B) {
     return ((F)1) - cross_correlation::max_ncc_c(A, B);
   }
 
-  /// SBD on TSeries (univariate only)
-  inline F SBD(TSeries const& A, TSeries const& B) {
+  /// sbd on TSeries (univariate only)
+  inline F sbd(TSeries const& A, TSeries const& B) {
     arma::Row<F> a = A.rowvec();
     arma::Row<F> b = B.rowvec();
-    return SBD(a, b);
+    return sbd(a, b);
   }
 
 } // End of namespace tempo::distance

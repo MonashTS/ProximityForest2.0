@@ -27,6 +27,10 @@
 #include "sp_lorentzian.hpp"
 #include <tempo/distance/lockstep/lockstep.hpp>
 
+#include "sp_sbd.hpp"
+#include <tempo/distance/sliding/cross_correlation.hpp>
+
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -66,6 +70,11 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   F Lorentzian::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
     return distance::lorentzian(t1, t2);
+  }
+
+
+  F SBD::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
+    return distance::sbd(t1, t2);
   }
 
 

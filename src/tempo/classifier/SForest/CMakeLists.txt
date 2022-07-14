@@ -18,6 +18,7 @@ target_sources(libtempo
         splitter/nn1/sp_lcss.hpp
         splitter/nn1/sp_lorentzian.hpp
         splitter/nn1/sp_msm.hpp
+        splitter/nn1/sp_sbd.hpp
         splitter/nn1/sp_twe.hpp
         ### ### ### ### ### ### ### ### ### ### ### ###
         PRIVATE

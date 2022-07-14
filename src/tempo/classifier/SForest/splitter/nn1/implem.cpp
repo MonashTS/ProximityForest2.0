@@ -24,6 +24,9 @@
 #include "sp_twe.hpp"
 #include <tempo/distance/elastic/twe.hpp>
 
+#include "sp_lorentzian.hpp"
+#include <tempo/distance/lockstep/lockstep.hpp>
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -60,5 +63,10 @@ namespace tempo::classifier::SForest::splitter::nn1 {
   F TWE::eval(const TSeries& t1, const TSeries& t2, F bsf) {
     return distance::univariate::twe(t1, t2, nu, lambda, bsf);
   }
+
+  F Lorentzian::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
+    return distance::lorentzian(t1, t2);
+  }
+
 
 }

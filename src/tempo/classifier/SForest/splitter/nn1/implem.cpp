@@ -12,6 +12,9 @@
 #include "sp_wdtw.hpp"
 #include <tempo/distance/elastic/wdtw.hpp>
 
+#include "sp_erp.hpp"
+#include <tempo/distance/elastic/erp.hpp>
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -28,6 +31,13 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   F WDTW::eval(const TSeries& t1, const TSeries& t2, F bsf) {
     return distance::wdtw(t1, t2, distance::univariate::ade<TSeries>(exponent), weights, bsf);
+  }
+
+  F ERP::eval(const TSeries& t1, const TSeries& t2, F bsf) {
+    return distance::erp(t1, t2,
+                         tempo::distance::univariate::adegv<TSeries>(exponent),
+                         tempo::distance::univariate::ade<TSeries>(exponent),
+                         w, gv, bsf);
   }
 
 }

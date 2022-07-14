@@ -20,17 +20,17 @@ namespace tempo::classifier::SForest::splitter::nn1 {
   };
 
   /// 1NN Direct Alignment Generator
-  template<typename TrainState, typename TrainData>
-  struct DAGen : public NN1SplitterDistanceGen<TrainState, TrainData> {
-    using R = typename NN1SplitterDistanceGen<TrainState, TrainData>::R;
+  template<typename TrainS, typename TrainD>
+  struct DAGen : public NN1SplitterDistanceGen<TrainS, TrainD> {
+    using R = typename NN1SplitterDistanceGen<TrainS, TrainD>::R;
 
-    TransformGetter<TrainState> get_transform;
-    ExponentGetter<TrainState> get_exponent;
+    TransformGetter<TrainS> get_transform;
+    ExponentGetter<TrainS> get_exponent;
 
-    DAGen(TransformGetter<TrainState> gt, ExponentGetter<TrainState> ge) :
+    DAGen(TransformGetter<TrainS> gt, ExponentGetter<TrainS> ge) :
       get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
 
-    R generate(std::unique_ptr<TrainState> state, const TrainData& /* data */, const ByClassMap& /* bcm */) override {
+    R generate(std::unique_ptr<TrainS> state, const TrainD& /* data */, const ByClassMap& /* bcm */) override {
       // Generate args
       std::string tn = get_transform(*state);
       double e = get_exponent(*state);

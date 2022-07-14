@@ -9,13 +9,13 @@
 #include "tempo/classifier/SForest/splitter/nn1/sp_adtw.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_erp.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
 #include <tempo/classifier/SForest/splitter/meta/chooser.hpp>
 //
 #include <tempo/distance/helpers.hpp>
-
 
 namespace fs = std::filesystem;
 
@@ -166,6 +166,15 @@ int main(int argc, char **argv) {
     return std::uniform_int_distribution<size_t>(0, win_top)(state.prng);
   };
 
+  /// ERP Gap Value *AND* LCSS epsilon.
+  /// Random fraction of the dataset standard deviation, within [stddev/5, stddev[
+  NN1Splitter::StatGetter<state, data> frac_stddev =
+    [](state& state, data const& data, ByClassMap const& bcm, string const& transform_name) -> double {
+      const auto& train_dataset = data.get_train_dataset(transform_name);
+      auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
+      return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(state.prng);
+    };
+
   // --- --- --- Build node generators
 
   /// Direct Alignment
@@ -193,13 +202,19 @@ int main(int argc, char **argv) {
     make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter, exp_getter)
   );
 
+  /// ERP
+  auto nn1erp_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+  );
+
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
       nn1da_gen,
       nn1dtw_gen,
       nn1dtwfull_gen,
       nn1adtw_gen,
-      nn1wdtw_gen
+      nn1wdtw_gen,
+      nn1erp_gen
     },
     nbc
   );

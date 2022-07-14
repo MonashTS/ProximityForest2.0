@@ -338,7 +338,7 @@ namespace tempo {
     IndexSet(IndexSet const& other, Collection const& indexes_in_other) {
       using std::begin, std::end;
       // Test requested subset
-      assert(indexes_in_other.size()>other.vset->size());
+      assert(indexes_in_other.size()<=other.vset->size());
       std::vector<size_t> nv;
       nv.reserve(other.vset->size());
       for (auto i : indexes_in_other) { nv.push_back(other.vset->at(i)); }

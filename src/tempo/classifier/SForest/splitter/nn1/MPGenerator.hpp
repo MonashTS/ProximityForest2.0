@@ -21,16 +21,16 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   /// Generate a warping window
   template<typename TrainState, typename TrainData>
-  using WindowGetter = std::function<size_t(TrainState& train_state, const TrainData& train_data)>;
+  using WindowGetter = std::function<size_t(TrainState& train_state, TrainData const& train_data)>;
 
 
 
   // --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// Some distances (like ERP and LCSS) generate a random value based on the dataset
+  /// Some distances (like ADTW, ERP and LCSS) generate a random value based on the dataset
   /// (requires 'data' and the dataset name, and 'bcm' for the local subset)
   template<typename TrainState, typename TrainData>
-  using StatGetter = std::function<F(TrainState& state, const TrainData& data, const ByClassMap bcm,
-                                     const std::string& tn)>;
+  using StatGetter = std::function<F(TrainState& state, TrainData const& data,
+                                     ByClassMap const& bcm, std::string const& tn)>;
 
 }

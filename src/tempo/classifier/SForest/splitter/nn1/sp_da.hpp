@@ -2,6 +2,7 @@
 
 #include "nn1splitters.hpp"
 #include "MPGenerator.hpp"
+#include "sp_basedist.hpp"
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
@@ -9,16 +10,13 @@
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   /// 1NN Direct Alignment Distance
-  struct DA : public Distance_i {
+  struct DA : public BaseDist_i {
 
-    std::string transformation_name;
     double exponent;
 
-    DA(std::string tname, double exponent) : transformation_name(std::move(tname)), exponent(exponent) {}
+    DA(std::string tname, double exponent) : BaseDist_i(std::move(tname)), exponent(exponent) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
-
-    std::string get_transformation_name() override;
   };
 
   /// 1NN Direct Alignment Generator

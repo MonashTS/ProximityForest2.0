@@ -1,16 +1,19 @@
 #include "pch.h"
 #include "tempo/reader/new_reader.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
 
 #include "tempo/classifier/SForest/stree.hpp"
 //
 #include <tempo/classifier/SForest/splitter/nn1/nn1splitters.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/MPGenerator.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_da.hpp>
+#include "tempo/classifier/SForest/splitter/nn1/sp_adtw.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
 #include <tempo/classifier/SForest/splitter/meta/chooser.hpp>
+//
+#include <tempo/distance/helpers.hpp>
 
 
 namespace fs = std::filesystem;
@@ -76,8 +79,6 @@ int main(int argc, char **argv) {
   DatasetHeader const& test_header = test_dataset.header();
   const size_t test_size = test_header.size();
 
-
-
   struct state {
     PRNG prng;
 
@@ -139,7 +140,7 @@ int main(int argc, char **argv) {
 
   // --- --- --- Train BCM
   auto [train_bcm, train_bcm_remains] = train_dataset.get_BCM();
-  if(!train_bcm_remains.empty()){
+  if (!train_bcm_remains.empty()) {
     cerr << "Error: train instances without label!" << endl;
     exit(5);
   }
@@ -168,23 +169,30 @@ int main(int argc, char **argv) {
 
   /// Direct Alignment
   auto nn1da_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DAGen<state,data>>(transform_getter, exp_getter)
+    make_shared<NN1Splitter::DAGen<state, data>>(transform_getter, exp_getter)
   );
 
   /// DTW
   auto nn1dtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DTWGen<state,data>>(transform_getter, exp_getter, window_getter)
+    make_shared<NN1Splitter::DTWGen<state, data>>(transform_getter, exp_getter, window_getter)
   );
 
   /// DTWfull
   auto nn1dtwfull_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DTWfullGen<state,data>>(transform_getter, exp_getter)
+    make_shared<NN1Splitter::DTWfullGen<state, data>>(transform_getter, exp_getter)
+  );
+
+  /// ADTW
+  auto nn1adtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::ADTWGen<state, data>>(transform_getter, exp_getter)
   );
 
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
       nn1da_gen,
-      nn1dtw_gen
+      nn1dtw_gen,
+      nn1dtwfull_gen,
+      nn1adtw_gen
     },
     nbc
   );
@@ -207,11 +215,11 @@ int main(int argc, char **argv) {
   // --- --- --- Test!
 
   size_t nb_correct = 0;
-  for(size_t test_idx=0; test_idx<test_size; ++test_idx) {
+  for (size_t test_idx = 0; test_idx<test_size; ++test_idx) {
     auto [test_state1, result] = trained_tree->predict(std::move(test_state), train_test_data, test_idx);
     test_state = std::move(test_state1);  // Transmit state
     EL predicted_label = arma::index_max(result.probabilities);
-    if(predicted_label == test_header.label(test_idx)){ nb_correct++; }
+    if (predicted_label==test_header.label(test_idx)) { nb_correct++; }
   }
 
   cout << "Nb correct = " << nb_correct << "/" << test_size << endl;

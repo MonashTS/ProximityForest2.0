@@ -555,7 +555,7 @@ namespace tempo {
     /// Subset of an existing split: is is indexing in other
     DataSplit(DataSplit const& other, std::string name, IndexSet is) :
       _name(std::move(name)),
-      _transform(other._tranform),
+      _transform(other._transform),
       _index_set(other.index_set(), is) {}
 
     /// Subset changing the transform

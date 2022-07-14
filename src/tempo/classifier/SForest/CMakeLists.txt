@@ -9,11 +9,12 @@ target_sources(libtempo
         # NN1 splitters
         splitter/nn1/nn1splitters.hpp
         splitter/nn1/MPGenerator.hpp
+        splitter/nn1/sp_basedist.hpp
         splitter/nn1/sp_da.hpp
+        splitter/nn1/sp_adtw.hpp
         splitter/nn1/sp_dtw.hpp
         ### ### ### ### ### ### ### ### ### ### ### ###
         PRIVATE
-        # NN1 splitters
-        splitter/nn1/sp_da.cpp
-        splitter/nn1/sp_dtw.cpp
+        # NN1 splitters implementation
+        splitter/nn1/implem.cpp
         )

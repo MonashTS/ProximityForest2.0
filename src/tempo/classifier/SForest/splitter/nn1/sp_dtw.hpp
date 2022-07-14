@@ -2,6 +2,7 @@
 
 #include "nn1splitters.hpp"
 #include "MPGenerator.hpp"
+#include "sp_basedist.hpp"
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
@@ -9,18 +10,16 @@
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   /// 1NN DTW with window parameter Distance
-  struct DTW : public Distance_i {
+  struct DTW : public BaseDist_i {
 
-    std::string transformation_name;
     double exponent;
     size_t w;
 
     DTW(std::string tname, double exponent, size_t w) :
-      transformation_name(std::move(tname)), exponent(exponent), w(w) {}
+      BaseDist_i(std::move(tname)), exponent(exponent), w(w) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
 
-    std::string get_transformation_name() override;
   };
 
   /// 1NN DTW with window parameter Generator
@@ -46,20 +45,6 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   };
 
-  /// 1NN DTW without window parameter (always full window) Distance
-  struct DTWfull : public Distance_i {
-
-    std::string transformation_name;
-    double exponent;
-
-    DTWfull(std::string tname, double exponent) :
-      transformation_name(std::move(tname)), exponent(exponent) {}
-
-    F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
-
-    std::string get_transformation_name() override;
-  };
-
   /// 1NN DTW without window parameter (always full winfow) Generator
   template<typename TrainS, typename TrainD>
   struct DTWfullGen : public NN1SplitterDistanceGen<TrainS, TrainD> {
@@ -76,7 +61,7 @@ namespace tempo::classifier::SForest::splitter::nn1 {
       std::string tn = get_transform(*state);
       double e = get_exponent(*state);
       // Build return
-      return {std::move(state), std::make_unique<DTWfull>(tn, e)};
+      return {std::move(state), std::make_unique<DTW>(tn, e, utils::NO_WINDOW)};
     }
 
   };

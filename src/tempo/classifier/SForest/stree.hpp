@@ -24,9 +24,9 @@ namespace tempo::classifier::SForest {
 
   };
 
-  /// MainState concept: a base state with a pseudo random number generator
+  /// TreeState concept: a base state with a pseudo random number generator
   template<typename S>
-  concept MainState = BaseState<S>&&requires(S& s0){
+  concept TreeState = BaseState<S>&&requires(S& s0){
     s0.prng;
   };
 
@@ -51,7 +51,7 @@ namespace tempo::classifier::SForest {
   // Splitter Interfaces
 
   /// Test time leaf splitter interface
-  template<MainState TestS, typename TestD>
+  template<TreeState TestS, typename TestD>
   struct LeafSplitter_i {
 
     /// Return type of a leaf. Transmit the state back and produces a classifier::Result
@@ -68,7 +68,7 @@ namespace tempo::classifier::SForest {
   };
 
   /// Test time node splitter interface
-  template<MainState TestS, typename TestD>
+  template<TreeState TestS, typename TestD>
   struct NodeSplitter_i {
 
     /// Return type of a node. Transmit the state back and produces the index of the branch to follow.
@@ -88,7 +88,7 @@ namespace tempo::classifier::SForest {
   // Node/Tree implementation
 
   /// Splitting Node - splitting nodes are arranged to form a splitting tree.
-  template<MainState TestS, typename TestD>
+  template<TreeState TestS, typename TestD>
   struct SNode {
     using LEAF = LeafSplitter_i<TestS, TestD>;
     using NODE = NodeSplitter_i<TestS, TestD>;
@@ -138,10 +138,8 @@ namespace tempo::classifier::SForest {
       std::unique_ptr<TestS> state;
       classifier::Result result;
 
-      explicit R(typename LEAF::R&& r) {
-        state = std::move(r.state);
-        result = std::move(r.result);
-      }
+      explicit R(typename LEAF::R&& r) :
+        state(std::move(r.state)), result(std::move(r.result)) {}
 
     };
 
@@ -163,7 +161,7 @@ namespace tempo::classifier::SForest {
   // Splitter Generator Interfaces
 
   /// Train time leaf splitter generator
-  template<MainState TrainS, typename TrainD, typename TestS, typename TestD>
+  template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
   struct LeafSplitterGen_i {
 
     /// Return type of a leaf generator.
@@ -181,7 +179,7 @@ namespace tempo::classifier::SForest {
   };
 
   /// Train time node splitter generator
-  template<MainState TrainS, typename TrainD, typename TestS, typename TestD>
+  template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
   struct NodeSplitterGen_i {
 
     /// Return type of a node generator.
@@ -208,7 +206,7 @@ namespace tempo::classifier::SForest {
   // Node/Tree trainer implementation
 
   /// Train a Splitting Tree
-  template<MainState TrainS, typename TrainD, typename TestS, typename TestD>
+  template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
   struct STreeTrainer {
     // Shorthand for leaf and node generators types
     using GLeaf = LeafSplitterGen_i<TrainS, TrainD, TestS, TestD>;
@@ -234,7 +232,7 @@ namespace tempo::classifier::SForest {
     };
 
     /// Train a splitting tree
-    R train(std::unique_ptr<TrainS> state0, const TrainD& data, ByClassMap const& bcm) {
+    R train(std::unique_ptr<TrainS> state0, const TrainD& data, ByClassMap const& bcm) const {
       // Ensure that we have at least one class reaching this node!
       // Note: there may be no data point associated to the class.
       assert(bcm.nb_classes()>0);

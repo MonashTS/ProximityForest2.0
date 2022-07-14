@@ -199,7 +199,7 @@ namespace tempo {
     [[nodiscard]] inline L decode(EL el) const { return _label_encoder.decode(el); }
 
     /// Get the number of classes
-    [[nodiscard]] inline size_t nbclasses() const { return _label_encoder.index_to_label().size(); }
+    [[nodiscard]] inline size_t nb_classes() const { return _label_encoder.index_to_label().size(); }
 
     /// Direct access to the label encoder
     [[nodiscard]] inline LabelEncoder const& label_encoder() const { return _label_encoder; }
@@ -499,7 +499,7 @@ namespace tempo {
     /// Helper providing the by class (encoded label) cardinality in a Col vector
     /// Works for all labels present in the header, not just the one present in this BCM
     inline arma::Col<size_t> get_class_cardinalities(const DatasetHeader& header) {
-      arma::Col<size_t> result(header.nbclasses(), arma::fill::zeros);
+      arma::Col<size_t> result(header.nb_classes(), arma::fill::zeros);
       for (const auto& [el, v] : *this) { result[el] = v.size(); }
       return result;
     }

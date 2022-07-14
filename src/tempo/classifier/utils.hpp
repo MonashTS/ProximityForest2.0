@@ -16,15 +16,26 @@ namespace tempo::classifier {
     /// associated to each row from the probabilities matrix
     double weight;
 
+    Result() = default;
+
+    Result(Result const&) = default;
+
+    Result& operator=(Result const&) = default;
+
+    Result(Result&&) = default;
+
+    Result& operator=(Result &&) = default;
+
+    inline Result(arma::rowvec&& proba, double weight) : probabilities(std::move(proba)), weight(weight) {}
+
+    inline explicit Result(size_t nbclasses) : probabilities(nbclasses, arma::fill::zeros), weight(0) {}
+
     /// Create a Result for 'cardinality' classes, with the index (coming from a label encoder) of 'proba_at_one'
     /// being 1.0, and all the other at 0. The weight is copied as is.
     static inline Result make_probabilities_one(size_t cardinality, EL proba_at_one, double weight) {
       arma::rowvec p(cardinality, arma::fill::zeros);
       p[proba_at_one] = 1.0;
-      return Result{
-        std::move(p),
-        weight
-      };
+      return Result(std::move(p), weight);
     }
 
   };

@@ -2,6 +2,7 @@ target_sources(libtempo
         PUBLIC
         ../utils.hpp
         stree.hpp
+        sforest.hpp
         # Leaf
         leaf/pure_leaf.hpp
         # Meta splitters

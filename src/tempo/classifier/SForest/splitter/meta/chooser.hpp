@@ -27,7 +27,7 @@ namespace tempo::classifier::SForest::splitter::meta {
   }
 
   /// Splitter generator chooser: choose between several other node generators
-  template<MainState TrainS, typename TrainD, typename TestS, typename TestD>
+  template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
   struct SplitterChooserGen : public NodeSplitterGen_i<TrainS, TrainD, TestS, TestD> {
     // Shorthands
     using NodeGen = NodeSplitterGen_i<TrainS, TrainD, TestS, TestD>;

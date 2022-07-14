@@ -2,6 +2,7 @@
 #include "tempo/reader/new_reader.hpp"
 
 #include "tempo/classifier/SForest/stree.hpp"
+#include "tempo/classifier/SForest/sforest.hpp"
 //
 #include <tempo/classifier/SForest/splitter/nn1/nn1splitters.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/MPGenerator.hpp>
@@ -86,11 +87,12 @@ int main(int argc, char **argv) {
   const size_t test_size = test_header.size();
 
   struct state {
+    size_t seed;
     PRNG prng;
 
     SForest::splitter::nn1::NN1SplitterState distance_splitter_state;
 
-    explicit state(size_t seed) : prng(seed) {}
+    explicit state(size_t seed) : seed(seed), prng(seed) {}
 
     explicit state(PRNG&& prng) : prng(prng) {}
 
@@ -98,8 +100,13 @@ int main(int argc, char **argv) {
 
     void branch_merge(state&& s) { prng = move(s.prng); }
 
+    state forest_fork(size_t branch_idx) { return state(seed + branch_idx); }
+
+    void forest_merge(state&& /* s */ ) {}
+
   };
-  static_assert(SForest::MainState<state>);
+  static_assert(SForest::TreeState<state>);
+  static_assert(SForest::ForestState<state>);
   static_assert(SForest::splitter::nn1::HasNN1SplitterState<state>);
 
   struct data {
@@ -139,7 +146,7 @@ int main(int argc, char **argv) {
   data train_test_data(train_map, test_map);
 
 
-  // --- --- --- --- --- --- Train one tree
+  // --- --- --- --- --- --- Prepare Train state/data/splitters
 
   // --- --- --- Train state
   auto train_state = std::make_unique<state>(train_seed);
@@ -292,13 +299,17 @@ int main(int argc, char **argv) {
 
   auto leafgen_pure = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 
-  // --- --- --- Train!
 
-  SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, chooser_gen);
-  auto [train_state1, trained_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
+  // --- --- --- --- --- --- Train
 
+  // SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, chooser_gen);
+  // auto [train_state1, trained_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
 
-  // --- --- --- --- --- --- Classification one tree
+  auto tree_trainer = std::make_shared<SForest::STreeTrainer<state, data, state, data>>(leafgen_pure, chooser_gen);
+  SForest::SForestTrainer<state, data, state, data> forest_trainer(tree_trainer, nbt);
+  auto [train_state1, trained_forest] = forest_trainer.train(move(train_state), train_test_data, train_bcm, nbthread);
+
+  // --- --- --- --- --- --- Test
 
   // --- --- --- Test state
   auto test_state = std::make_unique<state>(test_seed);
@@ -307,7 +318,7 @@ int main(int argc, char **argv) {
 
   size_t nb_correct = 0;
   for (size_t test_idx = 0; test_idx<test_size; ++test_idx) {
-    auto [test_state1, result] = trained_tree->predict(std::move(test_state), train_test_data, test_idx);
+    auto [test_state1, result] = trained_forest->predict(std::move(test_state), train_test_data, test_idx, nbthread);
     test_state = std::move(test_state1);  // Transmit state
     EL predicted_label = arma::index_max(result.probabilities);
     if (predicted_label==test_header.label(test_idx)) { nb_correct++; }
@@ -315,7 +326,6 @@ int main(int argc, char **argv) {
 
   cout << "Nb correct = " << nb_correct << "/" << test_size << endl;
   cout << "Accuracy   = " << (double)nb_correct/(double)test_size << endl;
-
 
 
 

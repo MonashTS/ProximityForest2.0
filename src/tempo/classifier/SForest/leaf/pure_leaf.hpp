@@ -7,7 +7,7 @@
 namespace tempo::classifier::SForest::leaf {
 
   /// Pure leaf generator: stop when only one class reaches the node
-  template<MainState TrainS, TrainData TrainD, typename TestS, typename TestD>
+  template<TreeState TrainS, TrainData TrainD, typename TestS, typename TestD>
   struct PureLeaf_Gen : public LeafSplitterGen_i<TrainS, TrainD, TestS, TestD> {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -37,7 +37,7 @@ namespace tempo::classifier::SForest::leaf {
 
     R generate(std::unique_ptr<TrainS> state, const TrainD& data, const ByClassMap& bcm) override {
       if (bcm.nb_classes()==1) { // Generate leaf on pure node
-        size_t cardinality = data.get_train_header().nbclasses();
+        size_t cardinality = data.get_train_header().nb_classes();
         EL elabel = *bcm.classes().begin();   // Get the encoded label
         auto weight = (double)bcm.size();     // Get the "weight", i.e. the cardinality of the bcm
         auto leafptr = std::make_unique<PureLeaf>(

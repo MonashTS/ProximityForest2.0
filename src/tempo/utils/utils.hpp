@@ -13,7 +13,7 @@ namespace tempo::utils {
 
   /// Pick a random item from a subscriptable type, from [0] to [size-1]
   template<typename PRNG>
-  inline const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng) {
+  inline const auto& pick_one(Subscriptable auto const& collection, size_t size, PRNG& prng) {
     if (size==1) { return collection[0]; }
     else if (size>1) {
       auto distribution = std::uniform_int_distribution<size_t>(0, size - 1);

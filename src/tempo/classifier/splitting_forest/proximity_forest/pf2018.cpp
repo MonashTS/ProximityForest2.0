@@ -133,7 +133,7 @@ namespace tempo::classifier {
       };
 
     /// List of MSM costs
-    inline static const auto msm_cost = [](TrainState& state) -> size_t {
+    inline static const auto msm_cost = [](TrainState& state) -> double {
       constexpr size_t N = 100;
       double costs[N]{
         0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,

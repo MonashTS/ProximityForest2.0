@@ -13,6 +13,7 @@ target_sources(libtempo
         splitter/nn1/sp_da.hpp
         splitter/nn1/sp_adtw.hpp
         splitter/nn1/sp_dtw.hpp
+        splitter/nn1/sp_wdtw.hpp
         ### ### ### ### ### ### ### ### ### ### ### ###
         PRIVATE
         # NN1 splitters implementation

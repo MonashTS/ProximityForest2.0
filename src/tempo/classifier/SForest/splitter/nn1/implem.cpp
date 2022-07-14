@@ -9,6 +9,9 @@
 #include "sp_adtw.hpp"
 #include <tempo/distance/elastic/adtw.hpp>
 
+#include "sp_wdtw.hpp"
+#include <tempo/distance/elastic/wdtw.hpp>
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -21,6 +24,10 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   F ADTW::eval(const TSeries& t1, const TSeries& t2, F bsf) {
     return distance::adtw(t1, t2, distance::univariate::ade<TSeries>(exponent), penalty, bsf);
+  }
+
+  F WDTW::eval(const TSeries& t1, const TSeries& t2, F bsf) {
+    return distance::wdtw(t1, t2, distance::univariate::ade<TSeries>(exponent), weights, bsf);
   }
 
 }

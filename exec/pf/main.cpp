@@ -8,6 +8,7 @@
 #include <tempo/classifier/SForest/splitter/nn1/sp_da.hpp>
 #include "tempo/classifier/SForest/splitter/nn1/sp_adtw.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
@@ -187,12 +188,18 @@ int main(int argc, char **argv) {
     make_shared<NN1Splitter::ADTWGen<state, data>>(transform_getter, exp_getter)
   );
 
+  /// WDTW
+  auto nn1wdtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter, exp_getter)
+  );
+
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
       nn1da_gen,
       nn1dtw_gen,
       nn1dtwfull_gen,
-      nn1adtw_gen
+      nn1adtw_gen,
+      nn1wdtw_gen
     },
     nbc
   );

@@ -12,6 +12,7 @@
 #include "tempo/classifier/SForest/splitter/nn1/sp_erp.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp"
 #include "tempo/classifier/SForest/splitter/nn1/sp_msm.hpp"
+#include "tempo/classifier/SForest/splitter/nn1/sp_twe.hpp"
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
@@ -163,7 +164,7 @@ int main(int argc, char **argv) {
   };
 
   /// Pick Exponent always at 2.0
-  NN1Splitter::ExponentGetter<state> exp_sqed = [&](state& state) -> double { return 2.0; };
+  NN1Splitter::ExponentGetter<state> exp_sqed = [&](state& /* state */) -> double { return 2.0; };
 
   /// Random window computation function [0, Lmax/4]
   NN1Splitter::WindowGetter<state, data> window_getter = [](state& state, data const& data) -> size_t {
@@ -180,7 +181,7 @@ int main(int argc, char **argv) {
       return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(state.prng);
     };
 
-  /// List of MSM costs
+  /// MSM costs
   NN1Splitter::MSMGen<state, data>::CostGetter msm_cost = [](state& state) -> double {
     constexpr size_t N = 100;
     double costs[N]{
@@ -194,6 +195,21 @@ int main(int argc, char **argv) {
       60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
     };
     return utils::pick_one(costs, N, state.prng);
+  };
+
+  /// TWE nu parameters
+  NN1Splitter::TWEGen<state, data>::Getter twe_nu = [](state& state) -> double {
+    constexpr size_t N = 10;
+    double nus[N]{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
+    return utils::pick_one(nus, N, state.prng);
+  };
+
+  /// TWE lambda parameters
+  NN1Splitter::TWEGen<state, data>::Getter twe_lambda = [](state& state) -> double {
+    constexpr size_t N = 10;
+    double lambdas[N]{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
+                      0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
+    return utils::pick_one(lambdas, N, state.prng);
   };
 
   // --- --- --- Build node generators
@@ -238,6 +254,11 @@ int main(int argc, char **argv) {
     make_shared<NN1Splitter::MSMGen<state, data>>(transform_getter, msm_cost)
   );
 
+  /// TWE
+  auto nn1twe_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+    make_shared<NN1Splitter::TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
+  );
+
   auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
     vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
       nn1da_gen,
@@ -247,7 +268,8 @@ int main(int argc, char **argv) {
       nn1wdtw_gen,
       nn1erp_gen,
       nn1lcss_gen,
-      nn1msm_gen
+      nn1msm_gen,
+      nn1twe_gen
     },
     nbc
   );

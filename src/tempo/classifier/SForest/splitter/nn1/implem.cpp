@@ -21,6 +21,9 @@
 #include "sp_msm.hpp"
 #include <tempo/distance/elastic/msm.hpp>
 
+#include "sp_twe.hpp"
+#include <tempo/distance/elastic/twe.hpp>
+
 namespace tempo::classifier::SForest::splitter::nn1 {
 
   F DA::eval(const TSeries& t1, const TSeries& t2, F bsf) {
@@ -52,6 +55,10 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   F MSM::eval(const TSeries& t1, const TSeries& t2, F bsf) {
     return distance::univariate::msm(t1, t2, cost, bsf);
+  }
+
+  F TWE::eval(const TSeries& t1, const TSeries& t2, F bsf) {
+    return distance::univariate::twe(t1, t2, nu, lambda, bsf);
   }
 
 }

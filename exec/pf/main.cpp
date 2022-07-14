@@ -162,6 +162,9 @@ int main(int argc, char **argv) {
     return utils::pick_one(exponents, state.prng);
   };
 
+  /// Pick Exponent always at 2.0
+  NN1Splitter::ExponentGetter<state> exp_sqed = [&](state& state) -> double { return 2.0; };
+
   /// Random window computation function [0, Lmax/4]
   NN1Splitter::WindowGetter<state, data> window_getter = [](state& state, data const& data) -> size_t {
     const size_t win_top = std::ceil((double)data.get_train_header().length_max()/4.0);
@@ -222,12 +225,12 @@ int main(int argc, char **argv) {
 
   /// ERP
   auto nn1erp_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+    make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
   );
 
   /// LCSS
   auto nn1lcss_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+    make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
   );
 
   /// MSM

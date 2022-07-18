@@ -1,27 +1,29 @@
 #include "pch.h"
-#include "tempo/reader/new_reader.hpp"
+#include <tempo/reader/new_reader.hpp>
 
-#include "tempo/classifier/SForest/stree.hpp"
-#include "tempo/classifier/SForest/sforest.hpp"
+#include <tempo/classifier/SForest/stree.hpp>
+#include <tempo/classifier/SForest/sforest.hpp>
 //
 #include <tempo/classifier/SForest/splitter/nn1/nn1splitters.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/MPGenerator.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_da.hpp>
-#include "tempo/classifier/SForest/splitter/nn1/sp_adtw.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_erp.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_lorentzian.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_msm.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp"
-#include "tempo/classifier/SForest/splitter/nn1/sp_twe.hpp"
+#include <tempo/classifier/SForest/splitter/nn1/sp_adtw.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_dtw.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_erp.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_lorentzian.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_msm.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp>
+#include <tempo/classifier/SForest/splitter/nn1/sp_twe.hpp>
 //
 #include <tempo/classifier/SForest/leaf/pure_leaf.hpp>
 //
 #include <tempo/classifier/SForest/splitter/meta/chooser.hpp>
 //
 #include <tempo/distance/helpers.hpp>
+//
+#include <tempo/transform/derivative.hpp>
 
 namespace fs = std::filesystem;
 
@@ -45,6 +47,7 @@ int main(int argc, char **argv) {
   // Config
   fs::path UCRPATH(args[0]);
   string dataset_name(args[1]);
+  string which_pf(args[2]);
   size_t nbt = 100;
   size_t nbc = 5;
   size_t nbthread = 8;
@@ -137,11 +140,23 @@ int main(int argc, char **argv) {
 
   // --- --- --- Train/Test data
 
+  auto train_derive_t = std::make_shared<DatasetTransform<TSeries>>(
+    std::move(tempo::transform::derive(train_dataset.transform(), 1).back())
+  );
+  DTS train_derive("train", train_derive_t);
+
   map<string, DTS> train_map;
   train_map["default"] = train_dataset;
+  train_map["derivative1"] = train_derive;
+
+  auto test_derive_t = std::make_shared<DatasetTransform<TSeries>>(
+    std::move(tempo::transform::derive(test_dataset.transform(), 1).back())
+  );
+  DTS test_derive("test", test_derive_t);
 
   map<string, DTS> test_map;
   test_map["default"] = test_dataset;
+  test_map["derivative1"] = test_derive;
 
   data train_test_data(train_map, test_map);
 
@@ -161,10 +176,21 @@ int main(int argc, char **argv) {
   // --- --- --- Build the getters
 
   /// Pick transform
-  vector<string> transforms{"default"};
+  vector<string> transforms{"default", "derivative1"};
   NN1Splitter::TransformGetter<state> transform_getter = [&](state& state) -> string {
     return utils::pick_one(transforms, state.prng);
   };
+
+  /// Pick default transform
+  NN1Splitter::TransformGetter<state> transform_getter_default = [&](state& /* state */) -> string {
+    return "default";
+  };
+
+  /// Pick derivative 1 transform
+  NN1Splitter::TransformGetter<state> transform_getter_derivative1 = [&](state& /* state */) -> string {
+    return "derivative1";
+  };
+
 
   /// Pick Exponent
   vector<double> exponents{2.0};
@@ -222,91 +248,168 @@ int main(int argc, char **argv) {
   };
 
   // --- --- --- Build node generators
+  std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> node_splitter_gen;
 
-  /// Direct Alignment
-  auto nn1da_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DAGen<state, data>>(transform_getter, exp_getter)
-  );
+  if (which_pf=="22") {
 
-  /// DTW
-  auto nn1dtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DTWGen<state, data>>(transform_getter, exp_getter, window_getter)
-  );
+    /// Direct Alignment
+    auto nn1da_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DAGen<state, data>>(transform_getter, exp_getter)
+    );
 
-  /// DTWfull
-  auto nn1dtwfull_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::DTWfullGen<state, data>>(transform_getter, exp_getter)
-  );
+    /// DTW
+    auto nn1dtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWGen<state, data>>(transform_getter, exp_getter, window_getter)
+    );
 
-  /// ADTW
-  auto nn1adtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::ADTWGen<state, data>>(transform_getter, exp_getter)
-  );
+    /// DTWfull
+    auto nn1dtwfull_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWfullGen<state, data>>(transform_getter, exp_getter)
+    );
 
-  /// WDTW
-  auto nn1wdtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter, exp_getter)
-  );
+    /// ADTW
+    auto nn1adtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::ADTWGen<state, data>>(transform_getter, exp_getter)
+    );
 
-  /// ERP
-  auto nn1erp_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
-  );
+    /// WDTW
+    auto nn1wdtw_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter, exp_getter)
+    );
 
-  /// LCSS
-  auto nn1lcss_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
-  );
+    /// ERP
+    auto nn1erp_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
+    );
 
-  /// Lorentzian
-  auto nn1lorentzian_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::LorentzianGen<state, data>>(transform_getter)
-  );
+    /// LCSS
+    auto nn1lcss_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
+    );
 
-  /// MSM
-  auto nn1msm_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::MSMGen<state, data>>(transform_getter, msm_cost)
-  );
+    /// Lorentzian
+    auto nn1lorentzian_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::LorentzianGen<state, data>>(transform_getter)
+    );
 
-  /// SBD
-  auto nn1sbd_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::SBDGen<state, data>>(transform_getter)
-  );
+    /// MSM
+    auto nn1msm_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::MSMGen<state, data>>(transform_getter, msm_cost)
+    );
 
-  /// TWE
-  auto nn1twe_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
-    make_shared<NN1Splitter::TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
-  );
+    /// SBD
+    auto nn1sbd_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::SBDGen<state, data>>(transform_getter)
+    );
 
-  auto chooser_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
-    vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
-      nn1da_gen,
-      nn1dtw_gen,
-      nn1dtwfull_gen,
-      nn1adtw_gen,
-      nn1wdtw_gen,
-      nn1erp_gen,
-      nn1lcss_gen,
-      nn1lorentzian_gen,
-      nn1msm_gen,
-      nn1sbd_gen,
-      nn1twe_gen
-    },
-    nbc
-  );
+    /// TWE
+    auto nn1twe_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
+    );
+
+    node_splitter_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+      vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+        nn1da_gen,
+        nn1dtw_gen,
+        nn1dtwfull_gen,
+        nn1adtw_gen,
+        nn1wdtw_gen,
+        nn1erp_gen,
+        nn1lcss_gen,
+        nn1lorentzian_gen,
+        nn1msm_gen,
+        nn1sbd_gen,
+        nn1twe_gen
+      },
+      nbc
+    );
+  }
+  else if (which_pf=="11") {
+
+    /// Direct Alignment default
+    auto nn1da_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DAGen<state, data>>(transform_getter_default, exp_getter)
+    );
+
+    /// DTW default
+    auto nn1dtw_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWGen<state, data>>(transform_getter_default, exp_getter, window_getter)
+    );
+
+    /// DTW derivative1
+    auto nn1dtw_d1_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWGen<state, data>>(transform_getter_derivative1, exp_getter, window_getter)
+    );
+
+    /// DTWfull default
+    auto nn1dtwfull_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWfullGen<state, data>>(transform_getter_default, exp_getter)
+    );
+
+    /// DTWfull derivative1
+    auto nn1dtwfull_d1_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::DTWfullGen<state, data>>(transform_getter_derivative1, exp_getter)
+    );
+
+    /// WDTW default
+    auto nn1wdtw_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter_default, exp_getter)
+    );
+
+    /// WDTW derivative1
+    auto nn1wdtw_d1_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::WDTWGen<state, data>>(transform_getter_derivative1, exp_getter)
+    );
+
+    /// ERP
+    auto nn1erp_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::ERPGen<state, data>>(transform_getter_default, exp_sqed, window_getter, frac_stddev)
+    );
+
+    /// LCSS
+    auto nn1lcss_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::LCSSGen<state, data>>(transform_getter_default, exp_sqed, window_getter, frac_stddev)
+    );
+
+    /// MSM
+    auto nn1msm_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::MSMGen<state, data>>(transform_getter_default, msm_cost)
+    );
+
+    /// TWE
+    auto nn1twe_def_gen = make_shared<NN1Splitter::NN1SplitterGen<state, data, state, data>>(
+      make_shared<NN1Splitter::TWEGen<state, data>>(transform_getter_default, twe_nu, twe_lambda)
+    );
+
+    node_splitter_gen = make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+      vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+        nn1da_def_gen,
+        nn1dtw_def_gen,
+        nn1dtw_d1_gen,
+        nn1dtwfull_def_gen,
+        nn1dtwfull_d1_gen,
+        nn1wdtw_def_gen,
+        nn1wdtw_d1_gen,
+        nn1erp_def_gen,
+        nn1lcss_def_gen,
+        nn1msm_def_gen,
+        nn1twe_def_gen
+      },
+      nbc
+    );
+
+  }
 
   // --- --- --- Build leaf stopper
 
-  auto leafgen_pure = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
+  auto pleaf_gen = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 
 
   // --- --- --- --- --- --- Train
 
-  // SForest::STreeTrainer<state, data, state, data> tree_trainer(leafgen_pure, chooser_gen);
-  // auto [train_state1, trained_tree] = tree_trainer.train(std::move(train_state), train_test_data, train_bcm);
-
-  auto tree_trainer = std::make_shared<SForest::STreeTrainer<state, data, state, data>>(leafgen_pure, chooser_gen);
+  auto tree_trainer = std::make_shared<SForest::STreeTrainer<state, data, state, data>>(pleaf_gen, node_splitter_gen);
   SForest::SForestTrainer<state, data, state, data> forest_trainer(tree_trainer, nbt);
+
   auto [train_state1, trained_forest] = forest_trainer.train(move(train_state), train_test_data, train_bcm, nbthread);
 
   // --- --- --- --- --- --- Test

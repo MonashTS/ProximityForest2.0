@@ -180,7 +180,12 @@ int main(int argc, char **argv) {
     jv["01loss"] = j;
   }
 
-  cout << jv.toStyledString() << endl;
+  cout << jv << endl;
+
+  if (outpath) {
+    auto out = ofstream(outpath.value());
+    out << jv << endl;
+  }
 
   return 0;
 

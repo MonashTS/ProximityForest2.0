@@ -58,7 +58,7 @@ namespace tempo::classifier::SForest {
     /// Classification result. Transmit the state back and produces a classifier::Result
     struct R {
       std::unique_ptr<TestS> state;
-      classifier::Result result;
+      classifier::Result1 result;
     };
 
     /// Given a testing state and testing data, do a prediction for the exemplar 'index'
@@ -67,7 +67,7 @@ namespace tempo::classifier::SForest {
       const size_t nbtree = forest.size();
 
       // Result variable
-      classifier::Result result(trainclass_cardinality);
+      classifier::Result1 result(trainclass_cardinality);
 
       // Multithreading control
       std::mutex mutex;

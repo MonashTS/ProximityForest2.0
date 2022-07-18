@@ -57,7 +57,7 @@ namespace tempo::classifier::SForest {
     /// Return type of a leaf. Transmit the state back and produces a classifier::Result
     struct R {
       std::unique_ptr<TestS> state;
-      classifier::Result result;
+      classifier::Result1 result;
     };
 
     /// Use the leaf splitter to predict a result using a state, the test data, and an index used to identify the
@@ -136,7 +136,7 @@ namespace tempo::classifier::SForest {
     /// Classification result. Transmit the state back and produces a classifier::Result
     struct R {
       std::unique_ptr<TestS> state;
-      classifier::Result result;
+      classifier::Result1 result;
 
       explicit R(typename LEAF::R&& r) :
         state(std::move(r.state)), result(std::move(r.result)) {}

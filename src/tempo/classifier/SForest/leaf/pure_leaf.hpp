@@ -18,10 +18,10 @@ namespace tempo::classifier::SForest::leaf {
       using R = typename LeafSplitter_i<TestS, TestD>::R;
 
       /// Pure leaf result is computed at train time
-      classifier::Result result;
+      classifier::Result1 result;
 
       /// Construction with already built result
-      explicit PureLeaf(classifier::Result&& r) : result(std::move(r)) {}
+      explicit PureLeaf(classifier::Result1&& r) : result(std::move(r)) {}
 
       /// Simply return a copy of the stored result
       R predict(std::unique_ptr<TestS> state, const TestD& /* data */, size_t /* index */) override {
@@ -41,7 +41,7 @@ namespace tempo::classifier::SForest::leaf {
         EL elabel = *bcm.classes().begin();   // Get the encoded label
         auto weight = (double)bcm.size();     // Get the "weight", i.e. the cardinality of the bcm
         auto leafptr = std::make_unique<PureLeaf>(
-          classifier::Result::make_probabilities_one(cardinality, elabel, weight)
+          classifier::Result1::make_probabilities_one(cardinality, elabel, weight)
         );
         return R{std::move(state), {std::move(leafptr)}};
       } else { return R{std::move(state), {}}; } // Else, return the empty option

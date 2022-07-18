@@ -180,6 +180,8 @@ int main(int argc, char **argv) {
   }
 
   // --- --- --- Output
+  jv["status"] = "success";
+
 
   cout << endl << jv.toStyledString() << endl;
   if (conf.outpath) {

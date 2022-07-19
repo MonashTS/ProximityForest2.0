@@ -95,6 +95,8 @@ namespace tempo::classifier::SForest {
       for (size_t i = 0; i<nbtree; ++i) { p.push_task(test_task, i); }
       p.execute(nb_threads);
 
+      result.probabilities /= result.weight;
+
       // Build & return result
       return R{std::move(state), std::move(result)};
     }

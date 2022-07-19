@@ -52,7 +52,7 @@ namespace tempo::classifier::SForest {
 
   /// Test time leaf splitter interface
   template<TreeState TestS, typename TestD>
-  struct LeafSplitter_i {
+  struct Leaf_i {
 
     /// Return type of a leaf. Transmit the state back and produces a classifier::Result
     struct R {
@@ -64,7 +64,7 @@ namespace tempo::classifier::SForest {
     /// test exemplar within the test data.
     virtual R predict(std::unique_ptr<TestS> state, TestD const& data, size_t index) = 0;
 
-    virtual ~LeafSplitter_i() = default;
+    virtual ~Leaf_i() = default;
   };
 
   /// Test time node splitter interface
@@ -90,9 +90,9 @@ namespace tempo::classifier::SForest {
   /// Splitting Node - splitting nodes are arranged to form a splitting tree.
   template<TreeState TestS, typename TestD>
   struct SNode {
-    using LEAF = LeafSplitter_i<TestS, TestD>;
+    using LEAF = Leaf_i<TestS, TestD>;
     using NODE = NodeSplitter_i<TestS, TestD>;
-    using LEAF_SPLITTER = std::unique_ptr<LeafSplitter_i<TestS, TestD>>;
+    using LEAF_SPLITTER = std::unique_ptr<Leaf_i<TestS, TestD>>;
     using NODE_SPLITTER = std::unique_ptr<NodeSplitter_i<TestS, TestD>>;
     using BRANCH = std::unique_ptr<SNode<TestS, TestD>>;
 
@@ -140,7 +140,6 @@ namespace tempo::classifier::SForest {
 
       explicit R(typename LEAF::R&& r) :
         state(std::move(r.state)), result(std::move(r.result)) {}
-
     };
 
     /// Given a testing state and testing data, do a prediction for the exemplar 'index'
@@ -162,20 +161,20 @@ namespace tempo::classifier::SForest {
 
   /// Train time leaf splitter generator
   template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
-  struct LeafSplitterGen_i {
+  struct LeafGen_i {
 
     /// Return type of a leaf generator.
     /// Transmit back the train state, and optionally returns a leaf splitter.
     /// Returning no leaf splitter means that an node splitter must be built instead.
     struct R {
       std::unique_ptr<TrainS> state;
-      std::optional<std::unique_ptr<LeafSplitter_i<TestS, TestD>>> o_splitter;
+      std::optional<std::unique_ptr<Leaf_i<TestS, TestD>>> o_splitter;
     };
 
     /// Given a training state, training data, and a set of index (in a ByClassMap), try to generate a leaf
     virtual R generate(std::unique_ptr<TrainS> state, TrainD const& data, ByClassMap const& bcm) = 0;
 
-    virtual ~LeafSplitterGen_i() = default;
+    virtual ~LeafGen_i() = default;
   };
 
   /// Train time node splitter generator
@@ -209,7 +208,7 @@ namespace tempo::classifier::SForest {
   template<TreeState TrainS, typename TrainD, typename TestS, typename TestD>
   struct STreeTrainer {
     // Shorthand for leaf and node generators types
-    using GLeaf = LeafSplitterGen_i<TrainS, TrainD, TestS, TestD>;
+    using GLeaf = LeafGen_i<TrainS, TrainD, TestS, TestD>;
     using GNode = NodeSplitterGen_i<TrainS, TrainD, TestS, TestD>;
 
     // Shorthand for result type
@@ -262,7 +261,7 @@ namespace tempo::classifier::SForest {
         // Building loop
         for (size_t idx = 0; idx<nb_branches; ++idx) {
           ByClassMap const& branch_bcm = rnode.branch_splits.at(idx);
-          // Clone the state
+          // Fork the state
           STATE branch_state0 = std::make_unique<TrainS>(state2->branch_fork(idx));
           R r = train(std::move(branch_state0), data, branch_bcm);
           branches.push_back(std::move(r.tree));

@@ -8,14 +8,14 @@ namespace tempo::classifier::SForest::leaf {
 
   /// Pure leaf generator: stop when only one class reaches the node
   template<TreeState TrainS, TrainData TrainD, typename TestS, typename TestD>
-  struct PureLeaf_Gen : public LeafSplitterGen_i<TrainS, TrainD, TestS, TestD> {
+  struct PureLeaf_Gen : public LeafGen_i<TrainS, TrainD, TestS, TestD> {
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Internal class for the test time splitter
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    struct PureLeaf : public LeafSplitter_i<TestS, TestD> {
-      using R = typename LeafSplitter_i<TestS, TestD>::R;
+    struct PureLeaf : public Leaf_i<TestS, TestD> {
+      using R = typename Leaf_i<TestS, TestD>::R;
 
       /// Pure leaf result is computed at train time
       classifier::Result1 result;
@@ -33,7 +33,7 @@ namespace tempo::classifier::SForest::leaf {
     // Splitter generator code at train time
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    using R = typename LeafSplitterGen_i<TrainS, TrainD, TestS, TestD>::R;
+    using R = typename LeafGen_i<TrainS, TrainD, TestS, TestD>::R;
 
     R generate(std::unique_ptr<TrainS> state, const TrainD& data, const ByClassMap& bcm) override {
       if (bcm.nb_classes()==1) { // Generate leaf on pure node

@@ -215,8 +215,8 @@ int main(int argc, char **argv) {
     {
       // All best parameters have the same accuracy
       cout << dataset_name
-           << " Best parameter(s): " << loocv_nbcorrect << "/" << train_top
-           << " = " << train_accuracy << endl;
+        << " Best parameter(s): " << loocv_nbcorrect << "/" << train_top
+        << " = " << train_accuracy << endl;
       // Report all the best in order - extract r and omega for json report
       std::sort(loocv_params.begin(), loocv_params.end());
       std::vector<double> all_r;
@@ -247,7 +247,8 @@ int main(int argc, char **argv) {
       jv["loocv_results"] = j_loocv;
     }
 
-    distance_test_fun = [&](tempo::TSeries const& query, tempo::TSeries const& candidate, double bsf) {
+    // Warning: must copy microcontext as we exit the current lexical block before using this function
+    distance_test_fun = [=](tempo::TSeries const& query, tempo::TSeries const& candidate, double bsf) -> double {
       return tempo::distance::adtw(query, candidate, cf, best_omega, bsf);
     };
 
@@ -255,6 +256,7 @@ int main(int argc, char **argv) {
       Json::Value j;
       j["name"] = "adtw";
       j["omega"] = best_omega;
+      j["cost_function_exponent"] = ge;
       jv["distance"] = j;
     }
 
@@ -302,7 +304,7 @@ int main(int argc, char **argv) {
         std::lock_guard lock(mutex);
         tempo::EL result = -1;
         std::sample(labels.begin(), labels.end(), &result, 1, prng);
-        assert(result!=-1);
+        assert(0<=result&&result<train_header.nb_classes());
         if (result==test_header.label(test_idx).value()) { ++test_nb_correct; }
         nb_done++;
         pm.print_progress(std::cout, nb_done);
@@ -320,7 +322,7 @@ int main(int argc, char **argv) {
   double test_accuracy = ((double)test_nb_correct)/(double)test_top;
   cout << endl;
   cout << dataset_name << " NN1 test result: " << test_nb_correct << "/" << test_top << " = " << test_accuracy
-       << "  (" << tempo::utils::as_string(test_time) << ")" << endl;
+    << "  (" << tempo::utils::as_string(test_time) << ")" << endl;
 
   // --- --- ---
   // --- --- --- Output

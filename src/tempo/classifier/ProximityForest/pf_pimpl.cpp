@@ -120,7 +120,7 @@ namespace tempo::classifier {
 
     /// Random window computation function [0, Lmax/4]
     WindowGetter<state, data> window_getter = [](state& state, data const& data) -> size_t {
-      const size_t win_top = std::ceil((double)data.get_train_header().length_max()/4.0);
+      const size_t win_top = std::floor((double)data.get_train_header().length_max()+1/4.0);
       return std::uniform_int_distribution<size_t>(0, win_top)(state.prng);
     };
 
@@ -130,7 +130,7 @@ namespace tempo::classifier {
       [](state& state, data const& data, ByClassMap const& bcm, string const& transform_name) -> double {
         const auto& train_dataset = data.get_train_dataset(transform_name);
         auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
-        return std::uniform_real_distribution<F>(0.2*stddev_, stddev_)(state.prng);
+        return std::uniform_real_distribution<F>(stddev_/5.0, stddev_)(state.prng);
       };
 
     /// MSM costs

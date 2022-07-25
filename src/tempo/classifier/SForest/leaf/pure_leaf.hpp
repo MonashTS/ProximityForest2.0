@@ -39,7 +39,10 @@ namespace tempo::classifier::SForest::leaf {
       if (bcm.nb_classes()==1) { // Generate leaf on pure node
         size_t cardinality = data.get_train_header().nb_classes();
         EL elabel = *bcm.classes().begin();   // Get the encoded label
-        auto weight = (double)bcm.size();     // Get the "weight", i.e. the cardinality of the bcm
+        // WARNING: do not use this
+        // auto weight = (double)bcm.size();     // Get the "weight", i.e. the cardinality of the bcm
+        // Change the outcome, use a weight of 1 instead
+        double weight = 1;     // Get the "weight", i.e. the cardinality of the bcm
         auto leafptr = std::make_unique<PureLeaf>(
           classifier::Result1::make_probabilities_one(cardinality, elabel, weight)
         );

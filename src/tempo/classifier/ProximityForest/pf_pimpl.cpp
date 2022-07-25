@@ -107,13 +107,13 @@ namespace tempo::classifier {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Exponents
 
-    vector<double> exponents{2.0};
+    vector<double> exponents{0.5, 0.67, 1.0, 1.5, 2.0};
 
     /// Pick Exponent
     ExponentGetter<state> exp_getter = [](state& state) -> double { return utils::pick_one(exponents, state.prng); };
 
     /// Pick Exponent always at 2.0
-    ExponentGetter<state> exp_sqed = [](state& /* state */) -> double { return 2.0; };
+    ExponentGetter<state> exp_2 = [](state& /* state */) -> double { return 2.0; };
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Others
@@ -172,47 +172,47 @@ namespace tempo::classifier {
 
       // Direct Alignment default
       auto nn1da_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<DAGen<state, data>>(transform_getter_default, exp_getter)
+        make_shared<DAGen<state, data>>(transform_getter_default, exp_2)
       );
 
       // DTW default
       auto nn1dtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<DTWGen<state, data>>(transform_getter_default, exp_getter, window_getter)
+        make_shared<DTWGen<state, data>>(transform_getter_default, exp_2, window_getter)
       );
 
       // DTW derivative1
       auto nn1dtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<DTWGen<state, data>>(transform_getter_derivative1, exp_getter, window_getter)
+        make_shared<DTWGen<state, data>>(transform_getter_derivative1, exp_2, window_getter)
       );
 
       // DTWfull default
       auto nn1dtwfull_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<DTWfullGen<state, data>>(transform_getter_default, exp_getter)
+        make_shared<DTWfullGen<state, data>>(transform_getter_default, exp_2)
       );
 
       // DTWfull derivative1
       auto nn1dtwfull_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<DTWfullGen<state, data>>(transform_getter_derivative1, exp_getter)
+        make_shared<DTWfullGen<state, data>>(transform_getter_derivative1, exp_2)
       );
 
       // WDTW default
       auto nn1wdtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<WDTWGen<state, data>>(transform_getter_default, exp_getter)
+        make_shared<WDTWGen<state, data>>(transform_getter_default, exp_2)
       );
 
       // WDTW derivative1
       auto nn1wdtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<WDTWGen<state, data>>(transform_getter_derivative1, exp_getter)
+        make_shared<WDTWGen<state, data>>(transform_getter_derivative1, exp_2)
       );
 
       // ERP
       auto nn1erp_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<ERPGen<state, data>>(transform_getter_default, exp_sqed, window_getter, frac_stddev)
+        make_shared<ERPGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
       );
 
       // LCSS
       auto nn1lcss_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<LCSSGen<state, data>>(transform_getter_default, exp_sqed, window_getter, frac_stddev)
+        make_shared<LCSSGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
       );
 
       // MSM
@@ -278,12 +278,12 @@ namespace tempo::classifier {
 
       // ERP
       auto nn1erp_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<ERPGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
+        make_shared<ERPGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
       );
 
       // LCSS
       auto nn1lcss_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<LCSSGen<state, data>>(transform_getter, exp_sqed, window_getter, frac_stddev)
+        make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
       );
 
       // Lorentzian
@@ -324,7 +324,6 @@ namespace tempo::classifier {
       );
 
     } // End of get_node_gen_22
-
   } // End of anonymous namespace
 
 

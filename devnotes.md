@@ -1,5 +1,11 @@
 # Dev notes
 
+## Dependencies
+
+### JSONCPP
+* On Ubuntu, the install does not mach the expected format.
+  `sudo ln -s /usr/include/jsoncpp/json/ /usr/include/json`
+
 ## Matt TODO
 
 ### Distances to implement

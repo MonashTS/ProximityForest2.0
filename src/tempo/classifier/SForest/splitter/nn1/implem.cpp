@@ -1,5 +1,3 @@
-#include "nn1splitters.hpp"
-
 #include "sp_da.hpp"
 #include <tempo/distance/lockstep/direct.hpp>
 

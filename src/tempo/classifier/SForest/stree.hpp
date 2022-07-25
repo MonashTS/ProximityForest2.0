@@ -153,6 +153,31 @@ namespace tempo::classifier::SForest {
       }
     }
 
+    // --- --- --- --- --- --- ---
+
+    inline size_t nb_nodes() const {
+      if (node_kind==K_LEAF) {
+        return 1;
+      } else {
+        size_t n = 1;
+        for (const auto& branch : as_node.branches) { n += branch->nb_nodes(); }
+        return n;
+      }
+    }
+
+    inline size_t depth() const {
+      if (node_kind==K_LEAF) {
+        return 1;
+      } else {
+        size_t n = as_node.branches[0]->depth();
+        for (size_t i = 1; i<as_node.branches.size(); ++i) {
+          size_t m = as_node.branches[i]->depth();
+          n = std::max<size_t>(n, m);
+        }
+        return n + 1;
+      }
+    }
+
   };
 
 

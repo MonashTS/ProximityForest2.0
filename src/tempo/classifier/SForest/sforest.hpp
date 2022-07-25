@@ -152,6 +152,8 @@ namespace tempo::classifier::SForest {
           auto cf = std::cout.fill();
           std::cout << std::setfill('0');
           std::cout << std::setw(3) << tree_index + 1 << " / " << nbtrees << "   ";
+          std::cout << std::setw(3) << "Depth = " << r.tree->depth() << "   ";
+          std::cout << std::setw(3) << "Nb nodes = " << r.tree->nb_nodes() << "   ";
           std::cout.fill(cf);
           std::cout << " timing: " << tempo::utils::as_string(delta) << std::endl;
           // --- Add in the forest

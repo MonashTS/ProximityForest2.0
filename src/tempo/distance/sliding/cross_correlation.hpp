@@ -34,8 +34,7 @@ namespace tempo::distance {
     /// Return a value in the [-1, 1] range, or NaN if a series is constant 0
     inline F max_ncc_c(arma::Row<F> const& A, arma::Row<F> const& B) {
       F n = arma::norm(A)*arma::norm(B);
-      if (n==0) { return -1.0; }
-      else { return arma::max(cc_seq(A, B))/n; }
+      return arma::max(cc_seq(A, B))/n;
     }
 
   } // End of namespace cross_correlation

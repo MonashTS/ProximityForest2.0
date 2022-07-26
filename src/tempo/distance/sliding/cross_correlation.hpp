@@ -30,21 +30,26 @@ namespace tempo::distance {
     }
 
     /// Maximum Coefficient Normalized Cross Correlation value
-    /// Divides the result of 'max_cc(A,B)' by the ||A||*||B|| (multiplication of the norms)
-    /// Return a value in the [-1, 1] range
+    /// Divides the result of 'max_cc(A,B)' by n = ||A||*||B|| (multiplication of the norms)
+    /// Return a value in the [-1, 1] range, or NaN if a series is constant 0
     inline F max_ncc_c(arma::Row<F> const& A, arma::Row<F> const& B) {
       F n = arma::norm(A)*arma::norm(B);
-      return arma::max(cc_seq(A, B))/n;
+      if (n==0) { return -1.0; }
+      else { return arma::max(cc_seq(A, B))/n; }
     }
 
   } // End of namespace cross_correlation
 
   /// Shape-based distance (sbd)
   /// k-Shape: Efficient and Accurate Clustering of Time Series, John Paparrizos & Luis Gravano, SIGMOD 2015
+  /// returns  1 - max_ncc_c(A, B)
   /// Result is in [0, 2], "with 0 indicating perfect similarity".
   /// Warning: due to numerical approximation, sbd(A, A) returns a value close to 0 but not 0!
+  /// If a series is constant 0, max_ncc_c returns NaN, and we return the max distance of 2.
   inline F sbd(arma::Row<F> const& A, arma::Row<F> const& B) {
-    return ((F)1) - cross_correlation::max_ncc_c(A, B);
+    double cc = cross_correlation::max_ncc_c(A, B);
+    if(std::isnan(cc)){ return 2.0; }
+    return ((F)1) - cc;
   }
 
   /// sbd on TSeries (univariate only)

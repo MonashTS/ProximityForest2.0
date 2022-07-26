@@ -44,7 +44,8 @@ std::string usage =
   "  Other:\n"
   "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
   "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1] !\n"
-  "  -out:<path>     Where to write the json file. If the file exists, overwrite it."
+  "  -out:<path>     Where to write the json file. If the file exists, overwrite it.\n"
+  "  -pair:<[train|test]:idx><[train|test]:idx> Only run the distance between a pair of series."
   "";
 
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg) {
@@ -82,6 +83,29 @@ void cmd_optional(std::vector<std::string> const& args, Config& conf) {
   {
     auto p_out = tempo::scli::get_parameter<std::string>(args, "-out", tempo::scli::extract_string);
     if (p_out) { conf.outpath = {std::filesystem::path{p_out.value()}}; }
+  }
+
+  // Pairwise run
+  {
+    auto p_pair = tempo::scli::get_parameter<std::string>(args, "-pair", tempo::scli::extract_string);
+    if (p_pair) {
+      std::vector<std::string> v = tempo::reader::split(p_pair.value(), ':');
+      bool ok = v.size()==4;
+      if (ok) {
+        std::string src1 = v[0];
+        auto oidx1 = tempo::reader::as_size_t(v[1]);
+        std::string src2 = v[2];
+        auto oidx2 = tempo::reader::as_size_t(v[3]);
+        //
+        std::set<std::string> checkset{"train", "test"};
+        ok = checkset.contains(src1)&&oidx1.has_value()&&checkset.contains(src2)&&oidx2.has_value();
+        if (ok) {
+          conf.opair = {{src1, oidx1.value(), src2, oidx2.value()}};
+        } else {
+          do_exit(1, "-pair parameter error");
+        }
+      }
+    }
   }
 }
 

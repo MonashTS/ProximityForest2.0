@@ -7,6 +7,14 @@ extern std::string usage;
 
 using distfun_t = std::function<tempo::F(tempo::TSeries const&, tempo::TSeries const&, tempo::F)>;
 
+/// Info when computing the distance only between two series
+struct PairWise {
+  std::string src1;
+  size_t idx1;
+  std::string src2;
+  size_t idx2;
+};
+
 /// Structure for command line argument
 struct Config {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -15,6 +23,7 @@ struct Config {
   size_t seed;
   std::unique_ptr<tempo::PRNG> pprng;
   std::optional<std::filesystem::path> outpath{};
+  std::optional<PairWise> opair{};
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Loaded dataset + normalisation

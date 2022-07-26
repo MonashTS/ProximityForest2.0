@@ -51,7 +51,7 @@ namespace tempo::distance {
       size_t *buffers = buffers_v.data();
       size_t c{0 + 1}, p{nbcols + 2};
       // Do we need to EA?
-      if (ub>1||std::isnan(ub)) {
+      if (ub>1||std::isnan(ub)||std::isinf(ub)) { // Explicitely catch inf
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // NO EA
         for (size_t i{0}; i<nblines; ++i) {
@@ -72,7 +72,7 @@ namespace tempo::distance {
       } else {
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // WITH EA
-        ub = std::max<F>(0, ub);
+        ub = std::max<F>(0.0, ub);
         const size_t to_reach = std::ceil((1 - ub)*m); // min value here
         size_t current_max = 0;
         for (size_t i{0}; i<nblines; ++i) {

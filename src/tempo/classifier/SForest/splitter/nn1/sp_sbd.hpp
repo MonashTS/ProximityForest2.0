@@ -14,6 +14,8 @@ namespace tempo::classifier::SForest::splitter::nn1 {
     explicit SBD(std::string tname) : BaseDist_i(std::move(tname)) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "SBD"; }
   };
 
   /// 1NN sbd Generator
@@ -23,7 +25,7 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
     TransformGetter<TrainS> get_transform;
 
-    explicit SBDGen(TransformGetter<TrainS> gt): get_transform(std::move(gt)) {}
+    explicit SBDGen(TransformGetter<TrainS> gt) : get_transform(std::move(gt)) {}
 
     R generate(std::unique_ptr<TrainS> state, const TrainD& /* data */, const ByClassMap& /* bcm */) override {
       // Generate args

@@ -17,6 +17,8 @@ namespace tempo::classifier::SForest::splitter::nn1 {
     DA(std::string tname, double exponent) : BaseDist_i(std::move(tname)), exponent(exponent) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "DA:"+std::to_string(exponent); }
   };
 
   /// 1NN Direct Alignment Generator

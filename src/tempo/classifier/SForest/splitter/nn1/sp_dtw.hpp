@@ -20,6 +20,14 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
 
+    std::string get_distance_name() override {
+      if (w==utils::NO_WINDOW) {
+        return "DTWFull:" + std::to_string(exponent);
+      } else {
+        return "DTW:" + std::to_string(exponent) + ":" + std::to_string(w);
+      }
+    }
+
   };
 
   /// 1NN DTW with window parameter Generator

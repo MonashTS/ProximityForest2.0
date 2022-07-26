@@ -14,12 +14,15 @@ namespace tempo::classifier::SForest::splitter::nn1 {
   struct WDTW : public BaseDist_i {
 
     double exponent;
+    double g;
     std::vector<F> weights;
 
-    WDTW(std::string tname, double exponent, std::vector<F>&& weights) :
-      BaseDist_i(std::move(tname)), exponent(exponent), weights(std::move(weights)) {}
+    WDTW(std::string tname, double exponent, double g, std::vector<F>&& weights) :
+      BaseDist_i(std::move(tname)), exponent(exponent), g(g), weights(std::move(weights)) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "WDTW:" + std::to_string(exponent) + ":" + std::to_string(g); }
 
   };
 
@@ -39,9 +42,9 @@ namespace tempo::classifier::SForest::splitter::nn1 {
       std::string tn = get_transform(*state);
       double e = get_exponent(*state);
       const F g = std::uniform_real_distribution<F>(0, 1)(state->prng);
-      std::vector<double> w = std::vector<F>(distance::generate_weights(g, data.get_train_header().length_max()));
       // Build return
-      return {std::move(state), std::make_unique<WDTW>(tn, e, std::move(w))};
+      return {std::move(state),
+              std::make_unique<WDTW>(tn, e, g, distance::generate_weights(g, data.get_train_header().length_max()))};
     }
   };
 

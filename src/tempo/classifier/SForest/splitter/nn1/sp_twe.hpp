@@ -18,6 +18,8 @@ namespace tempo::classifier::SForest::splitter::nn1 {
       BaseDist_i(std::move(tname)), nu(nu), lambda(lambda) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "TWE:"+std::to_string(nu)+":"+std::to_string(lambda); }
   };
 
   /// 1NN TWE Generator

@@ -23,6 +23,9 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
 
+    std::string get_distance_name() override {
+      return "ADTW:" + std::to_string(exponent) + ":" + std::to_string(penalty);
+    }
   };
 
   /// 1NN ADTW Generator

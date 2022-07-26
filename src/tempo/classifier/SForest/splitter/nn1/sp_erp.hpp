@@ -13,13 +13,17 @@ namespace tempo::classifier::SForest::splitter::nn1 {
   struct ERP : public BaseDist_i {
 
     double exponent;
-    size_t w;
     double gv;
+    size_t w;
 
-    ERP(std::string tname, double exponent, size_t w, double gv) :
-    BaseDist_i(std::move(tname)), exponent(exponent), w(w), gv(gv) {}
+    ERP(std::string tname, double exponent, double gv, size_t w) :
+      BaseDist_i(std::move(tname)), exponent(exponent), gv(gv), w(w) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override {
+      return "ERP:" + std::to_string(exponent) + ":" + std::to_string(gv) + ":" + std::to_string(w);
+    }
   };
 
   /// 1NN ERP Generator
@@ -45,7 +49,7 @@ namespace tempo::classifier::SForest::splitter::nn1 {
       // Build return
       return {
         std::move(state),
-        std::make_unique<ERP>(tn, e, w, gv)
+        std::make_unique<ERP>(tn, e, gv, w)
       };
     }
 

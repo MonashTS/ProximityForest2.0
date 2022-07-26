@@ -14,6 +14,8 @@ namespace tempo::classifier::SForest::splitter::nn1 {
     explicit Lorentzian(std::string tname) : BaseDist_i(std::move(tname)) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "Lorentzian"; }
   };
 
   /// 1NN Lorentzian Generator

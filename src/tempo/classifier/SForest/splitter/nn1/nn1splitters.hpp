@@ -89,6 +89,10 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
     // ---
 
+    virtual std::string get_distance_name() = 0;
+
+    // ---
+
     virtual ~Distance_i() = default;
   };
 
@@ -153,6 +157,10 @@ namespace tempo::classifier::SForest::splitter::nn1 {
             labels.insert(train_dataset.label(candidate_idx).value());
             bsf = d;
           } else if (bsf==d) { labels.insert(train_dataset.label(candidate_idx).value()); }
+        }
+
+        if(labels.empty()){
+          throw std::logic_error("Label set should not be empty -- " + distance->get_distance_name());
         }
 
         // Return the branch matching the predicted label

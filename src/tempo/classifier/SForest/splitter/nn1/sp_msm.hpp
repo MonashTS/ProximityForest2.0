@@ -17,18 +17,20 @@ namespace tempo::classifier::SForest::splitter::nn1 {
       BaseDist_i(std::move(tname)), cost(cost) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
+
+    std::string get_distance_name() override { return "MSM:" + std::to_string(cost); }
   };
 
   /// 1NN MSM Generator
   template<typename TrainS, typename TrainD>
   struct MSMGen : public NN1SplitterDistanceGen<TrainS, TrainD> {
     using R = typename NN1SplitterDistanceGen<TrainS, TrainD>::R;
-    using CostGetter = typename std::function<tempo::F(TrainS & state)>;
+    using CostGetter = typename std::function<tempo::F(TrainS& state)>;
 
-    TransformGetter <TrainS> get_transform;
+    TransformGetter<TrainS> get_transform;
     CostGetter get_cost;
 
-    MSMGen(TransformGetter <TrainS> gt, CostGetter gc) :
+    MSMGen(TransformGetter<TrainS> gt, CostGetter gc) :
       get_transform(std::move(gt)), get_cost(std::move(gc)) {}
 
     R generate(std::unique_ptr<TrainS> state, const TrainD& /* data */, const ByClassMap& /* bcm */) override {

@@ -120,7 +120,7 @@ namespace tempo::classifier {
 
     /// Random window computation function [0, Lmax/4]
     WindowGetter<state, data> window_getter = [](state& state, data const& data) -> size_t {
-      const size_t win_top = std::floor((double)data.get_train_header().length_max()+1/4.0);
+      const size_t win_top = std::floor((double)data.get_train_header().length_max() + 1/4.0);
       return std::uniform_int_distribution<size_t>(0, win_top)(state.prng);
     };
 
@@ -165,7 +165,7 @@ namespace tempo::classifier {
     };
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // PF2018.11
+    // PF2018_11
 
     /// Generate the node splitter for the  2018.11 version of PF, for nbc candidate per nodes
     std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_11(size_t nbc) {
@@ -246,9 +246,90 @@ namespace tempo::classifier {
 
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // PF2018.22
+    // PF2018_11_vcfe with Variable Cost Function Exponent
 
-    /// Generate the node splitter for the  2018.11 version of PF, for nbc candidate per nodes
+    /// Generate the node splitter for the  2018_11_vcfe version of PF, for nbc candidate per nodes
+    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_11_vcfe(size_t nbc) {
+
+      // Direct Alignment default
+      auto nn1da_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DAGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // DTW default
+      auto nn1dtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWGen<state, data>>(transform_getter_default, exp_getter, window_getter)
+      );
+
+      // DTW derivative1
+      auto nn1dtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWGen<state, data>>(transform_getter_derivative1, exp_getter, window_getter)
+      );
+
+      // DTWfull default
+      auto nn1dtwfull_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWfullGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // DTWfull derivative1
+      auto nn1dtwfull_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWfullGen<state, data>>(transform_getter_derivative1, exp_getter)
+      );
+
+      // WDTW default
+      auto nn1wdtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<WDTWGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // WDTW derivative1
+      auto nn1wdtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<WDTWGen<state, data>>(transform_getter_derivative1, exp_getter)
+      );
+
+      // ERP
+      auto nn1erp_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<ERPGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
+      );
+
+      // LCSS
+      auto nn1lcss_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<LCSSGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
+      );
+
+      // MSM
+      auto nn1msm_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<MSMGen<state, data>>(transform_getter_default, msm_cost)
+      );
+
+      // TWE
+      auto nn1twe_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<TWEGen<state, data>>(transform_getter_default, twe_nu, twe_lambda)
+      );
+
+      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+          nn1da_def_gen,
+          nn1dtw_def_gen,
+          nn1dtw_d1_gen,
+          nn1dtwfull_def_gen,
+          nn1dtwfull_d1_gen,
+          nn1wdtw_def_gen,
+          nn1wdtw_d1_gen,
+          nn1erp_def_gen,
+          nn1lcss_def_gen,
+          nn1msm_def_gen,
+          nn1twe_def_gen
+        },
+        nbc
+      );
+
+    } // End of get_node_gen_11_vcfe
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // PF2018_22
+
+    /// Generate the node splitter for the  2018_22 version of PF, for nbc candidate per nodes
     std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_22(size_t nbc) {
 
       // Direct Alignment
@@ -322,8 +403,38 @@ namespace tempo::classifier {
         },
         nbc
       );
-
     } // End of get_node_gen_22
+
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // PF2018_ADTW_LCSS
+
+    /// Generate the node splitter for the  2018.11 version of PF, for nbc candidate per nodes
+    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_adtw_lcss(size_t nbc) {
+
+      // ADTW
+      auto nn1adtw_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<ADTWGen<state, data>>(transform_getter, exp_getter)
+      );
+
+      // LCSS
+      auto nn1lcss_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<LCSSGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+      );
+
+      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+          nn1adtw_gen,
+          nn1lcss_gen,
+        },
+        nbc
+      );
+    } // End of get_node_gen_adtw_lcss
+
+
+
+
   } // End of anonymous namespace
 
 
@@ -388,8 +499,12 @@ namespace tempo::classifier {
       std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> splitter_gen;
       if (pfversion==pf2018_11) {
         splitter_gen = get_node_gen_11(nb_candidates);
+      } else if (pfversion==pf2018_11_vcfe) {
+        splitter_gen = get_node_gen_11_vcfe(nb_candidates);
       } else if (pfversion==pf2018_22) {
         splitter_gen = get_node_gen_22(nb_candidates);
+      } else if (pfversion==pf2018_adtw_lcss) {
+        splitter_gen = get_node_gen_adtw_lcss(nb_candidates);
       }
 
       auto pleaf_gen = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();

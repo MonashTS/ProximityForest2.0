@@ -123,25 +123,32 @@ int main(int argc, char **argv) {
   map<string, DTS> train_map;
   map<string, DTS> test_map;
   {
-    // Train transform derivative1, into DTS "train"
-    auto train_derive_t = std::make_shared<DatasetTransform<TSeries>>(
-      std::move(tempo::transform::derive(train_dataset.transform(), 1).back())
-    );
-    DTS train_derive("train", train_derive_t);
+    auto train_derive_all = tempo::transform::derive(train_dataset.transform(), 2);
+    auto train_derive_t1 = std::make_shared<DatasetTransform<TSeries>>(std::move(train_derive_all[0]));
+    auto train_derive_t2 = std::make_shared<DatasetTransform<TSeries>>(std::move(train_derive_all[1]));
+
+    DTS train_derive_1("train", train_derive_t1);
+    DTS train_derive_2("train", train_derive_t2);
 
     // Train map
     train_map["default"] = train_dataset;
-    train_map["derivative1"] = train_derive;
+    train_map["derivative1"] = train_derive_1;
+    train_map["derivative2"] = train_derive_2;
 
-    // Test transform derivative1, into DTS "test"
-    auto test_derive_t = std::make_shared<DatasetTransform<TSeries>>(
-      std::move(tempo::transform::derive(test_dataset.transform(), 1).back())
-    );
-    DTS test_derive("test", test_derive_t);
+    // TEST
+
+    auto test_derive_all = tempo::transform::derive(test_dataset.transform(), 2);
+    auto test_derive_t1 = std::make_shared<DatasetTransform<TSeries>>(std::move(test_derive_all[0]));
+    auto test_derive_t2 = std::make_shared<DatasetTransform<TSeries>>(std::move(test_derive_all[1]));
+
+    DTS test_derive_1("test", test_derive_t1);
+    DTS test_derive_2("test", test_derive_t2);
 
     // Test map
     test_map["default"] = test_dataset;
-    test_map["derivative1"] = test_derive;
+    test_map["derivative1"] = test_derive_1;
+    test_map["derivative2"] = test_derive_2;
+
   }
 
   tempo::classifier::PF2018 pf(nb_trees, nb_candidates, pfversion);

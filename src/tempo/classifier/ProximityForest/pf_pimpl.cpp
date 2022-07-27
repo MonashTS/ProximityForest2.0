@@ -87,6 +87,7 @@ namespace tempo::classifier {
     // Transforms
 
     /// Possible transforms
+    //vector<string> transforms{"default", "derivative1", "derivative2"};
     vector<string> transforms{"default", "derivative1"};
 
     /// Pick transform among the possible one
@@ -420,7 +421,7 @@ namespace tempo::classifier {
 
       // LCSS
       auto nn1lcss_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<LCSSGen<state, data>>(transform_getter, exp_getter, window_getter, frac_stddev)
+        make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
       );
 
       return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(

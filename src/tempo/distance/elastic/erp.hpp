@@ -349,7 +349,7 @@ namespace tempo::distance {
     auto inline adegv(const F e) {
       return [e](const D& series, F gv) {
         return [&, gv, e](size_t i) {
-          const F d = series[i] - gv;
+          const F d = std::abs(series[i] - gv);
           return std::pow(d, e);
         };
       };

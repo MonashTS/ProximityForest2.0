@@ -1,4 +1,8 @@
 #include "pch.h"
+
+#include <cxxopts.hpp>
+#include <tempo/utils/readingtools.hpp>
+
 #include <tempo/reader/new_reader.hpp>
 
 #include <tempo/transform/derivative.hpp>
@@ -19,28 +23,75 @@ int main(int argc, char **argv) {
   std::random_device rd;
 
   // ARGS
-  string program_name(*argv);
-  vector<string> args(argv + 1, argv + argc);
+  cxxopts::Options options("Proximity Forest", "Proximity Forest Time Series Classifier");
+  options.add_options()
+    ("ucr", "<path to UCR>", cxxopts::value<std::string>())
+    ("train", "<path to csv>", cxxopts::value<std::string>())
+    ("test", "<path to csv>", cxxopts::value<std::string>())
+    ("dataset_name", "Name of the dataset", cxxopts::value<std::string>())
+    ("pfversion", "which PF to use", cxxopts::value<std::string>())
+    ("nb_trees", "number of trees", cxxopts::value<size_t>())
+    ("nb_candidates", "number of candidates", cxxopts::value<size_t>())
+    ("nb_threads", "number of threads", cxxopts::value<size_t>())
+    ("output", "output file", cxxopts::value<std::string>());
 
-  if (args.size()<6) {
-    cout
-      << "Usage: <path to ucr directory> <dataset name> <pfversion> <number of tree> <number of candidates> <number of threads> [output]"
-      << endl;
-    exit(0);
-  }
+  options.parse_positional({"dataset_name", "pfversion", "nb_trees", "nb_candidates", "nb_threads", "output"});
+  options.positional_help("<dataset_name> <pfversion> <nb_trees> <nb_candidates> <nb_threads> [output]");
 
-  // Config
-  fs::path UCRPATH(args[0]);
-  string dataset_name(args[1]);
-  string pfversion(args[2]);
-  size_t nb_trees = std::stoi(args[3]);
-  size_t nb_candidates = std::stoi(args[4]);
-  size_t nb_threads = std::stoi(args[5]);
+  // Get results
+  enum IType { NONE, UCR, CSV };
+  IType itype{NONE};
+  fs::path UCRPATH;
+  fs::path csvtrain;
+  fs::path csvtest;
+  string dataset_name;
+  string pfversion;
+  size_t nb_trees;
+  size_t nb_candidates;
+  size_t nb_threads;
+  optional <fs::path> outpath{};
+  bool csv_header=false;
+  char csv_sep=' ';
 
-  // Output path
-  optional<fs::path> outpath{};
-  if (args.size()>=7) {
-    outpath = fs::path(args[6]);
+
+  try {
+    auto cliopt = options.parse(argc, argv);
+
+    // Get UCR
+    if (cliopt.count("ucr")) {
+      UCRPATH = cliopt["ucr"].as<std::string>();
+      itype = UCR;
+    }
+
+    // GET CSV
+    bool hastrain = cliopt.count("train")>0;
+    bool hastest = cliopt.count("test")>0;
+    if (hastrain ^ hastest) {
+      throw std::runtime_error("'--train' and '--test' must both be specified together");
+    }
+    if (hastrain & hastest) {
+      if (itype==UCR) {
+        throw std::runtime_error("'--ucr' must appear without '--train' and '--test'");
+      }
+      csvtrain = fs::path(cliopt["train"].as<std::string>());
+      csvtest = fs::path(cliopt["test"].as<std::string>());
+      itype = CSV;
+    }
+
+    // Other positional arguments
+    dataset_name = cliopt["dataset_name"].as<std::string>();
+    pfversion = cliopt["pfversion"].as<std::string>();
+    nb_trees = cliopt["nb_trees"].as<size_t>();
+    nb_candidates = cliopt["nb_candidates"].as<size_t>();
+    nb_threads = cliopt["nb_threads"].as<size_t>();
+
+    // Optional output file
+    if (cliopt.count("output")) { outpath = fs::path(cliopt["output"].as<std::string>()); }
+
+  } catch (std::exception const& e) {
+    std::cerr << e.what() << std::endl;
+    std::cerr << options.help() << std::endl;
+    exit(1);
   }
 
   // Random number seeds
@@ -56,18 +107,40 @@ int main(int argc, char **argv) {
   DTS test_dataset;
   {
     auto start = utils::now();
-    { // Read train
-      fs::path train_path = UCRPATH/dataset_name/(dataset_name + "_TRAIN.ts");
-      auto variant_train = tempo::reader::load_dataset_ts(train_path, "train");
-      if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
-      else { do_exit(1, {"Could not read train set '" + train_path.string() + "': " + std::get<0>(variant_train)}); }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    if (itype==UCR) {
+      { // --- --- --- Read train
+        fs::path train_path = UCRPATH/dataset_name/(dataset_name + "_TRAIN.ts");
+        auto variant_train = tempo::reader::load_dataset_ts(train_path, "train");
+        if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
+        else { do_exit(1, {"Could not read train set '" + train_path.string() + "': " + std::get<0>(variant_train)}); }
+      }
+      { // --- --- --- Read test
+        fs::path test_path = UCRPATH/dataset_name/(dataset_name + "_TEST.ts");
+        auto variant_test = tempo::reader::load_dataset_ts(test_path, "test");
+        if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
+        else { do_exit(1, {"Could not read train set '" + test_path.string() + "': " + std::get<0>(variant_test)}); }
+      }
     }
-    { // Read test
-      fs::path test_path = UCRPATH/dataset_name/(dataset_name + "_TEST.ts");
-      auto variant_test = tempo::reader::load_dataset_ts(test_path, "test");
-      if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
-      else { do_exit(1, {"Could not read train set '" + test_path.string() + "': " + std::get<0>(variant_test)}); }
+      // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    else if (itype==CSV) {
+      { // --- --- --- Read train
+        auto variant = tempo::reader::load_dataset_csv(csvtrain, dataset_name, 1, "train", {}, csv_header, csv_sep);
+        if (variant.index()==1) { train_dataset = std::get<1>(variant); }
+        else { do_exit(1, {"Could not read train set '" + csvtrain.string() + "': " + std::get<0>(variant)}); }
+      }
+      { // --- --- --- Read test
+        auto variant = tempo::reader::load_dataset_csv(csvtest, dataset_name, 1, "test", {}, csv_header, csv_sep);
+        if (variant.index()==1) { test_dataset = std::get<1>(variant); }
+        else { do_exit(1, {"Could not read test set '" + csvtest.string() + "': " + std::get<0>(variant)}); }
+      }
     }
+      // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    else { tempo::utils::should_not_happen(); }
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
     auto delta = utils::now() - start;
     Json::Value dataset;
     dataset["train"] = train_dataset.header().to_json();
@@ -120,12 +193,14 @@ int main(int argc, char **argv) {
   } // End of Sanity Check
 
   // Compute maps
-  map<string, DTS> train_map;
-  map<string, DTS> test_map;
+  map <string, DTS> train_map;
+  map <string, DTS> test_map;
   {
     auto train_derive_all = tempo::transform::derive(train_dataset.transform(), 2);
-    auto train_derive_t1 = std::make_shared<DatasetTransform<TSeries>>(std::move(train_derive_all[0]));
-    auto train_derive_t2 = std::make_shared<DatasetTransform<TSeries>>(std::move(train_derive_all[1]));
+    auto train_derive_t1 = std::make_shared<DatasetTransform<TSeries>>
+    (std::move(train_derive_all[0]));
+    auto train_derive_t2 = std::make_shared<DatasetTransform<TSeries>>
+    (std::move(train_derive_all[1]));
 
     DTS train_derive_1("train", train_derive_t1);
     DTS train_derive_2("train", train_derive_t2);
@@ -138,8 +213,10 @@ int main(int argc, char **argv) {
     // TEST
 
     auto test_derive_all = tempo::transform::derive(test_dataset.transform(), 2);
-    auto test_derive_t1 = std::make_shared<DatasetTransform<TSeries>>(std::move(test_derive_all[0]));
-    auto test_derive_t2 = std::make_shared<DatasetTransform<TSeries>>(std::move(test_derive_all[1]));
+    auto test_derive_t1 = std::make_shared<DatasetTransform<TSeries>>
+    (std::move(test_derive_all[0]));
+    auto test_derive_t2 = std::make_shared<DatasetTransform<TSeries>>
+    (std::move(test_derive_all[1]));
 
     DTS test_derive_1("test", test_derive_t1);
     DTS test_derive_2("test", test_derive_t2);

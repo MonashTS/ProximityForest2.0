@@ -83,6 +83,8 @@ add_library(rapidcsv INTERFACE)
 target_include_directories(rapidcsv INTERFACE third_party/rapidcsv)
 target_sources(rapidcsv PUBLIC third_party/rapidcsv/rapidcsv.h)
 
+# Command line parser
+add_subdirectory(third_party/cxxopts)
 
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###

@@ -4,6 +4,9 @@
 #include <tempo/dataset/dts.hpp>
 
 #include "ts/ts.hpp"
+#include "csv/csv.hpp"
+
+#include <algorithm>
 
 namespace tempo::reader {
 
@@ -44,6 +47,65 @@ namespace tempo::reader {
     } else {
       return {std::get<0>(vts)};
     }
+  }
+
+  /// Read a csv file - univariate series
+  inline std::variant<std::string, DTS> load_dataset_csv(
+    std::filesystem::path const& path,
+    std::string dataset_name,
+    size_t nb_var,
+    std::string split_name,
+    LabelEncoder encoder = {},
+    bool csvheader = false, char csvsep = ','
+  ) {
+
+    try {
+      std::ifstream input(path, std::ios::binary);
+      CSVDataset csvdata = read_csv(input, csvheader, csvsep);
+
+      // Build vector of labels and TSeries, and check for series with missing values
+      std::vector<std::optional<std::string>> vlabels;
+      vlabels.reserve(csvdata.rows.size());
+
+      std::vector<TSeries> series;
+      series.reserve(csvdata.rows.size());
+
+      std::vector<size_t> series_with_missing_values;
+
+      for (size_t i = 0; i<csvdata.rows.size(); ++i) {
+        auto& r = csvdata.rows[i];
+        vlabels.emplace_back(r.label);
+        bool missing = std::any_of(r.data.begin(), r.data.end(), [](double d) -> bool { return std::isnan(d); });
+        // Check missing data
+        if (missing) { series_with_missing_values.push_back(i); }
+        // Build tseries
+        series.push_back(TSeries::mk_from_rowmajor(std::move(r.data), nb_var, {vlabels.back()}, {missing}));
+      }
+
+      // Build Header
+      std::shared_ptr<DatasetHeader> header = std::make_shared<DatasetHeader>(
+        dataset_name,
+        csvdata.length_min,
+        csvdata.length_max,
+        nb_var,
+        std::move(vlabels),
+        std::move(series_with_missing_values),
+        std::move(encoder)
+      );
+
+      // Build Transform (raw data, "default")
+      std::shared_ptr<DatasetTransform<TSeries>> rawd = std::make_shared<DatasetTransform<TSeries>>(
+        std::move(header),
+        "default",
+        std::move(series)
+      );
+
+      // Build and return the split
+      return {DataSplit<TSeries>(std::move(split_name), std::move(rawd))};
+    } catch (std::exception& e) {
+      return {e.what()};
+    }
+
   }
 
 } // End of namespace tempo::reader

@@ -8,6 +8,23 @@ namespace tempo::classifier {
   struct PF2018 {
 
 
+    inline static const std::string pf2018_11{"pf2018_11"};
+    inline static const std::string pf2018_22{"pf2018_22"};
+
+    // --- --- --- VCFE Experiments
+    inline static const std::string pf2018_11_vcfe{"pf2018_11_vcfe"};
+    inline static const std::string pf2018_11_vcfe_adtw{"pf2018_11_vcfe_adtw"};
+    inline static const std::string pf2018_11_vcfe_Trad1{"pf2018_11_vcfe_Trad1"};
+
+    // --- Only valid version
+    inline static const std::set<std::string> valid_versions{pf2018_11,
+                                                             pf2018_22,
+                                                             pf2018_11_vcfe,
+                                                             pf2018_11_vcfe_adtw,
+                                                             pf2018_11_vcfe_Trad1,
+    };
+
+
     /// Constructor with the forest parameters
     PF2018(size_t nb_trees, size_t nb_candidates, std::string pfversion);
 

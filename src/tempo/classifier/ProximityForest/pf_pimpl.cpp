@@ -618,15 +618,12 @@ namespace tempo::classifier {
       // --- --- --- Build the node and leaf generators
 
       std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> splitter_gen;
-      if (pfversion==pf2018_11) {
-        splitter_gen = get_node_gen_11(nb_candidates);
-      } else if (pfversion==pf2018_11_vcfe) {
-        splitter_gen = get_node_gen_11_vcfe(nb_candidates);
-      } else if (pfversion==pf2018_22) {
-        splitter_gen = get_node_gen_22(nb_candidates);
-      } else if (pfversion==pf2018_adtw_lcss) {
-        splitter_gen = get_node_gen_adtw_lcss(nb_candidates);
-      }
+      if (pfversion==pf2018_11) { splitter_gen = get_node_gen_11(nb_candidates); }
+      else if (pfversion==pf2018_22) { splitter_gen = get_node_gen_22(nb_candidates); }
+      // VCFE modification tests
+      else if (pfversion==pf2018_11_vcfe) { splitter_gen = get_node_gen_11_vcfe(nb_candidates); }
+      else if (pfversion==pf2018_11_vcfe_Trad1) { splitter_gen = get_node_gen_11_vcfe_Trad1(nb_candidates); }
+      else if (pfversion==pf2018_11_vcfe_adtw) { splitter_gen = get_node_gen_11_vcfe_adtw(nb_candidates); }
 
       auto pleaf_gen = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 

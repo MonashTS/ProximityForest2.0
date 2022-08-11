@@ -78,6 +78,11 @@ if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP library: ${OpenMP_CXX_LIBRARY}")
 endif()
 
+# RAPID CSV
+add_library(rapidcsv INTERFACE)
+target_include_directories(rapidcsv INTERFACE third_party/rapidcsv)
+target_sources(rapidcsv PUBLIC third_party/rapidcsv/rapidcsv.h)
+
 
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###

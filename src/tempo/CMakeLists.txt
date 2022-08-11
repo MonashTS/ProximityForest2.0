@@ -24,7 +24,8 @@ add_subdirectory(dataset)
 
 
 # Linking
-target_link_libraries(libtempo PUBLIC ${MLPACK_LIBRARY} ${JSONCPP_LIBRARIES} ${ARMADILLO_LIBRARIES})
+target_link_libraries(libtempo PUBLIC ${MLPACK_LIBRARY} ${JSONCPP_LIBRARIES} ${ARMADILLO_LIBRARIES} rapidcsv)
+
 if(OpenMP_CXX_FOUND)
     target_link_libraries(libtempo PUBLIC OpenMP::OpenMP_CXX)
 endif()

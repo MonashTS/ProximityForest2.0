@@ -327,6 +327,155 @@ namespace tempo::classifier {
     } // End of get_node_gen_11_vcfe
 
 
+    /// PF11 VCFE
+    /// + ADTW tuning the exponent and the transfrom
+    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_11_vcfe_adtw(size_t nbc) {
+
+      // ADTW
+      auto nn1adtw_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<ADTWGen<state, data>>(transform_getter, exp_getter)
+      );
+
+      // --- --- --- PF11 VCFE
+
+      // Direct Alignment default
+      auto nn1da_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DAGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // DTW default
+      auto nn1dtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWGen<state, data>>(transform_getter_default, exp_getter, window_getter)
+      );
+
+      // DTW derivative1
+      auto nn1dtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWGen<state, data>>(transform_getter_derivative1, exp_getter, window_getter)
+      );
+
+      // DTWfull default
+      auto nn1dtwfull_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWfullGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // DTWfull derivative1
+      auto nn1dtwfull_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWfullGen<state, data>>(transform_getter_derivative1, exp_getter)
+      );
+
+      // WDTW default
+      auto nn1wdtw_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<WDTWGen<state, data>>(transform_getter_default, exp_getter)
+      );
+
+      // WDTW derivative1
+      auto nn1wdtw_d1_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<WDTWGen<state, data>>(transform_getter_derivative1, exp_getter)
+      );
+
+      // ERP
+      auto nn1erp_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<ERPGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
+      );
+
+      // LCSS
+      auto nn1lcss_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<LCSSGen<state, data>>(transform_getter_default, exp_2, window_getter, frac_stddev)
+      );
+
+      // MSM
+      auto nn1msm_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<MSMGen<state, data>>(transform_getter_default, msm_cost)
+      );
+
+      // TWE
+      auto nn1twe_def_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<TWEGen<state, data>>(transform_getter_default, twe_nu, twe_lambda)
+      );
+
+      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+          nn1adtw_gen,
+          nn1da_def_gen,
+          nn1dtw_def_gen,
+          nn1dtw_d1_gen,
+          nn1dtwfull_def_gen,
+          nn1dtwfull_d1_gen,
+          nn1wdtw_def_gen,
+          nn1wdtw_d1_gen,
+          nn1erp_def_gen,
+          nn1lcss_def_gen,
+          nn1msm_def_gen,
+          nn1twe_def_gen
+        },
+        nbc
+      );
+
+    } // End of get_node_gen_11_vcfe_adtw
+
+
+    /// PF11 VCFE
+    /// + transform raw series and derivative 1 for all
+    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_11_vcfe_Trad1(size_t nbc) {
+
+      // Direct Alignment
+      auto nn1da_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DAGen<state, data>>(transform_getter, exp_getter)
+      );
+
+      // DTW
+      auto nn1dtw_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWGen<state, data>>(transform_getter, exp_getter, window_getter)
+      );
+
+      // DTWfull
+      auto nn1dtwfull_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<DTWfullGen<state, data>>(transform_getter, exp_getter)
+      );
+
+      // WDTW
+      auto nn1wdtw_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<WDTWGen<state, data>>(transform_getter, exp_getter)
+      );
+
+      // ERP
+      auto nn1erp_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<ERPGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
+      );
+
+      // LCSS
+      auto nn1lcss_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
+      );
+
+      // MSM
+      auto nn1msm_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<MSMGen<state, data>>(transform_getter, msm_cost)
+      );
+
+      // TWE
+      auto nn1twe_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
+      );
+
+      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
+          nn1da_gen,
+          nn1dtw_gen,
+          nn1dtwfull_gen,
+          nn1wdtw_gen,
+          nn1erp_gen,
+          nn1lcss_gen,
+          nn1msm_gen,
+          nn1twe_gen
+        },
+        nbc
+      );
+
+    } // End of get_node_gen_11_vcfe
+
+
+
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // PF2018_22
 
@@ -405,35 +554,6 @@ namespace tempo::classifier {
         nbc
       );
     } // End of get_node_gen_22
-
-
-
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // PF2018_ADTW_LCSS
-
-    /// Generate the node splitter for the  2018.11 version of PF, for nbc candidate per nodes
-    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_adtw_lcss(size_t nbc) {
-
-      // ADTW
-      auto nn1adtw_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<ADTWGen<state, data>>(transform_getter, exp_getter)
-      );
-
-      // LCSS
-      auto nn1lcss_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
-      );
-
-      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
-        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{
-          nn1adtw_gen,
-          nn1lcss_gen,
-        },
-        nbc
-      );
-    } // End of get_node_gen_adtw_lcss
-
-
 
 
   } // End of anonymous namespace

@@ -16,6 +16,9 @@ namespace tempo::classifier {
     inline static const std::string pf2018_11_vcfe_adtw{"pf2018_11_vcfe_adtw"};
     inline static const std::string pf2018_11_vcfe_Trad1{"pf2018_11_vcfe_Trad1"};
 
+    // --- --- ---  kind experiments
+    inline static const std::string pf2018_1kind{"pf1kind-"};
+
     // --- Only valid version
     inline static const std::set<std::string> valid_versions{pf2018_11,
                                                              pf2018_22,

@@ -20,6 +20,7 @@
 
 #include <tempo/transform/derivative.hpp>
 #include <utility>
+#include <regex>
 
 namespace tempo::classifier {
 
@@ -555,6 +556,62 @@ namespace tempo::classifier {
       );
     } // End of get_node_gen_22
 
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Test with node splitter of one kind
+
+    /// Generate 1kind node splitter
+    std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_1kind(size_t nbc, std::string name) {
+
+      std::shared_ptr<NN1SplitterGen<state, data, state, data>> ngen;
+
+      if (name=="directa") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<DAGen<state, data>>(transform_getter, exp_getter)
+        );
+      } else if (name=="dtw") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<DTWGen<state, data>>(transform_getter, exp_getter, window_getter)
+        );
+      } else if (name=="dtwfull") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<DTWfullGen<state, data>>(transform_getter, exp_getter)
+        );
+      } else if (name=="adtw") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<ADTWGen<state, data>>(transform_getter, exp_getter)
+        );
+      } else if (name=="wdtw") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<WDTWGen<state, data>>(transform_getter, exp_getter)
+        );
+      } else if (name=="erp") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<ERPGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
+        );
+      } else if (name=="lcss") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
+        );
+      } else if (name=="msm") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<MSMGen<state, data>>(transform_getter, msm_cost)
+        );
+      } else if (name=="twe") {
+        ngen = make_shared<NN1SplitterGen<state, data, state, data>>(
+          make_shared<TWEGen<state, data>>(transform_getter, twe_nu, twe_lambda)
+        );
+      } else {
+        throw std::invalid_argument("Unknown 1kind " + name);
+      }
+
+      return make_shared<SForest::splitter::meta::SplitterChooserGen<state, data, state, data>>(
+        vector<shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>>>{ngen},
+        nbc
+      );
+    } // End of get_node_1kind
+
+
+
 
   } // End of anonymous namespace
 
@@ -601,9 +658,6 @@ namespace tempo::classifier {
       if (!train_set_map.contains("derivative1")) {
         throw std::invalid_argument("'derivative1' transform not found in trainset");
       }
-      if (!valid_versions.contains(pfversion)) {
-        throw std::invalid_argument("Unrecognized pfversion");
-      }
 
       // --- --- --- Build the train 'state' and 'data'
 
@@ -620,10 +674,24 @@ namespace tempo::classifier {
       std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> splitter_gen;
       if (pfversion==pf2018_11) { splitter_gen = get_node_gen_11(nb_candidates); }
       else if (pfversion==pf2018_22) { splitter_gen = get_node_gen_22(nb_candidates); }
-      // VCFE modification tests
+        // VCFE modification tests
       else if (pfversion==pf2018_11_vcfe) { splitter_gen = get_node_gen_11_vcfe(nb_candidates); }
       else if (pfversion==pf2018_11_vcfe_Trad1) { splitter_gen = get_node_gen_11_vcfe_Trad1(nb_candidates); }
       else if (pfversion==pf2018_11_vcfe_adtw) { splitter_gen = get_node_gen_11_vcfe_adtw(nb_candidates); }
+        // 1 kind
+      else if (pfversion.starts_with(pf2018_1kind)) {
+        std::regex regex("-");
+        std::vector<std::string> split_string(
+          std::sregex_token_iterator(pfversion.begin(), pfversion.end(), regex, -1),
+          std::sregex_token_iterator()
+        );
+        splitter_gen = get_node_1kind(nb_candidates, split_string[1]);
+        std::cout << "Using 1 kind " << split_string[1] << std::endl;
+      }
+        // catchall
+      else {
+        throw std::invalid_argument("Unknown version " + pfversion);
+      }
 
       auto pleaf_gen = make_shared<SForest::leaf::PureLeaf_Gen<state, data, state, data>>();
 

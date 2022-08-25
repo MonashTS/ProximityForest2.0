@@ -124,11 +124,14 @@ namespace tempo::utils {
   /// Throw an exception "should not happen". Used as default case in switches.
   void inline should_not_happen() { throw std::logic_error("Should not happen"); }
 
+  /// Throw an exception "should not happen". Used as default case in switches.
+  void inline should_not_happen(std::string msg) { throw std::logic_error("Should not happen: " + msg); }
 
 
 
 
-  // --- --- --- --- --- ---
+
+// --- --- --- --- --- ---
   // --- Initialisation tool
   // --- --- --- --- --- ---
 

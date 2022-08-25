@@ -28,6 +28,17 @@ namespace tempo::classifier::sf {
   struct TreeState : public i_TreeState {
     std::vector<std::unique_ptr<i_TreeState>> states{};
 
+    inline size_t register_state(std::unique_ptr<i_TreeState>&& s){
+      size_t idx = states.size();
+      states.push_back(std::move(s));
+      return idx;
+    }
+
+    i_TreeState& at(size_t idx){
+
+    }
+
+
     inline std::unique_ptr<i_TreeState> forest_fork() const override {
       // Create the other state and for substates 1 for 1
       auto fork = std::make_unique<TreeState>();

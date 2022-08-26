@@ -1,5 +1,5 @@
-add_subdirectory(loocv/fastmps)
-add_subdirectory(loocv/partable)
+#add_subdirectory(loocv/fastmps)
+#add_subdirectory(loocv/partable)
 add_subdirectory(SForest)
 add_subdirectory(sfdyn)
 add_subdirectory(ProximityForest)

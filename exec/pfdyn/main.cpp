@@ -8,6 +8,7 @@
 #include <tempo/classifier/sfdyn/splitter/leaf/pure_leaf.hpp>
 #include <tempo/classifier/sfdyn/splitter/node/meta/chooser.hpp>
 #include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_directa.hpp>
+#include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_dtwfull.hpp>
 #include <tempo/classifier/sfdyn/splitter/node/nn1/MPGenerator.hpp>
 
 namespace fs = std::filesystem;
@@ -93,9 +94,9 @@ int main(int argc, char **argv) {
   }
 
   // Random number seeds
-  size_t train_seed = rd();
+  size_t train_seed = 0; //rd();
   size_t test_seed = rd();
-  size_t tiebreak_seed = rd();
+  size_t tiebreak_seed = 0; //rd();
 
   // Prepare JSon record for output
   Json::Value jv;
@@ -234,8 +235,15 @@ int main(int argc, char **argv) {
       get_test_data
     );
 
+  auto gendist_dtwfull = std::make_shared<GenSplitterNN1>(
+    std::make_shared<DTWFullGen>(tdefault, exp_2),
+    get_GenSplitterNN1_State,
+    get_train_data,
+    get_test_data
+  );
+
   std::vector<std::shared_ptr<i_GenNode>> generators;
-  generators.push_back(gendist_da);
+  generators.push_back(gendist_dtwfull);
 
   auto node_gen = std::make_shared<node::meta::SplitterChooserGen>(std::move(generators), nb_candidates);
 

@@ -130,19 +130,26 @@ namespace tempo::classifier::sf::node::nn1dist {
       for (auto query_idx : all_indexset) {
         const auto& query = train_dataset[query_idx];
         EL query_label = train_dataset.label(query_idx).value();
+
         // 1NN variables, use a set to manage ties
-        F bsf = utils::PINF;
-        std::set<EL> labels;
-        //
+        // Start with same class: better chance to have a tight cutoff
+        std::set<EL> labels = {query_label};
+        const size_t first_idx = train_bcm[query_label][0];
+        F bsf = distance->eval(train_dataset[first_idx], query, utils::PINF);
+
+        // Continue with other classes
         for (size_t candidate_idx : train_idxset) {
-          const auto& candidate = train_dataset[candidate_idx];
-          auto dist = distance->eval(candidate, query, bsf);
-          if (dist<bsf) {
-            labels.clear();
-            labels.insert(train_dataset.label(candidate_idx).value());
-            bsf = dist;
-          } else if (bsf==dist) { labels.insert(train_dataset.label(candidate_idx).value()); }
+          if (candidate_idx!=first_idx) {
+            const auto& candidate = train_dataset[candidate_idx];
+            auto dist = distance->eval(candidate, query, bsf);
+            if (dist<bsf) {
+              labels.clear();
+              labels.insert(train_dataset.label(candidate_idx).value());
+              bsf = dist;
+            } else if (bsf==dist) { labels.insert(train_dataset.label(candidate_idx).value()); }
+          }
         }
+
         // Break ties and choose the branch according to the predicted label
         tempo::EL predicted_label;
         std::sample(labels.begin(), labels.end(), &predicted_label, 1, state.prng);

@@ -8,7 +8,7 @@ namespace tempo::classifier {
   struct PF2018 {
 
 
-    inline static const std::string pf2018_11{"pf2018_11"};
+    inline static const std::string pf2018_11{"pf2018"};
     inline static const std::string pf2018_22{"pf2018_22"};
 
     // --- --- --- VCFE Experiments

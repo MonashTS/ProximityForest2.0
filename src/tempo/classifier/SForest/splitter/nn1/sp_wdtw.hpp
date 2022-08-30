@@ -6,7 +6,7 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
-#include <tempo/distance/elastic/wdtw.hpp>
+#include <tempo/distance__/elastic/wdtw.hpp>
 
 namespace tempo::classifier::SForest::splitter::nn1 {
 

@@ -16,9 +16,9 @@
 #include <tempo/classifier/SForest/splitter/nn1/sp_msm.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_twe.hpp>
-#include <tempo/distance/helpers.hpp>
+#include <tempo/distance__/helpers.hpp>
 
-#include <tempo/transform/derivative.hpp>
+#include <tempo/transform__/derivative.hpp>
 #include <utility>
 #include <regex>
 

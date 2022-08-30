@@ -7,8 +7,8 @@
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
 
-#include <tempo/distance/helpers.hpp>
-#include <tempo/distance/lockstep/direct.hpp>
+#include <tempo/distance__/helpers.hpp>
+#include <tempo/distance__/lockstep/direct.hpp>
 
 namespace tempo::classifier::SForest::splitter::nn1 {
 

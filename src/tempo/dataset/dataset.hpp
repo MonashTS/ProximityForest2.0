@@ -276,21 +276,22 @@ namespace tempo {
     /// Access to the header pointer
     [[nodiscard]] inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
 
-
-    // --- --- --- --- --- ---
-    // Applied a transformation per series
-
-    template<class UnaryFunction>
-    void foreach(UnaryFunction f) {
-      std::for_each(_storage.begin(), _storage.end(), f);
-    }
-
-    template<class R, class UnaryFunction>
-    DatasetTransform<R> map(UnaryFunction f, std::string n) const {
+    /// New transform resulting of applying a transform function per series
+    template<typename R>
+    DatasetTransform<R> map(typename std::function<R(T const& in)> fun, std::string n) const {
       std::vector<R> new_storage;
       new_storage.reserve(_storage.size());
-      for (const T& item : _storage) { new_storage.push_back(f(item)); }
+      for (const T& item : _storage) { new_storage.emplace_back(fun(item)); }
       return DatasetTransform<R>(*this, std::move(n), std::move(new_storage));
+    }
+
+    /// New transform resulting of applying a transform function per series
+    template<typename R>
+    std::shared_ptr<DatasetTransform<R>> map_shptr(typename std::function<R(T const& in)> fun, std::string n) const {
+      std::vector<R> new_storage;
+      new_storage.reserve(_storage.size());
+      for (const T& item : _storage) { new_storage.emplace_back(fun(item)); }
+      return std::make_shared<DatasetTransform<R>>(*this, std::move(n), std::move(new_storage));
     }
   };
 

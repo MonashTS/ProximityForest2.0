@@ -1,6 +1,10 @@
+add_subdirectory(core)
+
 target_sources(libtempo
-    INTERFACE
-        derivative.hpp
-        normalization.hpp
-        normalization.cpp
-)
+        # Implementation
+        PUBLIC
+        univariate.hpp
+        PRIVATE
+        univariate.cpp
+        univariate.private.hpp
+        )

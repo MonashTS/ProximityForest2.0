@@ -1,32 +1,32 @@
 #include "sp_da.hpp"
-#include <tempo/distance/lockstep/direct.hpp>
+#include <tempo/distance__/lockstep/direct.hpp>
 
 #include "sp_dtw.hpp"
-#include <tempo/distance/elastic/dtw.hpp>
+#include <tempo/distance__/elastic/dtw.hpp>
 
 #include "sp_adtw.hpp"
-#include <tempo/distance/elastic/adtw.hpp>
+#include <tempo/distance__/elastic/adtw.hpp>
 
 #include "sp_wdtw.hpp"
-#include <tempo/distance/elastic/wdtw.hpp>
+#include <tempo/distance__/elastic/wdtw.hpp>
 
 #include "sp_erp.hpp"
-#include <tempo/distance/elastic/erp.hpp>
+#include <tempo/distance__/elastic/erp.hpp>
 
 #include "sp_lcss.hpp"
-#include <tempo/distance/elastic/lcss.hpp>
+#include <tempo/distance__/elastic/lcss.hpp>
 
 #include "sp_msm.hpp"
-#include <tempo/distance/elastic/msm.hpp>
+#include <tempo/distance__/elastic/msm.hpp>
 
 #include "sp_twe.hpp"
-#include <tempo/distance/elastic/twe.hpp>
+#include <tempo/distance__/elastic/twe.hpp>
 
 #include "sp_lorentzian.hpp"
-#include <tempo/distance/lockstep/lockstep.hpp>
+#include <tempo/distance__/lockstep/lockstep.hpp>
 
 #include "sp_sbd.hpp"
-#include <tempo/distance/sliding/cross_correlation.hpp>
+#include <tempo/distance__/sliding/cross_correlation.hpp>
 
 namespace tempo::classifier::SForest::splitter::nn1 {
 

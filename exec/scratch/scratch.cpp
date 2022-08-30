@@ -1,7 +1,6 @@
 #include "pch.h"
 #include <tempo/utils/simplecli.hpp>
 #include <tempo/reader/new_reader.hpp>
-#include <tempo/distance/sliding/cross_correlation.hpp>
 
 namespace fs = std::filesystem;
 

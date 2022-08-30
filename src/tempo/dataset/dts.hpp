@@ -48,5 +48,4 @@ namespace tempo {
     return stat._stddev[0];
   }
 
-
 } // End of namespace tempo

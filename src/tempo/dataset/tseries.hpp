@@ -47,6 +47,9 @@ namespace tempo {
       _rawdata(p),
       _matrix(std::move(m)) {
 
+      // Pointer fixup
+      if(_rawdata ==nullptr){ _rawdata = _matrix.memptr(); }
+
       // Statistics (matrix, 1==along the row)
       // Doing the statistics along the rows restul in a column vector, with statistics per dimension.
       _min = arma::min(_matrix, 1);
@@ -96,9 +99,9 @@ namespace tempo {
 
     /// Build a new series from a row major vector
     static TSeries mk_from_rowmajor(std::vector<F>&& v,
-                               size_t nbvar,
-                               std::optional<std::string> olabel,
-                               std::optional<bool> omissing) {
+                                    size_t nbvar,
+                                    std::optional<std::string> olabel,
+                                    std::optional<bool> omissing) {
       using namespace std;
 
       // --- Checking
@@ -135,14 +138,7 @@ namespace tempo {
       else { has_missing = matrix.has_nan(); }
 
       // Build the TSeries
-      return TSeries(
-        std::move(capsule),
-        rawptr,
-        std::move(matrix),
-        // Other
-        olabel,
-        has_missing
-      );
+      return TSeries(std::move(capsule), rawptr, std::move(matrix), olabel, has_missing);
     }
 
     /// Copy data from other, except for the actual data. Allow to easily do transforms. No checking done.
@@ -157,35 +153,35 @@ namespace tempo {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Access number of variable
-    [[nodiscard]] inline size_t nb_dimensions() const { return _matrix.n_rows; }
+    size_t nb_dimensions() const { return _matrix.n_rows; }
 
     /// Access the length
-    [[nodiscard]] inline size_t length() const { return _matrix.n_cols; }
+    size_t length() const { return _matrix.n_cols; }
 
     /// Access the size of the data == ndim*length
-    [[nodiscard]] inline size_t size() const { return _matrix.n_elem; }
+    size_t size() const { return _matrix.n_elem; }
 
     /// Check if has missing values
-    [[nodiscard]] inline bool missing() const { return _missing; }
+    bool missing() const { return _missing; }
 
     /// Get the label (perform a copy)
-    [[nodiscard]] inline std::optional<std::string> label() const { return _olabel; }
+    std::optional<std::string> label() const { return _olabel; }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Data access
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Column major access over all the points AND dimensions
-    [[nodiscard]] inline F operator [](size_t idx) const { return _matrix(idx); }
+    F operator [](size_t idx) const { return _matrix(idx); }
 
     /// Column major access to the raw pointer
-    [[nodiscard]] inline const F *rawdata() const { return _rawdata; }
+    const F *rawdata() const { return _rawdata; }
 
     /// Matrix access (li, co)
-    [[nodiscard]] inline const arma::Mat<F>& data() const { return _matrix; }
+    const arma::Mat<F>& data() const { return _matrix; }
 
     /// As row vector, only for univariate
-    [[nodiscard]] inline arma::Row<F> rowvec() const {
+    arma::Row<F> rowvec() const {
       if (nb_dimensions()!=1) { throw std::logic_error("rowvec can only be used with univariate series"); }
       return arma::Row<F>(data());
     }
@@ -195,22 +191,52 @@ namespace tempo {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Minimum value per dimension
-    [[nodiscard]] inline const arma::Col<F>& min() const { return _min; };
+    const arma::Col<F>& min() const { return _min; };
 
     /// Maximum value per dimension
-    [[nodiscard]] inline const arma::Col<F>& max() const { return _max; };
+    const arma::Col<F>& max() const { return _max; };
 
     /// Mean value per dimension
-    [[nodiscard]] inline const arma::Col<F>& mean() const {
-      assert(_mean.size() > 0);
+    const arma::Col<F>& mean() const {
+      assert(_mean.size()>0);
       return _mean;
     };
 
     /// Median value per dimension
-    [[nodiscard]] inline const arma::Col<F>& median() const { return _median; };
+    const arma::Col<F>& median() const { return _median; };
 
     /// Standard deviation per dimension
-    [[nodiscard]] inline const arma::Col<F>& stddev() const { return _stddev; };
+    const arma::Col<F>& stddev() const { return _stddev; };
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Series transformation
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /** Univariate Map low level transformation.
+     * @param fun univariate function to apply to the series. Works on the totality of the raw data.
+     *            See other map function for multivariate transforms
+     * @return a new transformed series
+     */
+    TSeries map(typename std::function<void(F const *in, size_t total_size, F *out)> fun) const {
+      arma::Row<F> data(size());
+      fun(rawdata(), size(), data.memptr());
+      return mk_from(std::move(data), label(), missing());
+    }
+
+    auto static mapfun(std::function<void(F const *in, size_t total_size, F *out)> fun) {
+      return [fun](TSeries const& in) -> TSeries { return in.map(fun); };
+    }
+
+    /** Multivariate Map low level transformation - remember that data is stored in column major order
+     * @param fun multivariate function to apply to the series. Works on the totality of the raw data.
+     * @return a new transformed series
+     */
+     /*
+    TSeries map(typename std::function<void(F const *in, size_t nbdim, size_t length, F *out)> fun) const {
+      throw std::runtime_error("not implemented");
+    }
+    */
 
   }; // End of class TSeries
 

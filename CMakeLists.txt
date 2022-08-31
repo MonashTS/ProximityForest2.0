@@ -92,10 +92,10 @@ add_subdirectory(third_party/cxxopts)
 # All the tests are compiled into one executable.
 # Recursing into src/tempo will add the tests per component to the target created here
 if(BUILD_TESTING)
-    add_subdirectory(test/catch)
+    add_subdirectory(test/Catch2)
     add_executable(libtempo-test test/tests.cpp)
     target_include_directories(libtempo-test PRIVATE test)
-    target_link_libraries(libtempo-test PRIVATE libtempo Catch2)
+    target_link_libraries(libtempo-test PRIVATE libtempo Catch2::Catch2WithMain)
 endif()
 
 

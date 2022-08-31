@@ -13,5 +13,5 @@ target_sources(libtempo
 
 target_sources(libtempo-test
         PRIVATE
-        csv/csv.test.cpp
+        #csv/csv.test.cpp
         )

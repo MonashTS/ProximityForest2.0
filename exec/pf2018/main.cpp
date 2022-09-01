@@ -5,9 +5,9 @@
 #include "tempo/classifier/TSChief/tree.hpp"
 #include "tempo/classifier/TSChief/sleaf/pure_leaf.hpp"
 #include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
-#include "tempo/classifier/TSChief/snode/nn1/MPGenerator.hpp"
-#include "tempo/classifier/TSChief/snode/nn1/nn1_directa.hpp"
-#include "tempo/classifier/TSChief/snode/nn1/nn1_dtwfull.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_directa.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
 
 #include "cmdline.hpp"
 
@@ -130,8 +130,8 @@ int main(int argc, char **argv) {
   // TODO: To link with transforms, snode requirement, etc...
   // For now, just pre-compute everything, regardless of the actual needs
 
-  namespace tsf = tempo::classifier::TSChief;
-  namespace tsf1nn = tempo::classifier::TSChief::snode::nn1dist;
+  namespace tsc = tempo::classifier::TSChief;
+  namespace tsc_nn1 = tempo::classifier::TSChief::snode::nn1splitter;
 
   // --- --- ---
   // --- --- --- Constants & configurations
@@ -175,33 +175,33 @@ int main(int argc, char **argv) {
 
   // --- --- Exponent getters
   const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
-  tsf1nn::ExponentGetter getter_cfe_set = [&](tsf::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
-  tsf1nn::ExponentGetter getter_cfe_1 = [](tsf::TreeState& /* state */) { return 1.0; };
-  tsf1nn::ExponentGetter getter_cfe_2 = [](tsf::TreeState& /* state */) { return 2.0; };
+  tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
+  tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
+  tsc_nn1::ExponentGetter getter_cfe_2 = [](tsc::TreeState& /* state */) { return 2.0; };
 
   // --- --- Transform getters
   const std::vector<std::string> dist_tr_set{tr_default, tr_d1, tr_d2};
-  tsf1nn::TransformGetter getter_tr_set = [&](tsf::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
-  tsf1nn::TransformGetter getter_tr_default = [&](tsf::TreeState& /* state */) { return tr_default; };
-  tsf1nn::TransformGetter getter_tr_d1 = [&](tsf::TreeState& /* state */) { return tr_d1; };
-  tsf1nn::TransformGetter getter_tr_d2 = [&](tsf::TreeState& /* state */) { return tr_d2; };
+  tsc_nn1::TransformGetter getter_tr_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
+  tsc_nn1::TransformGetter getter_tr_default = [&](tsc::TreeState& /* state */) { return tr_default; };
+  tsc_nn1::TransformGetter getter_tr_d1 = [&](tsc::TreeState& /* state */) { return tr_d1; };
+  tsc_nn1::TransformGetter getter_tr_d2 = [&](tsc::TreeState& /* state */) { return tr_d2; };
 
 
   // --- --- ---
   // --- --- --- DATA
   // --- --- ---
 
-  tsf::TreeData tdata;
+  tsc::TreeData tdata;
 
   // --- TRAIN
-  std::shared_ptr<tsf::i_GetData<DatasetHeader>> get_train_header =
+  std::shared_ptr<tsc::i_GetData<DatasetHeader>> get_train_header =
     tdata.register_data<DatasetHeader>(train_dataset.header_ptr());
 
-  std::shared_ptr<tsf::i_GetData<std::map<std::string, DTS>>> get_train_data =
+  std::shared_ptr<tsc::i_GetData<std::map<std::string, DTS>>> get_train_data =
     tdata.register_data<map<string, DTS>>(train_map);
 
   // --- TEST
-  std::shared_ptr<tsf::i_GetData<std::map<std::string, DTS>>> get_test_data =
+  std::shared_ptr<tsc::i_GetData<std::map<std::string, DTS>>> get_test_data =
     tdata.register_data<map<string, DTS>>(test_map);
 
 
@@ -209,11 +209,11 @@ int main(int argc, char **argv) {
   // --- --- --- STATE
   // --- --- ---
 
-  tsf::TreeState tstate(train_seed, 0);
+  tsc::TreeState tstate(train_seed, 0);
 
   // State for 1NN distance splitters - cache the indexset
-  using GS1NNState = tsf1nn::GenSplitterNN1_State;
-  std::shared_ptr<tsf::i_GetState<GS1NNState>> get_GenSplitterNN1_State =
+  using GS1NNState = tsc_nn1::GenSplitterNN1_State;
+  std::shared_ptr<tsc::i_GetState<GS1NNState>> get_GenSplitterNN1_State =
     tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
 
 
@@ -222,29 +222,29 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   // --- --- --- Leaf Generator
-  auto leaf_gen = std::make_shared<tsf::sleaf::GenLeaf_Pure>(get_train_header);
+  auto leaf_gen = std::make_shared<tsc::sleaf::GenLeaf_Pure>(get_train_header);
 
   // --- --- --- Node Generator
-  vector<shared_ptr<tsf::i_GenNode>> generators;
+  vector<shared_ptr<tsc::i_GenNode>> generators;
 
   // --- NN1 distance node generator
   {
     // List of distance generators (this is specific to our collection of NN1 Splitter generators)
-    vector<shared_ptr<tsf1nn::i_GenDist>> gendist;
+    vector<shared_ptr<tsc_nn1::i_GenDist>> gendist;
     // Direct Alignment
-    gendist.push_back(make_shared<tsf1nn::DAGen>(getter_tr_set, getter_cfe_set));
+    gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
     // DTWFull
-    gendist.push_back(make_shared<tsf1nn::DTWFullGen>(getter_tr_set, getter_cfe_set));
+    gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {
       generators.push_back(
-        make_shared<tsf1nn::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
+        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
       );
     }
   }
 
   // --- Put a node chooser over all generators
-  auto node_gen = make_shared<tsf::snode::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
+  auto node_gen = make_shared<tsc::snode::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
 
 
 
@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
   // --- --- --- Build the forest TODO: make the forest, one tree for now
   // --- --- ---
 
-  auto tree_trainer = std::make_shared<tsf::TreeTrainer>(leaf_gen, node_gen);
+  auto tree_trainer = std::make_shared<tsc::TreeTrainer>(leaf_gen, node_gen);
 
   // --- --- ---
   // --- --- --- TRAIN

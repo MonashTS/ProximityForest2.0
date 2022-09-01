@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+#include <memory>
 #include <string>
 
 #include <tempo/utils/utils.hpp>
@@ -7,48 +9,10 @@
 
 #include <tempo/classifier/TSChief/treedata.hpp>
 #include <tempo/classifier/TSChief/treestate.hpp>
+#include <tempo/classifier/TSChief/splitter_interface.hpp>
 
-namespace tempo::classifier::TSChief::snode::nn1dist {
+namespace tempo::classifier::TSChief::snode::nn1splitter {
 
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Time series distance interface and base implementation
-
-  /// Interface for the distance component
-  struct i_Dist {
-
-    // --- --- --- Destructor/Constructor
-
-    virtual ~i_Dist() = default;
-
-    // --- --- --- Method
-
-    /// Distance function computing a similarity score between two series, the lower the more similar.
-    /// 'bsf' ('Best so far') allows early abandoning and pruning in a NN1 classifier (upper bound on the whole process)
-    virtual F eval(TSeries const& t1, TSeries const& t2, F bsf) = 0;
-
-    /// Name of the transformation to draw the data from
-    virtual std::string get_transformation_name() = 0;
-
-    virtual std::string get_distance_name() = 0;
-  };
-
-  struct BaseDist : public i_Dist {
-
-    // --- --- --- Destructor/Constructor
-
-    explicit BaseDist(std::string str) : transformation_name(std::move(str)) {}
-
-    ~BaseDist() override = default;
-
-    // --- --- --- Method
-
-    /// Store the name of the transform
-    std::string transformation_name;
-
-    /// Name of the transformation to draw the data from
-    std::string get_transformation_name() override { return transformation_name; }
-
-  };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // NN1 Time Series Distance Splitter
@@ -120,4 +84,4 @@ namespace tempo::classifier::TSChief::snode::nn1dist {
     } // End of function get_branch_index
   };
 
-} // End of namespace tempo::classifier::TSChief::snode::nn1dist
+} // End of namespace tempo::classifier::TSChief::snode::nn1splitter

@@ -4,23 +4,17 @@ target_sources(libtempo
         treedata.hpp
         treestate.hpp
         splitter_interface.hpp
-        # --- --- --- Tree
+        # --- --- --- Tree/Forest
         tree.hpp
-        # --- --- --- Splitter: leaf
-        sleaf/pure_leaf.hpp
-        # --- --- --- Splitter: Node
-        # --- Meta nodes
-        snode/meta/chooser.hpp
-        # --- NN1 Distance
-        snode/nn1/node_nn1dist.hpp
-        snode/nn1/nodegen_nn1dist.hpp
-        snode/nn1/nn1_directa.hpp
-        snode/nn1/nn1_dtwfull.hpp
-        snode/nn1/MPGenerator.hpp
-        # --- --- ---
-        # --- --- ---
-        # --- --- ---
+        # --- --- --- Base splitter
         PRIVATE
         tree.cpp
         treestate.cpp
 )
+
+# Leaf splitters
+add_subdirectory(sleaf)
+
+# Node splitters
+add_subdirectory(snode/meta)
+add_subdirectory(snode/nn1splitter)

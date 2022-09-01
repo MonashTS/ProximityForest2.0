@@ -4,11 +4,9 @@
 #include <tempo/dataset/tseries.hpp>
 #include <tempo/distance/univariate.hpp>
 
-#include "node_nn1dist.hpp"
-#include "nodegen_nn1dist.hpp"
-#include "MPGenerator.hpp"
+#include "nn1dist_base.hpp"
 
-namespace tempo::classifier::TSChief::snode::nn1dist {
+namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct DTWFull : public BaseDist {
 
@@ -39,4 +37,4 @@ namespace tempo::classifier::TSChief::snode::nn1dist {
     }
   };
 
-} // End of namespace tempo::classifier::TSChief::snode::nn1dist
+} // End of namespace tempo::classifier::TSChief::snode::nn1splitter

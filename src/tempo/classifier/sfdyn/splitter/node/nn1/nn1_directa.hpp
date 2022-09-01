@@ -7,38 +7,34 @@
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
 
-#include <tempo/distance/lockstep/direct.hpp>
+#include <tempo/distance/univariate.hpp>
 
 namespace tempo::classifier::sf::node::nn1dist {
 
   struct DA : public BaseDist {
 
-    double exponent;
+    double cfe;
 
-    DA(std::string tname, double exponent) : BaseDist(std::move(tname)), exponent(exponent) {}
+    DA(std::string tname, double cfe) : BaseDist(std::move(tname)), cfe(cfe) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
-      constexpr auto d1 = distance::univariate::ad1<TSeries>;
-      constexpr auto d2 = distance::univariate::ad2<TSeries>;
-      if (exponent==1.0) { return distance::directa(t1, t2, d1, bsf); }
-      else if (exponent==2.0) { return distance::directa(t1, t2, d2, bsf); }
-      else { return distance::directa(t1, t2, distance::univariate::ade<TSeries>(exponent), bsf); }
+      return distance::univariate::directa(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, bsf);
     }
 
-    std::string get_distance_name() override { return "DA:" + std::to_string(exponent); }
+    std::string get_distance_name() override { return "DA:" + std::to_string(cfe); }
   };
 
   struct DAGen : public i_GenDist {
     TransformGetter get_transform;
-    ExponentGetter get_exponent;
+    ExponentGetter get_cfe;
 
     DAGen(TransformGetter gt, ExponentGetter ge) :
-      get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
+      get_transform(std::move(gt)), get_cfe(std::move(ge)) {}
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /*data*/, const ByClassMap& /* bcm */) override {
       // Generate args
       std::string tn = get_transform(state);
-      double e = get_exponent(state);
+      double e = get_cfe(state);
       // Build return
       return std::make_unique<DA>(tn, e);
     }

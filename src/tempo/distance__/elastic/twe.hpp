@@ -48,8 +48,8 @@ namespace tempo::distance {
                                CFunTWE auto dist_lines,
                                CFunTWE auto dist_cols,
                                CFun auto dist,
-                               F nu,
-                               F cutoff,
+                               const F nu,
+                               const F cutoff,
                                std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

@@ -171,19 +171,6 @@ int main(int argc, char **argv) {
       errors.emplace_back("Test set: variable length or missing data");
     }
 
-    auto [bcm, remainder] = train_dataset.get_BCM();
-
-    if (!remainder.empty()) {
-      errors.emplace_back("Train set: contains exemplar without label");
-    }
-
-    for (const auto& [label, vec] : bcm) {
-      if (vec.size()<2) {
-        errors.emplace_back("Train set: contains a class with only one exemplar");
-        break;
-      }
-    }
-
     if (!errors.empty()) {
       jv["status"] = "error";
       jv["status_message"] = utils::cat(errors, "; ");

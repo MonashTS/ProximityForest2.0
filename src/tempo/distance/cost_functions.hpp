@@ -24,14 +24,14 @@ namespace tempo::distance {
       return d*d;
     }
 
-    /// Parameterized Cost function -  Absolute Difference with an arbitrary exponent e
+    /// Parameterized Cost function -  Absolute Difference with an arbitrary cfe e
     /// Warning: up to 5 times slower than idx_ad1 or idx_ad2!
     template<std::floating_point F>
     inline F ade(F a, F b, F e) {
       return std::pow(std::abs(a - b), e);
     }
 
-    /// Parameterized Cost function Builder -  Absolute Difference with an arbitrary exponent e
+    /// Parameterized Cost function Builder -  Absolute Difference with an arbitrary cfe e
     template<std::floating_point F>
     inline utils::CFun<F> auto ade(F e) {
       return [e](F a, F b) -> F { return ade(a, b, e); };
@@ -42,7 +42,7 @@ namespace tempo::distance {
     // Indexed Cost function builder
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-    /// Indexed Cost function builder - Absolute Difference exponent 1
+    /// Indexed Cost function builder - Absolute Difference cfe 1
     template<std::floating_point F, utils::Subscriptable D>
     inline utils::ICFun<F> auto idx_ad1(D const& lines, D const& cols) {
       return [&](size_t i, size_t j) {
@@ -50,7 +50,7 @@ namespace tempo::distance {
       };
     }
 
-    /// Indexed Cost function builder - Absolute Difference exponent 2
+    /// Indexed Cost function builder - Absolute Difference cfe 2
     template<std::floating_point F, utils::Subscriptable D>
     inline utils::ICFun<F> auto idx_ad2(D const& lines, D const& cols) {
       return [&](size_t i, size_t j) {
@@ -63,7 +63,7 @@ namespace tempo::distance {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /// Parameterized Indexed Cost function builder - return a Cost function builder
-    /// Absolute Difference with an arbitrary exponent e
+    /// Absolute Difference with an arbitrary cfe e
     template<std::floating_point F, utils::Subscriptable D>
     inline auto idx_ade(F e) {
       return [e](D const& lines, D const& cols) -> utils::ICFun<F> auto {

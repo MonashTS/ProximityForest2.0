@@ -7,38 +7,34 @@
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
 
-#include <tempo/distance/elastic/dtw.hpp>
+#include <tempo/distance/univariate.hpp>
 
 namespace tempo::classifier::sf::node::nn1dist {
 
   struct DTWFull : public BaseDist {
 
-    double exponent;
+    double cfe;
 
-    DTWFull(std::string tname, double exponent) : BaseDist(std::move(tname)), exponent(exponent) {}
+    DTWFull(std::string tname, double cfe) : BaseDist(std::move(tname)), cfe(cfe) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
-      constexpr auto d1 = distance::univariate::ad1<TSeries>;
-      constexpr auto d2 = distance::univariate::ad2<TSeries>;
-      if (exponent==1.0) { return distance::dtw(t1, t2, d1, utils::NO_WINDOW, bsf); }
-      else if (exponent==2.0) { return distance::dtw(t1, t2, d2, utils::NO_WINDOW, bsf); }
-      else { return distance::dtw(t1, t2, distance::univariate::ade<TSeries>(exponent), utils::NO_WINDOW, bsf); }
+      return distance::univariate::dtw(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, utils::NO_WINDOW, bsf);
     }
 
-    std::string get_distance_name() override { return "DTWFull:" + std::to_string(exponent); }
+    std::string get_distance_name() override { return "DTWFull:" + std::to_string(cfe); }
   };
 
   struct DTWFullGen : public i_GenDist {
     TransformGetter get_transform;
-    ExponentGetter get_exponent;
+    ExponentGetter get_fce;
 
-    DTWFullGen(TransformGetter gt, ExponentGetter ge) :
-      get_transform(std::move(gt)), get_exponent(std::move(ge)) {}
+    DTWFullGen(TransformGetter gt, ExponentGetter get_cfe) :
+      get_transform(std::move(gt)), get_fce(std::move(get_cfe)) {}
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /*data*/, const ByClassMap& /* bcm */) override {
       // Generate args
       std::string tn = get_transform(state);
-      double e = get_exponent(state);
+      double e = get_fce(state);
       // Build return
       return std::make_unique<DTWFull>(tn, e);
     }

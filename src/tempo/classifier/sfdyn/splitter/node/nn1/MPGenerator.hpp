@@ -13,7 +13,7 @@ namespace tempo::classifier::sf::node::nn1dist {
 
   // --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// Generate an exponent e used in some elastic distances' cost function cost(a,b)=|a-b|^e
+  /// Generate an cfe e used in some elastic distances' cost function cost(a,b)=|a-b|^e
   using ExponentGetter = std::function<double(TreeState& state)>;
 
   // --- --- --- --- --- --- --- --- --- --- --- ---

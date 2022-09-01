@@ -294,7 +294,7 @@ namespace tempo::distance {
 
   namespace univariate {
 
-    /// Gap Value Indexed Cost Function Builder - Absolute Difference exponent 1
+    /// Gap Value Indexed Cost Function Builder - Absolute Difference cfe 1
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_gvad1(const D& series, const F gv) {
       return [&, gv](size_t i) {
@@ -302,7 +302,7 @@ namespace tempo::distance {
       };
     }
 
-    /// Gap Value Indexed Cost Function Builder - Absolute Difference exponent 2
+    /// Gap Value Indexed Cost Function Builder - Absolute Difference cfe 2
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_gvad2(const D& series, const F gv) {
       return [&, gv](size_t i) {
@@ -310,7 +310,7 @@ namespace tempo::distance {
       };
     }
 
-    /// Gap Value cost function builder - Absolute Difference exponent e
+    /// Gap Value cost function builder - Absolute Difference cfe e
     template<typename F, utils::Subscriptable D>
     inline auto idx_gvade(const F e) {
       return [e](const D& series, F gv) -> utils::ICFunOne<F> auto {

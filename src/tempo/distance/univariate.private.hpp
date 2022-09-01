@@ -272,7 +272,7 @@ namespace tempo::distance::univariate {
   // Lockstep distances
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// Direct alignment with cost function exponent, and early abandoning cutoff.
+  /// Direct alignment with cost function cfe, and early abandoning cutoff.
   template<typename F>
   F directa(F const *dat1, size_t len1, F const *dat2, size_t len2, F cfe, F cutoff) {
     if (cfe==1.0) {

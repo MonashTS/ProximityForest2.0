@@ -330,7 +330,7 @@ namespace tempo::classifier {
 
 
     /// PF11 VCFE
-    /// + ADTW tuning the exponent and the transfrom
+    /// + ADTW tuning the cfe and the transfrom
     std::shared_ptr<SForest::NodeSplitterGen_i<state, data, state, data>> get_node_gen_11_vcfe_adtw(size_t nbc) {
 
       // ADTW

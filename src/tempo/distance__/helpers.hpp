@@ -8,7 +8,7 @@ namespace tempo::distance {
 
   namespace univariate {
 
-    /// CFunBuilder Univariate Absolute difference exponent 1
+    /// CFunBuilder Univariate Absolute difference cfe 1
     template<Subscriptable D>
     auto ad1(const D& lines, const D& cols) {
       return [&](size_t i, size_t j) {
@@ -17,7 +17,7 @@ namespace tempo::distance {
       };
     }
 
-    /// CFunBuilder Univariate Absolute difference exponent 2
+    /// CFunBuilder Univariate Absolute difference cfe 2
     template<Subscriptable D>
     auto ad2(const D& lines, const D& cols) {
       return [&](size_t i, size_t j) {
@@ -26,7 +26,7 @@ namespace tempo::distance {
       };
     }
 
-    /// CFunBuilder Univariate Absolute difference exponent e
+    /// CFunBuilder Univariate Absolute difference cfe e
     template<Subscriptable D>
     auto ade(const F e) {
       return [e](const D& lines, const D& cols) {
@@ -40,7 +40,7 @@ namespace tempo::distance {
 
   namespace multivariate {
 
-    /// CFunBuilder Multivariate Absolute difference exponent 2
+    /// CFunBuilder Multivariate Absolute difference cfe 2
     template<Subscriptable D>
     auto ad2N(const D& lines, const D& cols, size_t ndim) {
       return [&, ndim](size_t i, size_t j) {

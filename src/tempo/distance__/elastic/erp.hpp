@@ -326,7 +326,7 @@ namespace tempo::distance {
 
   namespace univariate {
 
-    /// CFunGVBuilder Univariate Absolute difference exponent 1
+    /// CFunGVBuilder Univariate Absolute difference cfe 1
     template<Subscriptable D>
     auto ad1gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
@@ -335,7 +335,7 @@ namespace tempo::distance {
       };
     }
 
-    /// CFunGVBuilder Univariate Absolute difference exponent 2
+    /// CFunGVBuilder Univariate Absolute difference cfe 2
     template<Subscriptable D>
     auto inline ad2gv(const D& series, const F gv) {
       return [&, gv](size_t i) {
@@ -344,7 +344,7 @@ namespace tempo::distance {
       };
     }
 
-    /// CFunGVBuilder Univariate Absolute difference exponent e
+    /// CFunGVBuilder Univariate Absolute difference cfe e
     template<Subscriptable D>
     auto inline adegv(const F e) {
       return [e](const D& series, F gv) {

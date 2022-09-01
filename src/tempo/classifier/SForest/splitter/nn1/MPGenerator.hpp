@@ -13,7 +13,7 @@ namespace tempo::classifier::SForest::splitter::nn1 {
 
   // --- --- --- --- --- --- --- --- --- --- --- ---
 
-  /// Generate an exponent e used in some elastic distances' cost function cost(a,b)=|a-b|^e
+  /// Generate an cfe e used in some elastic distances' cost function cost(a,b)=|a-b|^e
   template<typename TrainState>
   using ExponentGetter = std::function<double(TrainState& train_state)>;
 

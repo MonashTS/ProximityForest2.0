@@ -1,7 +1,14 @@
 #include <tempo/utils/readingtools.hpp>
 #include <tempo/reader/new_reader.hpp>
 #include <tempo/transform/univariate.hpp>
-#include <tempo/classifier/ProximityForest/pf2018.hpp>
+
+#include <tempo/classifier/sfdyn/stree.hpp>
+#include <tempo/classifier/sfdyn/splitter/leaf/pure_leaf.hpp>
+#include <tempo/classifier/sfdyn/splitter/node/meta/chooser.hpp>
+#include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_directa.hpp>
+#include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_dtwfull.hpp>
+#include <tempo/classifier/sfdyn/splitter/node/nn1/MPGenerator.hpp>
+
 #include "cmdline.hpp"
 
 namespace fs = std::filesystem;
@@ -40,13 +47,6 @@ int main(int argc, char **argv) {
     case 1: { opt = std::get<1>(mb_opt); }
     }
   }
-
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Check PF configuration
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  // TODO
-  // To link with transforms, splitter requirement, etc...
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Read dataset
@@ -92,9 +92,15 @@ int main(int argc, char **argv) {
   DatasetHeader const& train_header = train_dataset.header();
   DatasetHeader const& test_header = test_dataset.header();
 
+  auto [train_bcm, train_bcm_remains] = train_dataset.get_BCM();
+
   // --- --- --- Sanity check
   {
     std::vector<std::string> errors = {};
+
+    if (!train_bcm_remains.empty()) {
+      errors.emplace_back("Could not take the By Class Map for all train exemplar (exemplar without label)");
+    }
 
     if (train_header.variable_length()||train_header.has_missing_value()) {
       errors.emplace_back("Train set: variable length or missing data");
@@ -102,12 +108,6 @@ int main(int argc, char **argv) {
 
     if (test_header.has_missing_value()||test_header.variable_length()) {
       errors.emplace_back("Test set: variable length or missing data");
-    }
-
-    auto [bcm, remainder] = train_dataset.get_BCM();
-
-    if (!remainder.empty()) {
-      errors.emplace_back("Train set: contains exemplar without label");
     }
 
     if (!errors.empty()) {
@@ -125,54 +125,171 @@ int main(int argc, char **argv) {
 
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Prepare data according to the splitters requirement
+  // Prepare data and state for the PF configuration
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // TODO: To link with transforms, splitter requirement, etc...
+  // For now, just pre-compute everything, regardless of the actual needs
 
-  map<string, DTS> train_map;
-  map<string, DTS> test_map;
+  namespace tsf = tempo::classifier::sf;
+  namespace tsf1nn = tempo::classifier::sf::node::nn1dist;
 
+  // --- --- ---
+  // --- --- --- Constants & configurations
+  // --- --- ---
+
+  // --- Time series transforms
+  const std::string tr_default("default");
+  const std::string tr_d1("derivative1");
+  const std::string tr_d2("derivative2");
+
+  // Make map of transforms (transform name, dataset)
+  using MDTS = map<string, DTS>;
+  shared_ptr<MDTS> train_map = make_shared<MDTS>();
+  shared_ptr<MDTS> test_map = make_shared<MDTS>();
+
+  auto prepare_data_start_time = utils::now();
   {
     namespace ttu = tempo::transform::univariate;
 
     // --- TRAIN
-    auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), "d1");
-    auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), "d2");
+    auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d1);
+    auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d2);
     DTS train_derive_1("train", train_derive_t1);
     DTS train_derive_2("train", train_derive_t2);
-    train_map["default"] = train_dataset;
-    train_map["derivative1"] = train_derive_1;
-    train_map["derivative2"] = train_derive_2;
+    train_map->emplace("default", train_dataset);
+    train_map->emplace(tr_d1, train_derive_1);
+    train_map->emplace(tr_d2, train_derive_2);
 
     // --- TEST
-    auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), "d1");
-    auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), "d2");
+    auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d1);
+    auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d2);
     DTS test_derive_1("test", test_derive_t1);
     DTS test_derive_2("test", test_derive_t2);
-    test_map["default"] = test_dataset;
-    test_map["derivative1"] = test_derive_1;
-    test_map["derivative2"] = test_derive_2;
+    test_map->emplace("default", test_dataset);
+    test_map->emplace(tr_d1, test_derive_1);
+    test_map->emplace(tr_d2, test_derive_2);
+  }
+  auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
+
+  // --- Main Distance splitter parameter space
+
+  // --- --- Exponent getters
+  const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
+  tsf1nn::ExponentGetter getter_cfe_set = [&](tsf::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
+  tsf1nn::ExponentGetter getter_cfe_1 = [](tsf::TreeState& /* state */) { return 1.0; };
+  tsf1nn::ExponentGetter getter_cfe_2 = [](tsf::TreeState& /* state */) { return 2.0; };
+
+  // --- --- Transform getters
+  const std::vector<std::string> dist_tr_set{tr_default, tr_d1, tr_d2};
+  tsf1nn::TransformGetter getter_tr_set = [&](tsf::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
+  tsf1nn::TransformGetter getter_tr_default = [&](tsf::TreeState& /* state */) { return tr_default; };
+  tsf1nn::TransformGetter getter_tr_d1 = [&](tsf::TreeState& /* state */) { return tr_d1; };
+  tsf1nn::TransformGetter getter_tr_d2 = [&](tsf::TreeState& /* state */) { return tr_d2; };
+
+
+  // --- --- ---
+  // --- --- --- DATA
+  // --- --- ---
+
+  tsf::TreeData tdata;
+
+  // --- TRAIN
+  std::shared_ptr<tsf::i_GetData<DatasetHeader>> get_train_header =
+    tdata.register_data<DatasetHeader>(train_dataset.header_ptr());
+
+  std::shared_ptr<tsf::i_GetData<std::map<std::string, DTS>>> get_train_data =
+    tdata.register_data<map<string, DTS>>(train_map);
+
+  // --- TEST
+  std::shared_ptr<tsf::i_GetData<std::map<std::string, DTS>>> get_test_data =
+    tdata.register_data<map<string, DTS>>(test_map);
+
+
+  // --- --- ---
+  // --- --- --- STATE
+  // --- --- ---
+
+  tsf::TreeState tstate(train_seed, 0);
+
+  // State for 1NN distance splitters - cache the indexset
+  using GS1NNState = tsf1nn::GenSplitterNN1_State;
+  std::shared_ptr<tsf::i_GetState<GS1NNState>> get_GenSplitterNN1_State =
+    tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
+
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Build the splitter generators
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  // --- --- --- Leaf Generator
+  auto leaf_gen = std::make_shared<tsf::leaf::GenLeaf_Pure>(get_train_header);
+
+  // --- --- --- Node Generator
+  vector<shared_ptr<tsf::i_GenNode>> generators;
+
+  // --- NN1 distance node generator
+  {
+    // List of distance generators (this is specific to our collection of NN1 Splitter generators)
+    vector<shared_ptr<tsf1nn::i_GenDist>> gendist;
+    // Direct Alignment
+    gendist.push_back(make_shared<tsf1nn::DAGen>(getter_tr_set, getter_cfe_set));
+    // DTWFull
+    gendist.push_back(make_shared<tsf1nn::DTWFullGen>(getter_tr_set, getter_cfe_set));
+    // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
+    for (auto const& gd : gendist) {
+      generators.push_back(
+        make_shared<tsf1nn::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
+      );
+    }
   }
 
+  // --- Put a node chooser over all generators
+  auto node_gen = make_shared<tsf::node::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
+
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Call PF
+  // Make PF and use it
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  tempo::classifier::PF2018 pf(opt.nb_trees, opt.nb_candidates, opt.pfconfig);
+  // --- --- ---
+  // --- --- --- Build the forest TODO: make the forest, one tree for now
+  // --- --- ---
 
-  // Train
+  auto tree_trainer = std::make_shared<tsf::TreeTrainer>(leaf_gen, node_gen);
+
+  // --- --- ---
+  // --- --- --- TRAIN
+  // --- --- ---
+
   auto train_start_time = utils::now();
-  pf.train(train_map, train_seed, opt.nb_threads);
+  auto tree = tree_trainer->train(tstate, tdata, train_bcm);
   auto train_elapsed = utils::now() - train_start_time;
 
-  // Test
+  // --- --- ---
+  // --- --- --- TEST
+  // --- --- ---
+
+  classifier::ResultN result;
   auto test_start_time = utils::now();
-  classifier::ResultN result = pf.predict(test_map, test_seed, opt.nb_threads);
+  {
+    const size_t test_size = test_dataset.size();
+    for (size_t test_idx = 0; test_idx<test_size; ++test_idx) {
+      classifier::Result1 r1 = tree->predict(tstate, tdata, test_idx);
+      result.append(r1);
+    }
+  }
   auto test_elapsed = utils::now() - test_start_time;
 
   PRNG prng(tiebreak_seed);
   size_t nb_correct = result.nb_correct_01loss(test_header, IndexSet(test_header.size()), prng);
   double accuracy = (double)nb_correct/(double)test_header.size();
+
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Generate output and exit
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
 
   jv["status"] = "success";
 
@@ -182,6 +299,8 @@ int main(int argc, char **argv) {
     j["train_time_human"] = utils::as_string(train_elapsed);
     j["test_time_ns"] = test_elapsed.count();
     j["test_time_human"] = utils::as_string(test_elapsed);
+    j["prepare_data_ns"] = prepare_data_elapsed.count();
+    j["prepare_data_human"] = utils::as_string(prepare_data_elapsed);
     //
     jv["classifier"] = opt.pfconfig;
     jv["classifier_info"] = j;

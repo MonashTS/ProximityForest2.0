@@ -10,7 +10,7 @@ namespace tempo::distance {
      *
      * @tparam F            Floating type used for the computation
      * @param nblines       Length of the first series 'along the lines'
-     * @param nbcols        Length of the second series 'along the columnes'
+     * @param nbcols        Length of the second series 'along the columns'
      * @param cfun_lines    Indexed Cost Function for "vertical" steps
      * @param cfun_cols     Indexed Cost Function for "horizontal" steps
      * @param cfun_diag     Indexed Cost Function for "diagonal" steps
@@ -27,7 +27,7 @@ namespace tempo::distance {
           utils::ICFunOne<F> auto cfun_lines,
           utils::ICFunOne<F> auto cfun_cols,
           utils::ICFun<F> auto cfun_diag,
-          F cutoff,
+          const F cutoff,
           std::vector<F>& buffer_v
     ) {
       // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -194,8 +194,8 @@ namespace tempo::distance {
   /** Time Warp Edit (TWE), Early Abandoned and Pruned (EAP).
    *
    * @tparam F              Floating type used for the computation
-   * @param length1         Length of the first series.
-   * @param length2         Length of the second series.
+   * @param length1         Length of the first 'line' series.
+   * @param length2         Length of the second 'column' series.
    * @param cfun_lines      Indexed Cost Function for "vertical" steps
    * @param cfun_cols       Indexed Cost Function for "horizontal" steps
    * @param cfun_diag       Indexed Cost Function for "diagonal" steps
@@ -222,7 +222,6 @@ namespace tempo::distance {
       // Compute a cutoff point using the diagonal
       if (std::isinf(cutoff)) {
         const auto m = std::min(length1, length2);
-        cutoff = 0;
         // Init case
         cutoff = cfun_diag(0, 0);
         // Cover diagonal

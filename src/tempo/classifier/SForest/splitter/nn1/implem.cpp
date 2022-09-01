@@ -111,13 +111,13 @@ namespace tempo::classifier::SForest::splitter::nn1 {
   F TWE::eval(const TSeries& t1, const TSeries& t2, F bsf) {
     return distance::univariate::twe(t1, t2, nu, lambda, bsf);
   }
-
-  F Lorentzian::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
-    return distance::lorentzian(t1, t2);
-  }
-
-  F SBD::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
-    return distance::sbd(t1, t2);
-  }
+//
+//  F Lorentzian::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
+//    return distance::lorentzian(t1, t2);
+//  }
+//
+//  F SBD::eval(const TSeries& t1, const TSeries& t2, F /* bsf */) {
+//    return distance::sbd(t1, t2);
+//  }
 
 }

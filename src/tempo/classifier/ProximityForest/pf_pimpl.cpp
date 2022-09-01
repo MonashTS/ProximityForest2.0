@@ -12,11 +12,12 @@
 #include <tempo/classifier/SForest/splitter/nn1/sp_wdtw.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_erp.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_lcss.hpp>
-#include <tempo/classifier/SForest/splitter/nn1/sp_lorentzian.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_msm.hpp>
-#include <tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp>
 #include <tempo/classifier/SForest/splitter/nn1/sp_twe.hpp>
 #include <tempo/distance__/helpers.hpp>
+
+//#include <tempo/classifier/SForest/splitter/nn1/sp_lorentzian.hpp>
+//#include <tempo/classifier/SForest/splitter/nn1/sp_sbd.hpp>
 
 #include <tempo/transform__/derivative.hpp>
 #include <utility>
@@ -518,19 +519,21 @@ namespace tempo::classifier {
         make_shared<LCSSGen<state, data>>(transform_getter, exp_2, window_getter, frac_stddev)
       );
 
+      /*
       // Lorentzian
       auto nn1lorentzian_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
         make_shared<LorentzianGen<state, data>>(transform_getter)
       );
 
-      // MSM
-      auto nn1msm_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
-        make_shared<MSMGen<state, data>>(transform_getter, msm_cost)
-      );
-
       // SBD
       auto nn1sbd_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
         make_shared<SBDGen<state, data>>(transform_getter)
+      );
+       */
+
+      // MSM
+      auto nn1msm_gen = make_shared<NN1SplitterGen<state, data, state, data>>(
+        make_shared<MSMGen<state, data>>(transform_getter, msm_cost)
       );
 
       // TWE
@@ -547,9 +550,9 @@ namespace tempo::classifier {
           nn1wdtw_gen,
           nn1erp_gen,
           nn1lcss_gen,
-          nn1lorentzian_gen,
           nn1msm_gen,
-          nn1sbd_gen,
+          //nn1lorentzian_gen,
+          //nn1sbd_gen,
           nn1twe_gen
         },
         nbc

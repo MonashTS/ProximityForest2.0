@@ -2,17 +2,17 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dts.hpp>
+
 #include <tempo/classifier/utils.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
-#include <utility>
+#include <tempo/classifier/TSChief/tree.hpp>
 
-namespace tempo::classifier::sf::leaf {
+namespace tempo::classifier::TSChief::sleaf {
 
-  /// Pure leaf splitter
+  /// Pure sleaf snode
   struct SplitterLeaf_Pure : public i_SplitterLeaf {
 
     // --- --- --- Fields
-    /// Pure leaf result is computed at train time
+    /// Pure sleaf result is computed at train time
     classifier::Result1 result;
 
     // --- --- --- Constructor / Destructors
@@ -27,7 +27,7 @@ namespace tempo::classifier::sf::leaf {
 
   };
 
-  /// Pure leaf generator: stop when only one class reaches the node
+  /// Pure sleaf generator: stop when only one class reaches the node
   struct GenLeaf_Pure : public i_GenLeaf {
 
     // --- --- --- types
@@ -43,7 +43,7 @@ namespace tempo::classifier::sf::leaf {
     // --- --- --- Methods
 
     i_GenLeaf::Result generate(TreeState& /* state */, TreeData const& data, ByClassMap const& bcm) override {
-      // Generate leaf on pure node:
+      // Generate sleaf on pure node:
       // Vector of probabilities at 0 except for the position matching the encoded label
       if (bcm.nb_classes()==1) {
         size_t cardinality = get_train_header->at(data).nb_classes();
@@ -58,4 +58,4 @@ namespace tempo::classifier::sf::leaf {
 
   };
 
-} // End of namespace tempo::classifier::SForest::leaf
+} // End of namespace tempo::classifier::TSChief::sleaf

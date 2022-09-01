@@ -2,9 +2,11 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dts.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
 
-namespace tempo::classifier::sf::node::nn1dist {
+#include <tempo/classifier/TSChief/treestate.hpp>
+#include <tempo/classifier/TSChief/treedata.hpp>
+
+namespace tempo::classifier::TSChief::snode::nn1dist {
 
   // --- --- --- --- --- --- --- --- --- --- --- ---
 
@@ -25,7 +27,9 @@ namespace tempo::classifier::sf::node::nn1dist {
 
   /// Some distances (like ADTW, ERP and LCSS) generate a random value based on the dataset
   /// (requires 'data' and the dataset name, and 'bcm' for the local subset)
-  using StatGetter = std::function<F(TreeState& state, TreeData const& data, ByClassMap const& bcm,
+  using StatGetter = std::function<F(TreeState& state,
+                                     TreeData const& data,
+                                     ByClassMap const& bcm,
                                      std::string const& tn)>;
 
-}
+} // End of namespace tempo::classifier::TSChief::snode::nn1dist

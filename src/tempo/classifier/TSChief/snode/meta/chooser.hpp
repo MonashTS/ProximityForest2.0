@@ -2,9 +2,12 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dataset.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
 
-namespace tempo::classifier::sf::node::meta {
+#include <tempo/classifier/TSChief/treestate.hpp>
+#include <tempo/classifier/TSChief/treedata.hpp>
+
+
+namespace tempo::classifier::TSChief::snode::meta {
 
   namespace {
     //// Compute the weighted (ratio of series per branch) gini impurity of a split.

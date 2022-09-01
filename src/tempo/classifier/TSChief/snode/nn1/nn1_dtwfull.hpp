@@ -1,15 +1,14 @@
 #pragma once
 
+#include <tempo/utils/utils.hpp>
+#include <tempo/dataset/tseries.hpp>
+#include <tempo/distance/univariate.hpp>
+
 #include "node_nn1dist.hpp"
 #include "nodegen_nn1dist.hpp"
 #include "MPGenerator.hpp"
 
-#include <tempo/utils/utils.hpp>
-#include <tempo/dataset/tseries.hpp>
-
-#include <tempo/distance/univariate.hpp>
-
-namespace tempo::classifier::sf::node::nn1dist {
+namespace tempo::classifier::TSChief::snode::nn1dist {
 
   struct DTWFull : public BaseDist {
 
@@ -40,4 +39,4 @@ namespace tempo::classifier::sf::node::nn1dist {
     }
   };
 
-} // End of namespace tempo::classifier::sf::node::nn1dist
+} // End of namespace tempo::classifier::TSChief::snode::nn1dist

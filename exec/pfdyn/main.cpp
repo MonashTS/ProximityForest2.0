@@ -4,7 +4,7 @@
 #include <tempo/utils/readingtools.hpp>
 
 #include <tempo/reader/new_reader.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
+#include "tempo/classifier/TSChief/tree.hpp"
 #include <tempo/classifier/sfdyn/splitter/leaf/pure_leaf.hpp>
 #include <tempo/classifier/sfdyn/splitter/node/meta/chooser.hpp>
 #include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_directa.hpp>

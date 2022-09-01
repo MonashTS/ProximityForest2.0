@@ -4,11 +4,12 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dts.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
-#include <utility>
+
+#include <tempo/classifier/TSChief/treedata.hpp>
+#include <tempo/classifier/TSChief/treestate.hpp>
 #include "node_nn1dist.hpp"
 
-namespace tempo::classifier::sf::node::nn1dist {
+namespace tempo::classifier::TSChief::snode::nn1dist {
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Time series distance generator interface
@@ -22,7 +23,7 @@ namespace tempo::classifier::sf::node::nn1dist {
   };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Specific state for NN1 splitter generator
+  // Specific state for NN1 snode generator
 
   struct GenSplitterNN1_State : public i_TreeState {
 
@@ -99,7 +100,7 @@ namespace tempo::classifier::sf::node::nn1dist {
 
     // --- --- --- Methods
 
-    /// Generate a splitter based on the distance generator specifed at build time
+    /// Generate a snode based on the distance generator specifed at build time
     i_GenNode::Result generate(TreeState& state, TreeData const& data, ByClassMap const& bcm) override {
 
       // --- --- --- Generate a distance
@@ -121,7 +122,7 @@ namespace tempo::classifier::sf::node::nn1dist {
       // Build return:
       //  Number of branches == number of classes
       //  We maintain mapping from labels to branch index
-      //  We build the "by branch BCM" vector resulting from this splitter
+      //  We build the "by branch BCM" vector resulting from this snode
       const std::map<EL, size_t>& label_to_branchIdx = bcm.labels_to_index();
       std::vector<ByClassMap::BCMvec_t> result_bcm_vec(bcm.nb_classes());
 
@@ -175,8 +176,6 @@ namespace tempo::classifier::sf::node::nn1dist {
         .branch_splits = std::move(v_bcm)
       };
     } // End of generate function
-
-
   };
 
-} // End of namespace tempo::classifier::sf::node::nn1dist
+} // End of namespace tempo::classifier::TSChief::snode::nn1dist

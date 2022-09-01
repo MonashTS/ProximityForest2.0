@@ -4,10 +4,11 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/dts.hpp>
-#include <tempo/classifier/sfdyn/stree.hpp>
-#include <utility>
 
-namespace tempo::classifier::sf::node::nn1dist {
+#include <tempo/classifier/TSChief/treedata.hpp>
+#include <tempo/classifier/TSChief/treestate.hpp>
+
+namespace tempo::classifier::TSChief::snode::nn1dist {
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Time series distance interface and base implementation
@@ -119,4 +120,4 @@ namespace tempo::classifier::sf::node::nn1dist {
     } // End of function get_branch_index
   };
 
-} // End of namespace tempo::classifier::sf::node::nn1dist
+} // End of namespace tempo::classifier::TSChief::snode::nn1dist

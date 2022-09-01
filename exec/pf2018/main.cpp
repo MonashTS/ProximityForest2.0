@@ -2,12 +2,12 @@
 #include <tempo/reader/new_reader.hpp>
 #include <tempo/transform/univariate.hpp>
 
-#include <tempo/classifier/sfdyn/stree.hpp>
-#include <tempo/classifier/sfdyn/splitter/leaf/pure_leaf.hpp>
-#include <tempo/classifier/sfdyn/splitter/node/meta/chooser.hpp>
-#include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_directa.hpp>
-#include <tempo/classifier/sfdyn/splitter/node/nn1/nn1_dtwfull.hpp>
-#include <tempo/classifier/sfdyn/splitter/node/nn1/MPGenerator.hpp>
+#include "tempo/classifier/TSChief/tree.hpp"
+#include "tempo/classifier/TSChief/sleaf/pure_leaf.hpp"
+#include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
+#include "tempo/classifier/TSChief/snode/nn1/MPGenerator.hpp"
+#include "tempo/classifier/TSChief/snode/nn1/nn1_directa.hpp"
+#include "tempo/classifier/TSChief/snode/nn1/nn1_dtwfull.hpp"
 
 #include "cmdline.hpp"
 
@@ -127,11 +127,11 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Prepare data and state for the PF configuration
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // TODO: To link with transforms, splitter requirement, etc...
+  // TODO: To link with transforms, snode requirement, etc...
   // For now, just pre-compute everything, regardless of the actual needs
 
-  namespace tsf = tempo::classifier::sf;
-  namespace tsf1nn = tempo::classifier::sf::node::nn1dist;
+  namespace tsf = tempo::classifier::TSChief;
+  namespace tsf1nn = tempo::classifier::TSChief::snode::nn1dist;
 
   // --- --- ---
   // --- --- --- Constants & configurations
@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
   }
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
-  // --- Main Distance splitter parameter space
+  // --- Main Distance snode parameter space
 
   // --- --- Exponent getters
   const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
@@ -218,11 +218,11 @@ int main(int argc, char **argv) {
 
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Build the splitter generators
+  // Build the snode generators
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   // --- --- --- Leaf Generator
-  auto leaf_gen = std::make_shared<tsf::leaf::GenLeaf_Pure>(get_train_header);
+  auto leaf_gen = std::make_shared<tsf::sleaf::GenLeaf_Pure>(get_train_header);
 
   // --- --- --- Node Generator
   vector<shared_ptr<tsf::i_GenNode>> generators;
@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
   }
 
   // --- Put a node chooser over all generators
-  auto node_gen = make_shared<tsf::node::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
+  auto node_gen = make_shared<tsf::snode::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
 
 
 

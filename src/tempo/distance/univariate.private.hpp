@@ -41,6 +41,8 @@ namespace tempo::distance::univariate {
       return td::adtw<F>(len1, len2, idx_ad1<F, F const *>(dat1, dat2), penalty, cutoff);
     } else if (cfe==2.0) {
       return td::adtw<F>(len1, len2, idx_ad2<F, F const *>(dat1, dat2), penalty, cutoff);
+    } else if (cfe==0.5) {
+      return td::adtw<F>(len1, len2, idx_ad_sqrt<F, F const *>(dat1, dat2), penalty, cutoff);
     } else {
       return td::adtw<F>(len1, len2, idx_ade<F, F const *>(cfe)(dat1, dat2), penalty, cutoff);
     }
@@ -59,6 +61,8 @@ namespace tempo::distance::univariate {
       return td::dtw<F>(len1, len2, idx_ad1<F, F const *>(dat1, dat2), w, cutoff);
     } else if (cfe==2.0) {
       return td::dtw<F>(len1, len2, idx_ad2<F, F const *>(dat1, dat2), w, cutoff);
+    } else if (cfe==0.5) {
+      return td::dtw<F>(len1, len2, idx_ad_sqrt<F, F const *>(dat1, dat2), w, cutoff);
     } else {
       return td::dtw<F>(len1, len2, idx_ade<F, F const *>(cfe)(dat1, dat2), w, cutoff);
     }
@@ -76,6 +80,8 @@ namespace tempo::distance::univariate {
       return td::wdtw<F>(len1, len2, idx_ad1<F, F const *>(dat1, dat2), weights, cutoff);
     } else if (cfe==2.0) {
       return td::wdtw<F>(len1, len2, idx_ad2<F, F const *>(dat1, dat2), weights, cutoff);
+    } else if (cfe==0.5) {
+      return td::wdtw<F>(len1, len2, idx_ad_sqrt<F, F const *>(dat1, dat2), weights, cutoff);
     } else {
       return td::wdtw<F>(len1, len2, idx_ade<F, F const *>(cfe)(dat1, dat2), weights, cutoff);
     }
@@ -102,11 +108,14 @@ namespace tempo::distance::univariate {
     F cutoff
   ) {
     if (cfe==1.0) {
-      constexpr auto gv1 = idx_gvad1<F, F const *>;
-      return td::erp<F>(len1, len2, gv1(dat1, gv), gv1(dat2, gv), idx_ad1<F, F const *>(dat1, dat2), w, cutoff);
+      constexpr auto gvf = idx_gvad1<F, F const *>;
+      return td::erp<F>(len1, len2, gvf(dat1, gv), gvf(dat2, gv), idx_ad1<F, F const *>(dat1, dat2), w, cutoff);
     } else if (cfe==2.0) {
-      constexpr auto gv2 = idx_gvad2<F, F const *>;
-      return td::erp<F>(len1, len2, gv2(dat1, gv), gv2(dat2, gv), idx_ad2<F, F const *>(dat1, dat2), w, cutoff);
+      constexpr auto gvf = idx_gvad2<F, F const *>;
+      return td::erp<F>(len1, len2, gvf(dat1, gv), gvf(dat2, gv), idx_ad2<F, F const *>(dat1, dat2), w, cutoff);
+    } else if (cfe==0.5) {
+      constexpr auto gvf = idx_gvad_sqrt<F, F const *>;
+      return td::erp<F>(len1, len2, gvf(dat1, gv), gvf(dat2, gv), idx_ad_sqrt<F, F const *>(dat1, dat2), w, cutoff);
     } else {
       auto gve = idx_gvade<F, F const *>(cfe);
       return td::erp<F>(len1, len2, gve(dat1, gv), gve(dat2, gv), idx_ade<F, F const *>(cfe)(dat1, dat2), w, cutoff);
@@ -150,7 +159,7 @@ namespace tempo::distance::univariate {
     constexpr auto cfmatch = univariate::idx_twe_match<F, F const *>;
     return td::twe<F>(
       length1, length2, cfwarp(data1, nu, lambda), cfwarp(data2, nu, lambda), cfmatch(data1, data2, nu), cutoff
-                     );
+    );
   }
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -163,6 +172,9 @@ namespace tempo::distance::univariate {
       return lb_Keogh(query, query_length, upper, lower, cf, cutoff);
     } else if (cfe==2.0) {
       constexpr utils::CFun<F> auto cf = ad2<F>;
+      return lb_Keogh(query, query_length, upper, lower, cf, cutoff);
+    } else if (cfe==0.5) {
+      constexpr utils::CFun<F> auto cf = ad_sqrt<F>;
       return lb_Keogh(query, query_length, upper, lower, cf, cutoff);
     } else {
       utils::CFun<F> auto cf = ade<F>(cfe);
@@ -181,6 +193,9 @@ namespace tempo::distance::univariate {
       return lb_Keogh2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, cutoff);
     } else if (cfe==2.0) {
       constexpr utils::CFun<F> auto cf = ad2<F>;
+      return lb_Keogh2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, cutoff);
+    } else if (cfe==0.5) {
+      constexpr utils::CFun<F> auto cf = ad_sqrt<F>;
       return lb_Keogh2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, cutoff);
     } else {
       utils::CFun<F> auto cf = ade<F>(cfe);
@@ -211,6 +226,9 @@ namespace tempo::distance::univariate {
     } else if (cfe==2.0) {
       constexpr utils::CFun<F> auto cf = ad2<F>;
       return lb_Enhanced(query, query_len, candidate, candidate_len, candidate_up, candidate_lo, cf, v, w, cutoff);
+    } else if (cfe==0.5) {
+      constexpr utils::CFun<F> auto cf = ad_sqrt<F>;
+      return lb_Enhanced(query, query_len, candidate, candidate_len, candidate_up, candidate_lo, cf, v, w, cutoff);
     } else {
       utils::CFun<F> auto cf = ade<F>(cfe);
       return lb_Enhanced(query, query_len, candidate, candidate_len, candidate_up, candidate_lo, cf, v, w, cutoff);
@@ -228,6 +246,9 @@ namespace tempo::distance::univariate {
       return lb_Enhanced2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, v, w, cutoff);
     } else if (cfe==2.0) {
       constexpr utils::CFun<F> auto cf = ad2<F>;
+      return lb_Enhanced2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, v, w, cutoff);
+    } else if (cfe==0.5) {
+      constexpr utils::CFun<F> auto cf = ad_sqrt<F>;
       return lb_Enhanced2j(series1, length1, upper1, lower1, series2, length2, upper2, lower2, cf, v, w, cutoff);
     } else {
       utils::CFun<F> auto cf = ade<F>(cfe);
@@ -256,6 +277,9 @@ namespace tempo::distance::univariate {
     } else if (cfe==2.0) {
       constexpr utils::CFun<F> auto cf = ad2<F>;
       return lb_Webb(a, a_len, a_up, a_lo, a_lo_up, a_up_lo, b, b_len, b_up, b_lo, b_lo_up, b_up_lo, cf, w, cutoff);
+    } else if (cfe==0.5) {
+      constexpr utils::CFun<F> auto cf = ad_sqrt<F>;
+      return lb_Webb(a, a_len, a_up, a_lo, a_lo_up, a_up_lo, b, b_len, b_up, b_lo, b_lo_up, b_up_lo, cf, w, cutoff);
     } else {
       utils::CFun<F> auto cf = ade<F>(cfe);
       return lb_Webb(a, a_len, a_up, a_lo, a_lo_up, a_up_lo, b, b_len, b_up, b_lo, b_lo_up, b_up_lo, cf, w, cutoff);
@@ -279,6 +303,8 @@ namespace tempo::distance::univariate {
       return td::directa<F>(len1, len2, idx_ad1<F, F const *>(dat1, dat2), cutoff);
     } else if (cfe==2.0) {
       return td::directa<F>(len1, len2, idx_ad2<F, F const *>(dat1, dat2), cutoff);
+    } else if (cfe==0.5){
+      return td::directa<F>(len1, len2, idx_ad_sqrt<F, F const *>(dat1, dat2), cutoff);
     } else {
       return td::directa<F>(len1, len2, idx_ade<F, F const *>(cfe)(dat1, dat2), cutoff);
     }

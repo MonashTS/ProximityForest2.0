@@ -310,6 +310,14 @@ namespace tempo::distance {
       };
     }
 
+    /// Gap Value Indexed Cost Function Builder - Absolute Difference cfe sqrt
+    template<typename F, utils::Subscriptable D>
+    inline utils::ICFunOne<F> auto idx_gvad_sqrt(const D& series, const F gv) {
+      return [&, gv](size_t i) {
+        return ad_sqrt<F>(series[i], gv);
+      };
+    }
+
     /// Gap Value cost function builder - Absolute Difference cfe e
     template<typename F, utils::Subscriptable D>
     inline auto idx_gvade(const F e) {

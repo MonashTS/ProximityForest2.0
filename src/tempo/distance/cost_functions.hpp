@@ -24,6 +24,13 @@ namespace tempo::distance {
       return d*d;
     }
 
+    /// Cost function - Absolute Difference Square Root
+    template<std::floating_point F>
+    inline F ad_sqrt(F a, F b) {
+      F d = std::abs(a - b);
+      return std::sqrt(d);
+    }
+
     /// Parameterized Cost function -  Absolute Difference with an arbitrary cfe e
     /// Warning: up to 5 times slower than idx_ad1 or idx_ad2!
     template<std::floating_point F>
@@ -55,6 +62,14 @@ namespace tempo::distance {
     inline utils::ICFun<F> auto idx_ad2(D const& lines, D const& cols) {
       return [&](size_t i, size_t j) {
         return ad2<F>(lines[i], cols[j]);
+      };
+    }
+
+    /// Indexed Cost function builder - Absolute Difference Square Root
+    template<std::floating_point F, utils::Subscriptable D>
+    inline utils::ICFun<F> auto idx_ad_sqrt(D const& lines, D const& cols) {
+      return [&](size_t i, size_t j) {
+        return ad_sqrt<F>(lines[i], cols[j]);
       };
     }
 

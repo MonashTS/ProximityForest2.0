@@ -15,6 +15,7 @@
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_erp.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_lcss.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_msm.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_twe.hpp"
 
 #include "cmdline.hpp"
 
@@ -318,7 +319,7 @@ int main(int argc, char **argv) {
     gendist.push_back(make_shared<tsc_nn1::MSMGen>(getter_tr_set, getter_msm_cost));
 
     // TWE
-    //gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_set, getter_twe_nu, getter_twe_lambda));
+    gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_set, getter_twe_nu, getter_twe_lambda));
 
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {

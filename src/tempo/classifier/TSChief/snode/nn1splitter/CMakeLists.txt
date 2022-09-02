@@ -16,7 +16,7 @@ target_sources(libtempo
         nn1_erp.hpp
         nn1_lcss.hpp
         nn1_msm.hpp
-
+        nn1_twe.hpp
         # --- --- ---
         # --- --- ---
         # --- --- ---

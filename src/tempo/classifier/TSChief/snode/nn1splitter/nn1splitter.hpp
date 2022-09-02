@@ -12,7 +12,7 @@
 #include <tempo/classifier/TSChief/treestate.hpp>
 #include <tempo/classifier/TSChief/splitter_interface.hpp>
 
-#include "nn1dist.hpp"
+#include "nn1dist_interface.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 

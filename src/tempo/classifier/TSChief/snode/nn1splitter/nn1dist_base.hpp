@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "nn1dist.hpp"
+#include "nn1dist_interface.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 

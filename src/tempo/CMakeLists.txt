@@ -21,7 +21,7 @@ add_subdirectory(distance)
 #add_subdirectory(distance__)
 add_subdirectory(reader)
 add_subdirectory(transform)
-add_subdirectory(transform__)
+#add_subdirectory(transform__)
 add_subdirectory(dataset)
 
 

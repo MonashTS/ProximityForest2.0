@@ -8,6 +8,7 @@
 #include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_directa.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_adtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
 
@@ -176,7 +177,8 @@ int main(int argc, char **argv) {
   // --- Main Distance snode parameter space
 
   // --- --- Exponent getters
-  const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
+  //const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
+  const std::vector<F> dist_cfe_set{0.5, 1, 2};
   tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
   tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
   tsc_nn1::ExponentGetter getter_cfe_2 = [](tsc::TreeState& /* state */) { return 2.0; };
@@ -225,6 +227,10 @@ int main(int argc, char **argv) {
   std::shared_ptr<tsc::i_GetState<GS1NNState>> get_GenSplitterNN1_State =
     tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
 
+  // ADTW train - cache sampling
+  std::shared_ptr<tsc::i_GetState<tsc_nn1::ADTWGenState>> get_adtw_state =
+    tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Build the snode generators
@@ -243,6 +249,9 @@ int main(int argc, char **argv) {
 
     // Direct Alignment
     gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
+
+    // ADTW, with state and access to train data for sampling
+    gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
 
     // DTW
     gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));

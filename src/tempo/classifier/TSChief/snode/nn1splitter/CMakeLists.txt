@@ -9,6 +9,7 @@ target_sources(libtempo
         nn1dist_base.hpp
         # Specific implementation
         nn1_directa.hpp
+        nn1_adtw.hpp
         nn1_dtw.hpp
         nn1_dtwfull.hpp
 

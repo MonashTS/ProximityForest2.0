@@ -5,7 +5,6 @@
 #include <tempo/distance/univariate.hpp>
 
 #include "nn1dist_base.hpp"
-#include "tempo/distance/core/lockstep/direct.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 

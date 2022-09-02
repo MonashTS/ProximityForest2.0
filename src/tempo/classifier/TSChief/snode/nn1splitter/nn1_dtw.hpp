@@ -24,15 +24,15 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct DTWGen : public i_GenDist {
     TransformGetter get_transform;
-    ExponentGetter get_fce;
+    ExponentGetter get_cfe;
     WindowGetter get_win;
 
     DTWGen(TransformGetter gt, ExponentGetter get_cfe, WindowGetter get_win) :
-      get_transform(std::move(gt)), get_fce(std::move(get_cfe)), get_win(std::move(get_win)) {}
+      get_transform(std::move(gt)), get_cfe(std::move(get_cfe)), get_win(std::move(get_win)) {}
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& /* bcm */) override {
       const std::string tn = get_transform(state);
-      const double e = get_fce(state);
+      const double e = get_cfe(state);
       const size_t w = get_win(state, data);
       return std::make_unique<DTW>(tn, e, w);
     }

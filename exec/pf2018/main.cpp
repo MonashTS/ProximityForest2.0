@@ -11,6 +11,7 @@
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_adtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_erp.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_lcss.hpp"
 
 #include "cmdline.hpp"
@@ -272,10 +273,10 @@ int main(int argc, char **argv) {
     gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
 
     // ERP
+    gendist.push_back(make_shared<tsc_nn1::ERPGen>(getter_tr_set, getter_cfe_2, frac_stddev, getter_window));
 
     // LCSS
     gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
-
 
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {

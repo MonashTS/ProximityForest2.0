@@ -31,11 +31,9 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
       get_transform(std::move(gt)), get_fce(std::move(get_cfe)), get_win(std::move(get_win)) {}
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& /* bcm */) override {
-      // Generate args
-      std::string tn = get_transform(state);
-      size_t w = get_win(state, data);
-      double e = get_fce(state);
-      // Build return
+      const std::string tn = get_transform(state);
+      const double e = get_fce(state);
+      const size_t w = get_win(state, data);
       return std::make_unique<DTW>(tn, e, w);
     }
   };

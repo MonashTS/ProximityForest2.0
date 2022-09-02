@@ -11,6 +11,7 @@
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_adtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_lcss.hpp"
 
 #include "cmdline.hpp"
 
@@ -174,29 +175,6 @@ int main(int argc, char **argv) {
   }
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
-  // --- Main Distance snode parameter space
-
-  // --- --- Exponent getters
-  //const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
-  const std::vector<F> dist_cfe_set{0.5, 1, 2};
-  tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
-  tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
-  tsc_nn1::ExponentGetter getter_cfe_2 = [](tsc::TreeState& /* state */) { return 2.0; };
-
-  // --- --- Transform getters
-  const std::vector<std::string> dist_tr_set{tr_default, tr_d1, tr_d2};
-  tsc_nn1::TransformGetter getter_tr_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
-  tsc_nn1::TransformGetter getter_tr_default = [&](tsc::TreeState& /* state */) { return tr_default; };
-  tsc_nn1::TransformGetter getter_tr_d1 = [&](tsc::TreeState& /* state */) { return tr_d1; };
-  tsc_nn1::TransformGetter getter_tr_d2 = [&](tsc::TreeState& /* state */) { return tr_d2; };
-
-  // --- --- Window getter
-  tsc_nn1::WindowGetter getter_window = [&](tsc::TreeState& s, tsc::TreeData const& /* d */) {
-    size_t maxl = train_header.length_max();
-    const size_t win_top = std::floor((double)maxl + 1/4.0);
-    return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
-  };
-
   // --- --- ---
   // --- --- --- DATA
   // --- --- ---
@@ -232,6 +210,40 @@ int main(int argc, char **argv) {
     tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
 
 
+  // --- --- ---
+  // --- --- --- Distance snode parameter space
+  // --- --- ---
+
+  // --- --- Exponent getters
+  //const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
+  const std::vector<F> dist_cfe_set{0.5, 1, 2};
+  tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
+  tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
+  tsc_nn1::ExponentGetter getter_cfe_2 = [](tsc::TreeState& /* state */) { return 2.0; };
+
+  // --- --- Transform getters
+  const std::vector<std::string> dist_tr_set{tr_default, tr_d1, tr_d2};
+  tsc_nn1::TransformGetter getter_tr_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
+  tsc_nn1::TransformGetter getter_tr_default = [&](tsc::TreeState& /* state */) { return tr_default; };
+  tsc_nn1::TransformGetter getter_tr_d1 = [&](tsc::TreeState& /* state */) { return tr_d1; };
+  tsc_nn1::TransformGetter getter_tr_d2 = [&](tsc::TreeState& /* state */) { return tr_d2; };
+
+  // --- --- Window getter
+  tsc_nn1::WindowGetter getter_window = [&](tsc::TreeState& s, tsc::TreeData const& /* d */) {
+    size_t maxl = train_header.length_max();
+    const size_t win_top = std::floor((double)maxl + 1/4.0);
+    return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
+  };
+
+  // --- --- ERP Gap Value *AND* LCSS epsilon.
+  // Random fraction of the incoming data standard deviation, within [stddev/5, stddev[
+  tsc_nn1::StatGetter frac_stddev =
+    [&](tsc::TreeState& state, tsc::TreeData const& data, ByClassMap const& bcm, string const& transform_name) {
+      const DTS& train_dataset = get_train_data->at(data).at(transform_name);
+      auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
+      return std::uniform_real_distribution<F>(stddev_/5.0, stddev_)(state.prng);
+    };
+
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Build the snode generators
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -258,6 +270,12 @@ int main(int argc, char **argv) {
 
     // DTWFull
     gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
+
+    // ERP
+
+    // LCSS
+    gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
+
 
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {

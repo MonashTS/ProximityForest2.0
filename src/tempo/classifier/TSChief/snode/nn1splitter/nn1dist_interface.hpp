@@ -50,7 +50,11 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   using TransformGetter = std::function<std::string(TreeState& state)>;
 
   /// Generate an cfe e used in some elastic distances' cost function cost(a,b)=|a-b|^e
-  using ExponentGetter = std::function<double(TreeState& state)>;
+  using ExponentGetter = std::function<F(TreeState& state)>;
+
+  /// Generic getter
+  template<typename T>
+  using T_GetterState = std::function<T(TreeState& state)>;
 
   /// Generate a warping window
   using WindowGetter = std::function<size_t(TreeState& state, TreeData const& data)>;

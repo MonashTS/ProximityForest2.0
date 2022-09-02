@@ -11,6 +11,7 @@
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_adtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_wdtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_erp.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_lcss.hpp"
 
@@ -268,6 +269,9 @@ int main(int argc, char **argv) {
 
     // DTW
     gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+
+    // WDTW
+    gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_set, getter_cfe_set, train_header.length_max()));
 
     // DTWFull
     gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));

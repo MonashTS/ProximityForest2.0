@@ -9,11 +9,10 @@
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct DTW : public BaseDist {
-
-    double cfe;
+    F cfe;
     size_t w;
 
-    DTW(std::string tname, double cfe, size_t w) : BaseDist(std::move(tname)), cfe(cfe), w(w){}
+    DTW(std::string tname, F cfe, size_t w) : BaseDist(std::move(tname)), cfe(cfe), w(w){}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
       return distance::univariate::dtw(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, w, bsf);
@@ -32,7 +31,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& /* bcm */) override {
       const std::string tn = get_transform(state);
-      const double e = get_cfe(state);
+      const F e = get_cfe(state);
       const size_t w = get_win(state, data);
       return std::make_unique<DTW>(tn, e, w);
     }

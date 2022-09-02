@@ -9,11 +9,10 @@
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct LCSS : public BaseDist {
-
-    double epsilon;
+    F epsilon;
     size_t w;
 
-    LCSS(std::string tname, double epsilon, size_t w) : BaseDist(std::move(tname)), epsilon(epsilon), w(w) {}
+    LCSS(std::string tname, F epsilon, size_t w) : BaseDist(std::move(tname)), epsilon(epsilon), w(w) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
       return distance::univariate::lcss(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), epsilon, w, bsf);
@@ -23,7 +22,6 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   };
 
   struct LCSSGen : public i_GenDist {
-
     TransformGetter get_transform;
     StatGetter get_epsilon;
     WindowGetter get_win;
@@ -33,7 +31,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& bcm) override {
       const std::string tn = get_transform(state);
-      const double epsilon = get_epsilon(state, data, bcm, tn);
+      const F epsilon = get_epsilon(state, data, bcm, tn);
       const size_t w = get_win(state, data);
       return std::make_unique<LCSS>(tn, epsilon, w);
     }

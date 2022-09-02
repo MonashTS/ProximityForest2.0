@@ -9,7 +9,6 @@
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct ERP : public BaseDist {
-
     F cfe;
     F gv;
     size_t w;
@@ -26,7 +25,6 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   };
 
   struct ERPGen : public i_GenDist {
-
     TransformGetter get_transform;
     ExponentGetter get_cfe;
     StatGetter get_gv;
@@ -40,8 +38,8 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& bcm) override {
       const std::string tn = get_transform(state);
-      const double e = get_cfe(state);
-      const double gv = get_gv(state, data, bcm, tn);
+      const F e = get_cfe(state);
+      const F gv = get_gv(state, data, bcm, tn);
       const size_t w = get_win(state, data);
       return std::make_unique<ERP>(tn, e, gv, w);
     }

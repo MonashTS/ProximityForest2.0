@@ -10,11 +10,10 @@
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   struct ADTW : public BaseDist {
+    F cfe;
+    F penalty;
 
-    double cfe;
-    double penalty;
-
-    ADTW(std::string tname, double cfe, double penalty) : BaseDist(std::move(tname)), cfe(cfe), penalty(penalty) {}
+    ADTW(std::string tname, F cfe, F penalty) : BaseDist(std::move(tname)), cfe(cfe), penalty(penalty) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
       return distance::univariate::adtw(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, penalty, bsf);
@@ -25,8 +24,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   /// 1NN ADTW per node state
   struct ADTWGenState : public i_TreeState {
-
-    std::optional<double> sample{std::nullopt};
+    std::optional<F> sample{std::nullopt};
 
     // --- --- --- Constructor/Destructor
 
@@ -69,12 +67,12 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& data, const ByClassMap& bcm) override {
       const std::string tn = get_transform(state);
-      const double e = get_fce(state);
+      const F e = get_fce(state);
 
       // --- Sampling
       // Only sample if we haven't sample at this node yet. Cache the result if we compute it.
       // Automatically cleared when starting a new branch.
-      std::optional<double>& sample = get_adtw_state->at(state).sample;
+      std::optional<F>& sample = get_adtw_state->at(state).sample;
       if (!sample) {
         // Create subset
         size_t n = bcm.size();
@@ -93,9 +91,8 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
       }
 
       // --- Compute penalty
-      std::uniform_int_distribution<size_t> gen(0, 100); // uniform, unbiased
-      size_t i = gen(state.prng);
-      const double penalty = std::pow((double)i/100.0, omega_exponent)*sample.value();
+      const size_t i = std::uniform_int_distribution<size_t>(0, 100)(state.prng); // uniform, unbiased
+      const F penalty = std::pow((F)i/100.0, omega_exponent)*sample.value();
 
       // Build return
       return std::make_unique<ADTW>(tn, e, penalty);

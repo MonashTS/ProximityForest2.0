@@ -8,6 +8,7 @@
 #include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_directa.hpp"
+#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
 
 #include "cmdline.hpp"
@@ -187,6 +188,12 @@ int main(int argc, char **argv) {
   tsc_nn1::TransformGetter getter_tr_d1 = [&](tsc::TreeState& /* state */) { return tr_d1; };
   tsc_nn1::TransformGetter getter_tr_d2 = [&](tsc::TreeState& /* state */) { return tr_d2; };
 
+  // --- --- Window getter
+  tsc_nn1::WindowGetter getter_window = [&](tsc::TreeState& s, tsc::TreeData const& /* d */) {
+    size_t maxl = train_header.length_max();
+    const size_t win_top = std::floor((double)maxl + 1/4.0);
+    return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
+  };
 
   // --- --- ---
   // --- --- --- DATA
@@ -210,6 +217,7 @@ int main(int argc, char **argv) {
   // --- --- --- STATE
   // --- --- ---
 
+  std::cout << "Train seed = " << train_seed << std::endl;
   tsc::TreeState tstate(train_seed, 0);
 
   // State for 1NN distance splitters - cache the indexset
@@ -232,10 +240,16 @@ int main(int argc, char **argv) {
   {
     // List of distance generators (this is specific to our collection of NN1 Splitter generators)
     vector<shared_ptr<tsc_nn1::i_GenDist>> gendist;
+
     // Direct Alignment
     gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
+
+    // DTW
+    gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+
     // DTWFull
     gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
+
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {
       generators.push_back(
@@ -282,7 +296,7 @@ int main(int argc, char **argv) {
       // Merge prediction as we want. Here, arithmetic average weighted by number of leafs
       // Result1 must be initialised with the number of classes!
       classifier::Result1 r1(train_header.nb_classes());
-      for(const auto& r:vecr){
+      for (const auto& r : vecr) {
         r1.probabilities += r.probabilities*r.weight;
         r1.weight += r.weight;
       }

@@ -3,7 +3,7 @@
 namespace tempo::classifier::TSChief {
 
   std::unique_ptr<i_TreeState> TreeState::forest_fork(size_t tree_idx) const {
-    // Create the other state and for substates 1 for 1
+    // Create the other state and fork substates 1 for 1
     auto fork = std::make_unique<TreeState>(seed, tree_idx);
     for (auto const& substate : states) { fork->states.push_back(substate->forest_fork(tree_idx)); }
     return fork;

@@ -6,10 +6,12 @@ target_sources(libtempo
         splitter_interface.hpp
         # --- --- --- Tree/Forest
         tree.hpp
+        forest.hpp
         # --- --- --- Base splitter
         PRIVATE
-        tree.cpp
         treestate.cpp
+        tree.cpp
+        forest.cpp
 )
 
 # Leaf splitters

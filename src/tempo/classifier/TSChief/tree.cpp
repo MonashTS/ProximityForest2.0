@@ -17,17 +17,41 @@ namespace tempo::classifier::TSChief {
     }
   }
 
+
+  size_t TreeNode::nb_nodes() const {
+    if (node_kind==LEAF) {
+      return 1;
+    } else {
+      size_t n = 1;
+      for (const auto& branch : as_node.branches) { n += branch->nb_nodes(); }
+      return n;
+    }
+  }
+
+  size_t TreeNode::depth() const {
+    if (node_kind==LEAF) {
+      return 1;
+    } else {
+      size_t n = as_node.branches[0]->depth();
+      for (size_t i = 1; i<as_node.branches.size(); ++i) {
+        size_t m = as_node.branches[i]->depth();
+        n = std::max<size_t>(n, m);
+      }
+      return n + 1;
+    }
+  }
+
   // --- --- --- Static functions
 
-  std::unique_ptr<TreeNode> TreeNode::make_leaf(std::unique_ptr<i_SplitterLeaf> sleaf) {
-    return std::unique_ptr<TreeNode>(
+  std::shared_ptr<TreeNode> TreeNode::make_leaf(std::unique_ptr<i_SplitterLeaf> sleaf) {
+    return std::shared_ptr<TreeNode>(
       new TreeNode{.node_kind = LEAF, .as_leaf = Leaf{std::move(sleaf)}}
     );
   }
 
-  std::unique_ptr<TreeNode> TreeNode::make_node(std::unique_ptr<i_SplitterNode> snode,
+  std::shared_ptr<TreeNode> TreeNode::make_node(std::unique_ptr<i_SplitterNode> snode,
                                                 std::vector<BRANCH>&& branches) {
-    return std::unique_ptr<TreeNode>(
+    return std::shared_ptr<TreeNode>(
       new TreeNode{.node_kind = NODE, .as_node = Node{std::move(snode), std::move(branches)}}
     );
   }
@@ -37,7 +61,7 @@ namespace tempo::classifier::TSChief {
   // Training a tree
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  std::unique_ptr<TreeNode> TreeTrainer::train(TreeState& state, const TreeData& data, ByClassMap const& bcm) const {
+  std::shared_ptr<TreeNode> TreeTrainer::train(TreeState& state, const TreeData& data, ByClassMap const& bcm) const {
     // Ensure that we have at least one class reaching this node!
     // Note: there may be no data point associated to the class.
     assert(bcm.nb_classes()>0);
@@ -65,7 +89,7 @@ namespace tempo::classifier::TSChief {
         state.start_branch(idx);
 
         // Build the branch
-        std::unique_ptr<TreeNode> branch = train(state, data, branch_bcm);
+        std::shared_ptr<TreeNode> branch = train(state, data, branch_bcm);
         branches.push_back(std::move(branch));
 
         // Signal the state that we are done with this branch

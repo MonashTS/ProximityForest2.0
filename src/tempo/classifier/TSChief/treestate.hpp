@@ -82,6 +82,12 @@ namespace tempo::classifier::TSChief {
 
     void end_branch(size_t branch_idx) override;
 
+    /// Self-Fork 'nb_trees' time, putting the forked in a vector
+    std::vector<std::unique_ptr<TreeState>> forest_fork_vec(size_t nb_trees) const;
+
+    /// Merge-in a vector of state
+    void forest_merge_in_vec(std::vector<std::unique_ptr<TreeState>>&& vec);
+
   };
 
 } // End of tempo::classifier::TSChief

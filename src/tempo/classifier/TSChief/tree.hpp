@@ -18,7 +18,7 @@ namespace tempo::classifier::TSChief {
 
   struct TreeNode {
     // --- --- --- Types
-    using BRANCH = std::unique_ptr<TreeNode>;
+    using BRANCH = std::shared_ptr<TreeNode>;
 
     /// Node Kind type: a TreeNode is either a sleaf or an internal node
     enum Kind { LEAF, NODE };
@@ -45,9 +45,15 @@ namespace tempo::classifier::TSChief {
     /// Given a testing state and testing data, do a prediction for the exemplar 'index'
     classifier::Result1 predict(TreeState& state, TreeData const& data, size_t index) const;
 
+    /// Count the number of nodes
+    size_t nb_nodes() const;
+
+    /// Get the maximal depth
+    size_t depth() const;
+
     // --- --- --- Static functions
-    static std::unique_ptr<TreeNode> make_leaf(std::unique_ptr<i_SplitterLeaf> sleaf);
-    static std::unique_ptr<TreeNode> make_node(std::unique_ptr<i_SplitterNode> snode, std::vector<BRANCH>&& branches);
+    static std::shared_ptr<TreeNode> make_leaf(std::unique_ptr<i_SplitterLeaf> sleaf);
+    static std::shared_ptr<TreeNode> make_node(std::unique_ptr<i_SplitterNode> snode, std::vector<BRANCH>&& branches);
   };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -70,7 +76,7 @@ namespace tempo::classifier::TSChief {
     // --- --- --- Methods
 
     /// Train a splitting tree
-    std::unique_ptr<TreeNode> train(TreeState& state, const TreeData& data, ByClassMap const& bcm) const;
+    std::shared_ptr<TreeNode> train(TreeState& state, const TreeData& data, ByClassMap const& bcm) const;
   };
 
 } // End of tempo::classifier::TSChief

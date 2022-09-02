@@ -3,6 +3,7 @@
 #include <tempo/transform/univariate.hpp>
 
 #include "tempo/classifier/TSChief/tree.hpp"
+#include "tempo/classifier/TSChief/forest.hpp"
 #include "tempo/classifier/TSChief/sleaf/pure_leaf.hpp"
 #include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
@@ -257,13 +258,14 @@ int main(int argc, char **argv) {
   // --- --- ---
 
   auto tree_trainer = std::make_shared<tsc::TreeTrainer>(leaf_gen, node_gen);
+  tsc::ForestTrainer forest_trainer(get_train_header, tree_trainer, opt.nb_trees);
 
   // --- --- ---
   // --- --- --- TRAIN
   // --- --- ---
 
   auto train_start_time = utils::now();
-  auto tree = tree_trainer->train(tstate, tdata, train_bcm);
+  auto forest = forest_trainer.train(tstate, tdata, train_bcm, opt.nb_threads, &std::cout);
   auto train_elapsed = utils::now() - train_start_time;
 
   // --- --- ---
@@ -275,7 +277,17 @@ int main(int argc, char **argv) {
   {
     const size_t test_size = test_dataset.size();
     for (size_t test_idx = 0; test_idx<test_size; ++test_idx) {
-      classifier::Result1 r1 = tree->predict(tstate, tdata, test_idx);
+      // Get the prediction per tree
+      std::vector<classifier::Result1> vecr = forest->predict(tstate, tdata, test_idx, opt.nb_threads);
+      // Merge prediction as we want. Here, arithmetic average weighted by number of leafs
+      // Result1 must be initialised with the number of classes!
+      classifier::Result1 r1(train_header.nb_classes());
+      for(const auto& r:vecr){
+        r1.probabilities += r.probabilities*r.weight;
+        r1.weight += r.weight;
+      }
+      r1.probabilities /= r1.weight;
+      //
       result.append(r1);
     }
   }

@@ -219,7 +219,6 @@ int main(int argc, char **argv) {
   // --- --- ---
 
   // --- --- Exponent getters
-  //const std::vector<F> dist_cfe_set{0.5, 1.0/1.5, 1, 1.5, 2};
   const std::vector<F> dist_cfe_set{0.5, 1, 2};
   tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
   tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
@@ -339,7 +338,7 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   // --- --- ---
-  // --- --- --- Build the forest TODO: make the forest, one tree for now
+  // --- --- --- Build the forest
   // --- --- ---
 
   auto tree_trainer = std::make_shared<tsc::TreeTrainer>(leaf_gen, node_gen);

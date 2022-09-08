@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -269,7 +269,7 @@ namespace tempo::distance {
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_twe_warp(D const& s, const F nu, const F lambda) {
       const F nl = nu + lambda;
-      return [&, nl](size_t i) { return ad2(s[i], s[i - 1]) + nl; };
+      return [&, nl](size_t i) { return tempo::distance::univariate::ad2(s[i], s[i - 1]) + nl; };
     }
 
     /// Default TWE diagonal step cost function (ad2) - Indexed Cost Function Builder
@@ -280,8 +280,8 @@ namespace tempo::distance {
     inline utils::ICFun<F> auto idx_twe_match(D const& s1, D const& s2, const F nu) {
       const auto nu2 = F(2)*nu;
       return [&, nu2](size_t i, size_t j) {
-        const F da = ad2(s1[i], s2[j]);
-        const F db = ad2(s1[i - 1], s2[j - 1]);
+        const F da = tempo::distance::univariate::ad2(s1[i], s2[j]);
+        const F db = tempo::distance::univariate::ad2(s1[i - 1], s2[j - 1]);
         return da + db + nu2*utils::absdiff(i, j);
       };
     }
@@ -293,4 +293,4 @@ namespace tempo::distance {
 
   } // End of namespace multivariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

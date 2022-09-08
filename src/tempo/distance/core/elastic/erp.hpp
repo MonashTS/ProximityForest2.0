@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -298,7 +298,7 @@ namespace tempo::distance {
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_gvad1(const D& series, const F gv) {
       return [&, gv](size_t i) {
-        return ad1(series[i], gv);
+        return tempo::distance::univariate::ad1(series[i], gv);
       };
     }
 
@@ -306,7 +306,7 @@ namespace tempo::distance {
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_gvad2(const D& series, const F gv) {
       return [&, gv](size_t i) {
-        return ad2<F>(series[i], gv);
+        return tempo::distance::univariate::ad2<F>(series[i], gv);
       };
     }
 
@@ -314,7 +314,7 @@ namespace tempo::distance {
     template<typename F, utils::Subscriptable D>
     inline utils::ICFunOne<F> auto idx_gvad_sqrt(const D& series, const F gv) {
       return [&, gv](size_t i) {
-        return ad_sqrt<F>(series[i], gv);
+        return tempo::distance::univariate::ad_sqrt<F>(series[i], gv);
       };
     }
 
@@ -323,7 +323,7 @@ namespace tempo::distance {
     inline auto idx_gvade(const F e) {
       return [e](const D& series, F gv) -> utils::ICFunOne<F> auto {
         return [&, gv, e](size_t i) {
-          return ade(series[i], gv, e);
+          return tempo::distance::univariate::ade(series[i], gv, e);
         };
       };
     }
@@ -334,4 +334,4 @@ namespace tempo::distance {
 
   } // End of namespace multivariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

@@ -8,6 +8,7 @@
 #include <vector>
 
 using namespace tempo::distance;
+using namespace tempo::distance::core;
 
 using F = double;
 
@@ -95,7 +96,8 @@ TEST_CASE("Test weights generation", "[wdtw]") {
   constexpr size_t maxlength = 50;
   constexpr double mc = ((double)maxlength)/2;
   for (double g : weight_factors) {
-    auto weights = wdtw_weights(g, maxlength);
+    std::vector<F> weights(maxlength);
+    wdtw_weights(g, weights.data(), maxlength);
     for (size_t i = 0; i<maxlength; ++i) {
       auto lib = weights[i];
       auto ref = ref::mlwf((double)i, mc, g);
@@ -114,7 +116,8 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
   SECTION("WDTW(s,s) == 0") {
     for (const auto& s : fset) {
       for (double g : weight_factors) {
-        auto weights = wdtw_weights(g, mocker._fixl);
+        std::vector<F> weights(mocker._fixl);
+        wdtw_weights(g, weights.data(), mocker._fixl);
 
         const double dtw_ref_v = ref::wdtw_matrix(s, s, weights);
         REQUIRE(dtw_ref_v==0);
@@ -131,7 +134,8 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
       const auto& s2 = fset[i + 1];
 
       for (double g : weight_factors) {
-        auto weights = wdtw_weights(g, mocker._fixl);
+        std::vector<F> weights(mocker._fixl);
+        wdtw_weights(g, weights.data(), mocker._fixl);
 
         const double dtw_ref_v = ref::wdtw_matrix(s1, s2, weights);
         INFO("Exact same operation order. Expect exact floating point equality.");
@@ -163,7 +167,8 @@ TEST_CASE("Univariate WDTW Fixed length", "[wdtw][univariate]") {
         const auto& s2 = fset[j];
         // Create the univariate squared Euclidean distance for our dtw functions
         for (double g : weight_factors) {
-          auto weights = wdtw_weights(g, mocker._fixl);
+          std::vector<F> weights(mocker._fixl);
+          wdtw_weights(g, weights.data(), mocker._fixl);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
           const double v_ref = ref::wdtw_matrix(s1, s2, weights);
@@ -206,7 +211,8 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
   SECTION("WDTW(s,s) == 0") {
     for (const auto& s : fset) {
       for (double g : weight_factors) {
-        auto weights = wdtw_weights(g, s.size());
+        std::vector<F> weights(s.size());
+        wdtw_weights(g, weights.data(), s.size());
         const double dtw_ref_v = ref::wdtw_matrix(s, s, weights);
         REQUIRE(dtw_ref_v==0);
 
@@ -221,7 +227,10 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
       for (double g : weight_factors) {
         const auto& s1 = fset[i];
         const auto& s2 = fset[i + 1];
-        auto weights = wdtw_weights(g, (std::max(s1.size(), s2.size())));
+
+        const size_t lmax = std::max(s1.size(), s2.size());
+        std::vector<F> weights(lmax);
+        wdtw_weights(g, weights.data(), lmax);
 
         const double dtw_ref_v = ref::wdtw_matrix(s1, s2, weights);
         INFO("Exact same operation order. Expect exact floating point equality.");
@@ -254,7 +263,9 @@ TEST_CASE("Univariate WDTW Variable length", "[wdtw][univariate]") {
         // Create the univariate squared Euclidean distance for our dtw functions
 
         for (double g : weight_factors) {
-          auto weights = wdtw_weights(g, (std::max(s1.size(), s2.size())));
+          const size_t lmax = std::max(s1.size(), s2.size());
+          std::vector<F> weights(lmax);
+          wdtw_weights(g, weights.data(), lmax);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
           const double v_ref = ref::wdtw_matrix(s1, s2, weights);

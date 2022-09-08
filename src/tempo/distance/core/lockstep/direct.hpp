@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   /** Direct Alignment cost, Early Abandoned.
    * @tparam F            Floating type used for the computation
@@ -49,4 +49,4 @@ namespace tempo::distance {
     }
   }
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

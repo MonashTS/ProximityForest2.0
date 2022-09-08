@@ -15,6 +15,7 @@ target_sources(libtempo
         elastic/wdtw.hpp
         # Lock Step
         lockstep/direct.hpp
+        lockstep/lockstep.univariate.hpp
         # --- --- ---
         PRIVATE
         utils.private.hpp

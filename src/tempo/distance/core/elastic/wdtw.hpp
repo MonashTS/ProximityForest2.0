@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -218,31 +218,17 @@ namespace tempo::distance {
    * @return the weight for index i
    */
   template<typename F>
-  inline F compute_weight(F g, F half_max_length, F i, F wmax) {
+  F compute_weight(F g, F half_max_length, F i, F wmax) {
     return wmax/(1 + exp(-g*(i - half_max_length)));
   }
 
   /// Populate the weights_array of size length with weights derive from the g factor
   template<typename F>
-  inline void wdtw_weights(F g, F *weights_array, size_t length, F wmax = WDTW_MAX_WEIGHT<F>) {
+  void wdtw_weights(F g, F *weights_array, size_t length, F wmax = WDTW_MAX_WEIGHT<F>) {
     F half_max_length = F(length)/2;
     for (size_t i{0}; i<length; ++i) {
       weights_array[i] = compute_weight(g, half_max_length, F(i), wmax);
     }
   }
 
-  /** Generate a vector of weights
-   * @tparam F              Floating type used for the computation
-   * @param g               Level of penalisation - see 'compute_weight'
-   * @param length          Should be the maximum possible length of a series
-   * @param wmax            Scaling - see 'WDTW_MAX_WEIGHT'
-   * @return                A vector of weight suitable for WDTW
-   */
-  template<typename F>
-  inline std::vector<F> wdtw_weights(F g, size_t length, F wmax = WDTW_MAX_WEIGHT<F>) {
-    std::vector<F> weights(length, 0);
-    wdtw_weights(g, weights.data(), length, wmax);
-    return weights;
-  }
-
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

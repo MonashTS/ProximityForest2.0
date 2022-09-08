@@ -4,7 +4,7 @@
 
 #include <deque>
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace univariate {
 
@@ -336,57 +336,6 @@ namespace tempo::distance {
       }
     }
 
-    namespace {
-      // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-      // Vector helper
-      // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-      /** Compute the upper and lower envelopes of a series, suitable for LB_Keogh.
-       *  Wrapper for get_envelopes with vector
-       * @tparam F      Floating type used for the computation
-       * @param series  Constant input series
-       * @param upper   Output series - reallocation may occur!
-       * @param lower   Output series - reallocation may occur!
-       * @param w       The window for which the envelope is computed.
-       */
-      template<typename F>
-      inline void get_keogh_envelopes(std::vector<F> const& series,
-                                      std::vector<F>& upper,
-                                      std::vector<F>& lower,
-                                      size_t w) {
-        upper.resize(series.size());
-        lower.resize(series.size());
-        get_keogh_envelopes(series.data(), series.size(), upper.data(), lower.data(), w);
-      }
-
-      /** Compute only the upper envelopes of a series.
-       *  Wrapper for get_envelopes with vector
-       * @tparam F      Floating type used for the computation
-       * @param series  Constant input series
-       * @param upper   Output series - reallocation may occur!
-       * @param w       The window for which the envelope is computed.
-       */
-      template<typename F>
-      inline void get_keogh_up_envelope(std::vector<F> const& series, std::vector<F>& upper, size_t w) {
-        upper.resize(series.size());
-        get_keogh_up_envelope(series.data(), series.size(), upper.data(), w);
-      }
-
-      /** Compute the lower envelopes of a series.
-       *  Wrapper for get_envelopes with vector
-       * @tparam F      Floating type used for the computation
-       * @param series  Constant input series
-       * @param lower   Output series - reallocation may occur!
-       * @param w       The window for which the envelope is computed.
-       */
-      template<typename F>
-      inline void get_keogh_lo_envelope(std::vector<F> const& series, std::vector<F>& lower, size_t w) {
-        lower.resize(series.size());
-        get_keogh_lo_envelope(series.data(), series.size(), lower.data(), w);
-      }
-
-    }
-
   } // End of namespace univariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

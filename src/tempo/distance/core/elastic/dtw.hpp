@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -355,6 +355,7 @@ namespace tempo::distance {
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
         // Adapt constants to the floating point type
         using namespace utils;
+        using namespace tempo::distance::WR;
         constexpr F PINF = utils::PINF<F>;
 
         // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -515,14 +516,15 @@ namespace tempo::distance {
      *  Uses an extra buffer to keep track of the max deviation.
      */
     template<typename F>
-    inline WarpingResult<F> dtw(size_t nblines,
-                                size_t nbcols,
-                                utils::ICFun<F> auto cfun,
-                                size_t window,
-                                F cutoff,
-                                std::vector<F>& buffer_v,
-                                std::vector<size_t>& buffer_wv
+    tempo::distance::WR::WarpingResult<F> dtw(size_t nblines,
+                                              size_t nbcols,
+                                              utils::ICFun<F> auto cfun,
+                                              size_t window,
+                                              F cutoff,
+                                              std::vector<F>& buffer_v,
+                                              std::vector<size_t>& buffer_wv
     ) {
+      using namespace tempo::distance::WR;
       using utils::PINF;
       if (nblines==0&&nbcols==0) { return WarpingResult<F>(0, 0); }
       else if ((nblines==0)!=(nbcols==0)) { return WarpingResult<F>(); }
@@ -549,7 +551,11 @@ namespace tempo::distance {
 
     /// Helper without having to provide buffers
     template<typename F>
-    inline WarpingResult<F> dtw(size_t nblines, size_t nbcols, utils::ICFun<F> auto dist, size_t w, F ub) {
+    tempo::distance::WR::WarpingResult<F> dtw(size_t nblines,
+                                              size_t nbcols,
+                                              utils::ICFun<F> auto dist,
+                                              size_t w,
+                                              F ub) {
       std::vector<F> v;
       std::vector<size_t> wv;
       return dtw(nblines, nbcols, dist, w, ub, v, wv);
@@ -558,4 +564,4 @@ namespace tempo::distance {
   } // End of namespace WR
 
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   /** Longest Common SubSequence (LCSS), Early Abandoned and Pruned (EAP).
    *
@@ -117,7 +117,7 @@ namespace tempo::distance {
     inline auto idx_simdiff(F e) {
       return [e](D const& lines, D const& cols) -> utils::ICFun<bool> auto {
         return [&, e](size_t i, size_t j) {
-          return ad1<F>(lines[i], cols[j])<e;
+          return tempo::distance::univariate::ad1<F>(lines[i], cols[j])<e;
         };
       };
     }
@@ -128,8 +128,4 @@ namespace tempo::distance {
 
   } // End of namespace multivariate
 
-} // End of namespace tempo::distance
-
-
-
-
+} // End of namespace tempo::distance::core

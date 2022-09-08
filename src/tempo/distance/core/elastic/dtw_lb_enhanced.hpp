@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace univariate {
 
@@ -147,4 +147,4 @@ namespace tempo::distance {
 
   } // End of namespace tempo::univariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

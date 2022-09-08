@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -212,4 +212,4 @@ namespace tempo::distance {
     return adtw<F>(length1, length2, cfun, penalty, cutoff, v);
   }
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

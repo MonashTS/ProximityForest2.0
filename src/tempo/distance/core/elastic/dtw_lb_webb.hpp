@@ -3,9 +3,29 @@
 #include "../utils.private.hpp"
 #include "dtw_lb_keogh.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace univariate {
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Envelope computation
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    /** Given one series, creates all its envelope for lb Webb
+     *  Uses the same envelope computation as lb Keogh */
+    template<typename F>
+    inline void get_keogh_envelopes_Webb(
+      F const *series, size_t length, F *upper, F *lower, F *lower_upper, F *upper_lower, size_t w
+    ) {
+      get_keogh_envelopes(series, length, upper, lower, w);
+      get_keogh_lo_envelope(upper, length, lower_upper, w);
+      get_keogh_up_envelope(lower, length, upper_lower, w);
+    }
+
+
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // LB Webb
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     /**  LB Webb - only applicable for same-length series.
      *   From the paper Webb GI, Petitjean F Tight lower bounds for Dynamic Time Warping.
@@ -132,36 +152,6 @@ namespace tempo::distance {
     }
 
 
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // Envelope computation
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-    /** Given one series, creates all its envelope for lb Webb
-     *  Uses the same envelope computation as lb Keogh */
-    template<typename F>
-    inline void get_keogh_envelopes_Webb(
-      F const *series, size_t length, F *upper, F *lower, F *lower_upper, F *upper_lower, size_t w
-    ) {
-      get_keogh_envelopes(series, length, upper, lower, w);
-      get_keogh_lo_envelope(upper, length, lower_upper, w);
-      get_keogh_up_envelope(lower, length, upper_lower, w);
-    }
-
-    namespace {
-      /** Create envelopes for lb Webb - vector version. Reallocation may occur! */
-      template<typename F>
-      void get_keogh_envelopes_Webb(std::vector<F> const& series,
-                                    std::vector<F>& upper,
-                                    std::vector<F>& lower,
-                                    std::vector<F>& lower_upper,
-                                    std::vector<F>& upper_lower,
-                                    size_t w) {
-        get_keogh_envelopes(series, upper, lower, w);
-        get_keogh_lo_envelope(upper, lower_upper, w);
-        get_keogh_up_envelope(lower, upper_lower, w);
-      }
-    }
-
   } // End of namespace univariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

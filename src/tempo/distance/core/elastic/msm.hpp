@@ -2,7 +2,7 @@
 
 #include "../utils.private.hpp"
 
-namespace tempo::distance {
+namespace tempo::distance::core {
 
   namespace internal {
 
@@ -287,7 +287,7 @@ namespace tempo::distance {
     /// MSM diagonal Indexed Cost Function Builder
     template<typename F, utils::Subscriptable D>
     constexpr inline utils::ICFun<F> auto idx_msm_diag(const D& lines, const D& cols) {
-      return idx_ad1<F, D>(lines, cols);
+      return tempo::distance::univariate::idx_ad1<F, D>(lines, cols);
     }
 
   } // End of namespace univariate
@@ -296,4 +296,4 @@ namespace tempo::distance {
 
   } // End of namespace multivariate
 
-} // End of namespace tempo::distance
+} // End of namespace tempo::distance::core

@@ -7,6 +7,7 @@
 #include <vector>
 
 using namespace tempo::distance;
+using namespace tempo::distance::core;
 
 using F = double;
 

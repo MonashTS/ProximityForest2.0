@@ -83,7 +83,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
         const auto cdtw_v = dtw(s.size(), s.size(), cfun(s, s), w, PINF);
         REQUIRE(cdtw_v==0);
 
-        const auto cdtw_wr = WR::dtw(s.size(), s.size(), cfun(s, s), w, PINF);
+        const auto cdtw_wr = tempo::distance::core::WR::dtw(s.size(), s.size(), cfun(s, s), w, PINF);
         REQUIRE(cdtw_wr.cost==0);
         REQUIRE(cdtw_wr.max_deviation==0);
 
@@ -105,7 +105,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
         const auto cdtw_tempo = dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
         REQUIRE(cdtw_ref_v<=cdtw_tempo);
 
-        const auto cdtw_tempo_wr = WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
+        const auto cdtw_tempo_wr = tempo::distance::core::WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
         REQUIRE(cdtw_ref_v<=cdtw_tempo_wr.cost);
         REQUIRE(cdtw_tempo_wr.max_deviation<utils::NO_WINDOW);
       }
@@ -164,7 +164,7 @@ TEST_CASE("Univariate DTW Fixed length", "[dtw][univariate]") {
           REQUIRE(idx_ref==idx_tempo);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto wr_tempo = WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, bsf_tempo_wr);
+          const auto wr_tempo = tempo::distance::core::WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, bsf_tempo_wr);
           if (wr_tempo.cost<bsf_tempo_wr) {
             idx_tempo_wr = j;
             bsf_tempo_wr = wr_tempo.cost;
@@ -195,7 +195,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
         const auto cdtw_v = dtw(s.size(), s.size(), cfun(s, s), w, PINF);
         REQUIRE(cdtw_v==0);
 
-        const auto cdtw_wr = WR::dtw(s.size(), s.size(), cfun(s, s), w, PINF);
+        const auto cdtw_wr = tempo::distance::core::WR::dtw(s.size(), s.size(), cfun(s, s), w, PINF);
         REQUIRE(cdtw_wr.cost==0);
         REQUIRE(cdtw_wr.max_deviation==0);
       }
@@ -218,7 +218,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
         const auto cdtw_tempo_v = dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
         REQUIRE(cdtw_ref_v==cdtw_tempo_v);
 
-        const auto cdtw_tempo_wr = WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
+        const auto cdtw_tempo_wr = tempo::distance::core::WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, PINF);
         REQUIRE(cdtw_ref_v==cdtw_tempo_wr.cost);
       }
     }
@@ -277,7 +277,7 @@ TEST_CASE("Univariate DTW Variable length", "[dtw][univariate]") {
           REQUIRE(idx_ref==idx_tempo);
 
           // --- --- --- --- --- --- --- --- --- --- --- ---
-          const auto wr_tempo = WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, bsf_tempo_wr);
+          const auto wr_tempo = tempo::distance::core::WR::dtw(s1.size(), s2.size(), cfun(s1, s2), w, bsf_tempo_wr);
           if (wr_tempo.cost<bsf_tempo_wr) {
             idx_tempo_wr = j;
             bsf_tempo_wr = wr_tempo.cost;

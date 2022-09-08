@@ -6,13 +6,14 @@
 #include <vector>
 
 using namespace tempo::distance;
+using namespace tempo::distance::univariate;
 using namespace tempo::distance::core;
 
 using F = double;
 
 constexpr size_t nbitems = 500;
-constexpr auto cfun = univariate::idx_ad2<F, std::vector<F>>;
-constexpr auto gvcfun = univariate::idx_gvad2<F, std::vector<F>>;
+constexpr auto cfun = idx_ad2<F, std::vector<F>>;
+constexpr auto gvcfun = tempo::distance::core::univariate::idx_gvad2<F, std::vector<F>>;
 constexpr F PINF = utils::PINF<F>;
 constexpr F QNAN = std::numeric_limits<F>::quiet_NaN();
 

@@ -8,13 +8,14 @@
 #include <vector>
 
 using namespace tempo::distance;
+using namespace tempo::distance::univariate;
 using namespace tempo::distance::core;
 
 using F = double;
 
 constexpr size_t nbitems = 500;
-constexpr auto cfwarp = univariate::idx_twe_warp<F, std::vector<F>>;
-constexpr auto cfmatch = univariate::idx_twe_match<F, std::vector<F>>;
+constexpr auto cfwarp = tempo::distance::core::univariate::idx_twe_warp<F, std::vector<F>>;
+constexpr auto cfmatch = tempo::distance::core::univariate::idx_twe_match<F, std::vector<F>>;
 constexpr F PINF = utils::PINF<F>;
 constexpr F QNAN = std::numeric_limits<F>::quiet_NaN();
 
@@ -133,6 +134,8 @@ namespace ref {
     const size_t length1 = series1.size();
     const size_t length2 = series2.size();
 
+    using tempo::distance::univariate::ad2;
+
     // Check lengths. Be explicit in the conditions.
     if (length1==0&&length2==0) { return 0; }
     if (length1==0&&length2!=0) { return PINF; }
@@ -145,27 +148,24 @@ namespace ref {
     const double nu2 = 2*nu;
 
     // Initialization: first cell, first column and first row
-    matrix[0][0] = univariate::ad2<F>(series1[0], series2[0]);
+    matrix[0][0] = ad2<F>(series1[0], series2[0]);
     for (size_t i = 1; i<length1; i++) {
-      matrix[i][0] = matrix[i - 1][0] + (univariate::ad2<F>(series1[i], series1[i - 1]) + nu_lambda);
+      matrix[i][0] = matrix[i - 1][0] + (ad2<F>(series1[i], series1[i - 1]) + nu_lambda);
     }
     for (size_t j = 1; j<length2; j++) {
-      matrix[0][j] = matrix[0][j - 1] + (univariate::ad2<F>(series2[j], series2[j - 1]) + nu_lambda);
+      matrix[0][j] = matrix[0][j - 1] + (ad2<F>(series2[j], series2[j - 1]) + nu_lambda);
     }
 
     // Main Loop
     for (size_t i = 1; i<length1; i++) {
       for (size_t j = 1; j<length2; j++) {
         // Top: over the lines
-        double t = matrix[i - 1][j] + (univariate::ad2<F>(series1[i], series1[i - 1]) + nu_lambda);
+        double t = matrix[i - 1][j] + (ad2<F>(series1[i], series1[i - 1]) + nu_lambda);
         // Diagonal
-        double d = matrix[i - 1][j - 1] + (
-          univariate::ad2<F>(series1[i], series2[j])
-            + univariate::ad2<F>(series1[i - 1], series2[j - 1])
-            + nu2*(double)utils::absdiff(i, j)
-        );
+        double d = matrix[i - 1][j - 1] +
+          ( ad2<F>(series1[i], series2[j]) + ad2<F>(series1[i - 1], series2[j - 1]) + nu2*(double)utils::absdiff(i, j));
         // Previous: over the columns
-        double p = matrix[i][j - 1] + (univariate::ad2<F>(series2[j], series2[j - 1]) + nu_lambda);
+        double p = matrix[i][j - 1] + (ad2<F>(series2[j], series2[j - 1]) + nu_lambda);
         //
         matrix[i][j] = utils::min(t, d, p);
       }

@@ -4,8 +4,9 @@ target_sources(libtempo
         # Implementation
         PUBLIC
         univariate.hpp
-        tseries.univariate.cpp
+        tseries.univariate.hpp
         PRIVATE
         univariate.cpp
         univariate.private.hpp
+        tseries.univariate.cpp
         )

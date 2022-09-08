@@ -1,6 +1,6 @@
 #include <tempo/utils/readingtools.hpp>
 #include <tempo/reader/new_reader.hpp>
-#include <tempo/transform/univariate.hpp>
+#include <tempo/transform/tseries.univariate.hpp>
 
 #include "tempo/classifier/TSChief/tree.hpp"
 #include "tempo/classifier/TSChief/forest.hpp"
@@ -160,8 +160,8 @@ int main(int argc, char **argv) {
     namespace ttu = tempo::transform::univariate;
 
     // --- TRAIN
-    auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d1);
-    auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d2);
+    auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
+    auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
     DTS train_derive_1("train", train_derive_t1);
     DTS train_derive_2("train", train_derive_t2);
     train_map->emplace("default", train_dataset);
@@ -169,14 +169,16 @@ int main(int argc, char **argv) {
     train_map->emplace(tr_d2, train_derive_2);
 
     // --- TEST
-    auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d1);
-    auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(TSeries::mapfun(ttu::derive<F>), tr_d2);
+    auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
+    auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
     DTS test_derive_1("test", test_derive_t1);
     DTS test_derive_2("test", test_derive_t2);
     test_map->emplace("default", test_dataset);
     test_map->emplace(tr_d1, test_derive_1);
     test_map->emplace(tr_d2, test_derive_2);
   }
+
+
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
   // --- --- ---

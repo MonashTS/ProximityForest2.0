@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <concepts>
 
-namespace tempo::transform {
+namespace tempo::transform::core::univariate {
 
   /** Computation of a series derivative according to "Derivative Dynamic Time Warping" by Keogh & Pazzani
    * @tparam T            Input series, must be in

@@ -16,7 +16,7 @@ namespace tempo::transform::univariate {
     const size_t l = ts.length();
     std::vector<F> d(l);
     double* data = d.data();
-    tempo::transform::core::univariate::derive<F, F const*, F*>(ts.rawdata(), l, data);
+    tempo::transform::core::univariate::derive<F, F const*, F*>(ts.data(), l, data);
     return TSeries::mk_from_rowmajor(ts, std::move(d));
   }
 

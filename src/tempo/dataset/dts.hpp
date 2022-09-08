@@ -25,7 +25,7 @@ namespace tempo {
       arma::running_stat_vec<arma::Col<F>> stat;
       for (const auto i : subset) {
         const TSeries& s = dts[i];
-        const arma::Mat<F>& mat = s.data();
+        const arma::Mat<F>& mat = s.matrix();
         for (size_t c = 0; c<mat.n_cols; ++c) {
           stat(mat.col(c));
         }

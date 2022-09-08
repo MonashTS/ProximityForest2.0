@@ -155,6 +155,9 @@ namespace tempo {
     /// Access number of variable
     size_t nb_dimensions() const { return _matrix.n_rows; }
 
+    /// Check if a series is univariate
+    bool is_univariate() const { return nb_dimensions() == 1;}
+
     /// Access the length
     size_t length() const { return _matrix.n_cols; }
 
@@ -175,15 +178,15 @@ namespace tempo {
     F operator [](size_t idx) const { return _matrix(idx); }
 
     /// Column major access to the raw pointer
-    const F *rawdata() const { return _rawdata; }
+    const F *data() const { return _rawdata; }
 
     /// Matrix access (li, co)
-    const arma::Mat<F>& data() const { return _matrix; }
+    const arma::Mat<F>& matrix() const { return _matrix; }
 
     /// As row vector, only for univariate
     arma::Row<F> rowvec() const {
-      if (nb_dimensions()!=1) { throw std::logic_error("rowvec can only be used with univariate series"); }
-      return arma::Row<F>(data());
+      if (!is_univariate()) { throw std::logic_error("rowvec can only be used with univariate series"); }
+      return arma::Row<F>(matrix());
     }
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -219,9 +222,10 @@ namespace tempo {
      * @return a new transformed series
      */
     TSeries map(typename std::function<void(F const *in, size_t total_size, F *out)> fun) const {
-      arma::Row<F> data(size());
-      fun(rawdata(), size(), data.memptr());
-      return mk_from(std::move(data), label(), missing());
+      assert(is_univariate());
+      arma::Row<F> arow(size());
+      fun(data(), size(), arow.memptr());
+      return mk_from(std::move(arow), label(), missing());
     }
 
     auto static mapfun(std::function<void(F const *in, size_t total_size, F *out)> fun) {

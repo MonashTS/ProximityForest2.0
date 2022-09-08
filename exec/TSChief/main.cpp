@@ -178,7 +178,6 @@ int main(int argc, char **argv) {
     test_map->emplace(tr_d2, test_derive_2);
   }
 
-
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
   // --- --- ---

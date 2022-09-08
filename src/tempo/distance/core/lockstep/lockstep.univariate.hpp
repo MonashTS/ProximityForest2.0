@@ -53,36 +53,3 @@ namespace tempo::distance::core::univariate {
   }
 
 } // End of namespace tempo::distance::core::univariate
-
-
-
-//
-//   /// Lorentzian metric on TSeries (univariate only)
-//   F lorentzian(TSeries const& A, TSeries const& B);
-// F lorentzian(TSeries const& A, TSeries const& B) {
-//   arma::Row<F> a = A.rowvec();
-//   arma::Row<F> b = B.rowvec();
-//   return lorentzian(a, b);
-// }
-
-
-
-//  /// Minkowski metric on TSeries (univariate only)
-//  ///  - Equal to the Manhattan distance with p=1
-//  ///  - Equal to the Euclidean Distance distance with p=2
-//  F minkowski(TSeries const& A, TSeries const& B, F p);
-// F minkowski(TSeries const& A, TSeries const& B, F p) {
-//   arma::Row<F> a = A.rowvec();
-//   arma::Row<F> b = B.rowvec();
-//   return minkowski(a, b, p);
-// }
-
-
-//   /// Manhattan metric on TSeries (univariate only)
-// F manhattan(TSeries const& A, TSeries const& B) {
-//   arma::Row<F> a = A.rowvec();
-//   arma::Row<F> b = B.rowvec();
-//   return manhattan(a, b);
-// }
-
-

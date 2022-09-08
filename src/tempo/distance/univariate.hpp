@@ -326,4 +326,18 @@ namespace tempo::distance::univariate {
   template<typename F>
   F manhattan(arma::Row<F> const& A, arma::Row<F> const& B);
 
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Sliding
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  /// SBD, Armadillo vectorized, pointer interface
+  template<typename F>
+  F sbd(F const *A, size_t lA, F const *B, size_t lB);
+
+  /// SBD, Armadillo vectorized, arma::Row interface
+  template<typename F>
+  F sbd(arma::Row<F> const& A, arma::Row<F> const& B);
+
+
 } // End of namespace tempo::distance::univariate

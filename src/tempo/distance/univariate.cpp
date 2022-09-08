@@ -149,4 +149,11 @@ namespace tempo::distance::univariate {
 
   template F manhattan(arma::Row<F> const& A, arma::Row<F> const& B);
 
+
+  // --- --- --- Sliding distances --- --- ---
+
+  template F sbd(F const *A, size_t lA, F const *B, size_t lB);
+
+  template F sbd(arma::Row<F> const& A, arma::Row<F> const& B);
+
 } // End of namespace tempo::distance:univariate

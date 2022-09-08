@@ -16,6 +16,8 @@ target_sources(libtempo
         # Lock Step
         lockstep/direct.hpp
         lockstep/lockstep.univariate.hpp
+        # Sliding
+        sliding/cross_correlation.univariate.hpp
         # --- --- ---
         PRIVATE
         utils.private.hpp

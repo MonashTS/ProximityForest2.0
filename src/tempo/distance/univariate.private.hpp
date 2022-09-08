@@ -17,6 +17,8 @@
 // --- ------ Lock step distances --- --- ---
 #include "core/lockstep/direct.hpp"
 #include "core/lockstep/lockstep.univariate.hpp"
+// --- ------ Sliding distances --- --- ---
+#include "core/sliding/cross_correlation.univariate.hpp"
 
 #include <cstddef>
 #include <vector>
@@ -443,41 +445,58 @@ namespace tempo::distance::univariate {
     }
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F lorentzian(arma::Row<F> const& A, arma::Row<F> const& B) {
-
-    return arma::sum(arma::log(1 + arma::abs(A - B)));
+    return tdcu::lorentzian(A, B);
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F lorentzian(F const *A, size_t lA, F const *B, size_t lB) {
-    const arma::Row<F> ra(const_cast<F *>(A), lA, false, true);
-    const arma::Row<F> rb(const_cast<F *>(B), lB, false, true);
-    return lorentzian<F>(ra, rb);
+    return tdcu::lorentzian(A, lA, B, lB);
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F minkowski(arma::Row<F> const& A, arma::Row<F> const& B, F p) {
-    return std::pow(arma::sum(arma::pow(arma::abs(A - B), p)), (F)1.0/p);
+    return tdcu::minkowski(A, B, p);
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F minkowski(F const *A, size_t lA, F const *B, size_t lB, F p) {
-    const arma::Row<F> ra(const_cast<F *>(A), lA, false, true);
-    const arma::Row<F> rb(const_cast<F *>(B), lB, false, true);
-    return minkowski<F>(ra, rb, p);
+    return tdcu::minkowski(A, lA, B, lB, p);
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F manhattan(arma::Row<F> const& A, arma::Row<F> const& B) {
-    return arma::sum(arma::abs(A - B));
+    return tdcu::manhattan(A, B);
   }
 
+  // Implemented with Armadillo, no early abandoning
   template<typename F>
   F manhattan(F const *A, size_t lA, F const *B, size_t lB) {
-    const arma::Row<F> ra(const_cast<F *>(A), lA, false, true);
-    const arma::Row<F> rb(const_cast<F *>(B), lB, false, true);
-    return manhattan<F>(ra, rb);
+    return tdcu::manhattan(A, lA, B, lB);
   }
+
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Sliding distances
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  // Implemented with Armadillo, no early abandoning
+  template<typename F>
+  F sbd(arma::Row<F> const& A, arma::Row<F> const& B) {
+    return tdcu::sbd(A, B);
+  }
+
+  // Implemented with Armadillo, no early abandoning
+  template<typename F>
+  F sbd(F const *A, size_t lA, F const *B, size_t lB) {
+    return tdcu::sbd(A, lA, B, lB);
+  }
+
 
 } // End of namespace tempo::distance::univariate

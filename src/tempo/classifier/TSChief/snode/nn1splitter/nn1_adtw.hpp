@@ -2,10 +2,9 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
-#include <tempo/distance/univariate.hpp>
+#include <tempo/distance/tseries.univariate.hpp>
 
 #include "nn1dist_base.hpp"
-#include "tempo/distance/core/lockstep/direct.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
@@ -16,7 +15,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     ADTW(std::string tname, F cfe, F penalty) : BaseDist(std::move(tname)), cfe(cfe), penalty(penalty) {}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
-      return distance::univariate::adtw(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, penalty, bsf);
+      return distance::univariate::adtw(t1, t2, cfe, penalty, bsf);
     }
 
     std::string get_distance_name() override { return "ADTW:" + std::to_string(cfe) + ":" + std::to_string(penalty); }
@@ -84,7 +83,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
         for (size_t i = 0; i<SAMPLE_SIZE; ++i) {
           const auto& q = train_subset[distrib(state.prng)];
           const auto& s = train_subset[distrib(state.prng)];
-          const F cost = distance::univariate::directa(q.rawdata(), q.size(), s.rawdata(), s.size(), e, utils::PINF);
+          const F cost = distance::univariate::directa(q, s, e, utils::PINF);
           welford.update(cost);
         }
         sample = {welford.get_mean()};

@@ -2,7 +2,7 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/dataset/tseries.hpp>
-#include <tempo/distance/univariate.hpp>
+#include <tempo/distance/tseries.univariate.hpp>
 
 #include "nn1dist_base.hpp"
 
@@ -15,7 +15,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     DTW(std::string tname, F cfe, size_t w) : BaseDist(std::move(tname)), cfe(cfe), w(w){}
 
     F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
-      return distance::univariate::dtw(t1.rawdata(), t1.size(), t2.rawdata(), t2.size(), cfe, w, bsf);
+      return distance::univariate::dtw(t1, t2, cfe, w, bsf);
     }
 
     std::string get_distance_name() override { return "DTW:" + std::to_string(cfe) + ":" + std::to_string(w); }

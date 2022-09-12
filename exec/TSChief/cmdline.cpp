@@ -102,6 +102,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
     opt.nb_trees = nbt.getValue();
     opt.nb_candidates = nbc.getValue();
     opt.nb_threads = nbp.getValue()<=0 ? std::thread::hardware_concurrency() : nbp.getValue();
+    if(out.isSet()){ opt.output = {out.getValue()}; }
 
     return {opt};
 

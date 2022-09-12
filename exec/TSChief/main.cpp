@@ -288,7 +288,7 @@ int main(int argc, char **argv) {
 
   { // 01 loss results
     Json::Value j;
-    j["nb_corrects"] = nb_correct;
+    j["nb_corrects"] = (int) nb_correct;
     j["accuracy"] = accuracy;
     jv["01loss"] = j;
   }

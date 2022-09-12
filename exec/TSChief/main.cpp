@@ -1,23 +1,14 @@
+#include <exception>
+#include <regex>
+
 #include <tempo/utils/readingtools.hpp>
 #include <tempo/reader/new_reader.hpp>
 #include <tempo/transform/tseries.univariate.hpp>
+#include <tempo/classifier/TSChief/forest.hpp>
 
-#include "tempo/classifier/TSChief/tree.hpp"
-#include "tempo/classifier/TSChief/forest.hpp"
-#include "tempo/classifier/TSChief/sleaf/pure_leaf.hpp"
-#include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_directa.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_adtw.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtw.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_dtwfull.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_wdtw.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_erp.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_lcss.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_msm.hpp"
-#include "tempo/classifier/TSChief/snode/nn1splitter/nn1_twe.hpp"
-
+#include <json/json.h>
 #include "cmdline.hpp"
+#include "pf2018.hpp"
 
 namespace fs = std::filesystem;
 
@@ -27,9 +18,13 @@ namespace fs = std::filesystem;
 }
 
 int main(int argc, char **argv) {
+
   // --- --- --- Type / namespace
   using namespace std;
   using namespace tempo;
+  using MDTS = std::map<std::string, tempo::DTS>;
+  namespace tsc = tempo::classifier::TSChief;
+  namespace tsc_nn1 = tempo::classifier::TSChief::snode::nn1splitter;
 
   // --- --- --- Randomness
   std::random_device rd;
@@ -135,11 +130,7 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Prepare data and state for the PF configuration
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // TODO: To link with transforms, snode requirement, etc...
-  // For now, just pre-compute everything, regardless of the actual needs
 
-  namespace tsc = tempo::classifier::TSChief;
-  namespace tsc_nn1 = tempo::classifier::TSChief::snode::nn1splitter;
 
   // --- --- ---
   // --- --- --- Constants & configurations
@@ -148,7 +139,7 @@ int main(int argc, char **argv) {
   // --- Time series transforms
   const std::string tr_default("default");
   const std::string tr_d1("derivative1");
-  const std::string tr_d2("derivative2");
+  // const std::string tr_d2("derivative2");
 
   // Make map of transforms (transform name, dataset)
   using MDTS = map<string, DTS>;
@@ -161,21 +152,21 @@ int main(int argc, char **argv) {
 
     // --- TRAIN
     auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
-    auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
     DTS train_derive_1("train", train_derive_t1);
-    DTS train_derive_2("train", train_derive_t2);
     train_map->emplace("default", train_dataset);
     train_map->emplace(tr_d1, train_derive_1);
-    train_map->emplace(tr_d2, train_derive_2);
+    // auto train_derive_t2 = train_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
+    // DTS train_derive_2("train", train_derive_t2);
+    // train_map->emplace(tr_d2, train_derive_2);
 
     // --- TEST
     auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
-    auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
     DTS test_derive_1("test", test_derive_t1);
-    DTS test_derive_2("test", test_derive_t2);
     test_map->emplace("default", test_dataset);
     test_map->emplace(tr_d1, test_derive_1);
-    test_map->emplace(tr_d2, test_derive_2);
+    // auto test_derive_t2 = test_derive_t1->map_shptr<TSeries>(ttu::derive, tr_d2);
+    // DTS test_derive_2("test", test_derive_t2);
+    // test_map->emplace(tr_d2, test_derive_2);
   }
 
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
@@ -205,157 +196,49 @@ int main(int argc, char **argv) {
   std::cout << "Train seed = " << train_seed << std::endl;
   tsc::TreeState tstate(train_seed, 0);
 
-  // State for 1NN distance splitters - cache the indexset
-  using GS1NNState = tsc_nn1::GenSplitterNN1_State;
-  std::shared_ptr<tsc::i_GetState<GS1NNState>> get_GenSplitterNN1_State =
-    tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
-
-  // ADTW train - cache sampling
-  std::shared_ptr<tsc::i_GetState<tsc_nn1::ADTWGenState>> get_adtw_state =
-    tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
-
-
-  // --- --- ---
-  // --- --- --- Distance snode parameter space
-  // --- --- ---
-
-  // --- --- Exponent getters
-  const std::vector<F> dist_cfe_set{0.5, 1, 2};
-  tsc_nn1::ExponentGetter getter_cfe_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_cfe_set, s.prng); };
-  tsc_nn1::ExponentGetter getter_cfe_1 = [](tsc::TreeState& /* state */) { return 1.0; };
-  tsc_nn1::ExponentGetter getter_cfe_2 = [](tsc::TreeState& /* state */) { return 2.0; };
-
-  // --- --- Transform getters
-  const std::vector<std::string> dist_tr_set{tr_default, tr_d1, tr_d2};
-  tsc_nn1::TransformGetter getter_tr_set = [&](tsc::TreeState& s) { return utils::pick_one(dist_tr_set, s.prng); };
-  tsc_nn1::TransformGetter getter_tr_default = [&](tsc::TreeState& /* state */) { return tr_default; };
-  tsc_nn1::TransformGetter getter_tr_d1 = [&](tsc::TreeState& /* state */) { return tr_d1; };
-  tsc_nn1::TransformGetter getter_tr_d2 = [&](tsc::TreeState& /* state */) { return tr_d2; };
-
-  // --- --- Window getter
-  tsc_nn1::WindowGetter getter_window = [&](tsc::TreeState& s, tsc::TreeData const& /* d */) {
-    size_t maxl = train_header.length_max();
-    const size_t win_top = std::floor((double)maxl + 1/4.0);
-    return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
-  };
-
-  // --- --- ERP Gap Value *AND* LCSS epsilon.
-  // Random fraction of the incoming data standard deviation, within [stddev/5, stddev[
-  tsc_nn1::StatGetter frac_stddev =
-    [&](tsc::TreeState& state, tsc::TreeData const& data, ByClassMap const& bcm, string const& transform_name) {
-      const DTS& train_dataset = get_train_data->at(data).at(transform_name);
-      auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
-      return std::uniform_real_distribution<F>(stddev_/5.0, stddev_)(state.prng);
-    };
-
-  // --- --- --- MSM Cost
-  tsc_nn1::T_GetterState<F> getter_msm_cost = [](tsc::TreeState& state) {
-    constexpr size_t MSM_N = 100;
-    constexpr F msm_cost[MSM_N]{
-      0.01, 0.01375, 0.0175, 0.02125, 0.025, 0.02875, 0.0325, 0.03625, 0.04, 0.04375,
-      0.0475, 0.05125, 0.055, 0.05875, 0.0625, 0.06625, 0.07, 0.07375, 0.0775, 0.08125,
-      0.085, 0.08875, 0.0925, 0.09625, 0.1, 0.136, 0.172, 0.208, 0.244, 0.28, 0.316, 0.352,
-      0.388, 0.424, 0.46, 0.496, 0.532, 0.568, 0.604, 0.64, 0.676, 0.712, 0.748, 0.784,
-      0.82, 0.856, 0.892, 0.928, 0.964, 1, 1.36, 1.72, 2.08, 2.44, 2.8, 3.16, 3.52, 3.88,
-      4.24, 4.6, 4.96, 5.32, 5.68, 6.04, 6.4, 6.76, 7.12, 7.48, 7.84, 8.2, 8.56, 8.92, 9.28,
-      9.64, 10, 13.6, 17.2, 20.8, 24.4, 28, 31.6, 35.2, 38.8, 42.4, 46, 49.6, 53.2, 56.8,
-      60.4, 64, 67.6, 71.2, 74.8, 78.4, 82, 85.6, 89.2, 92.8, 96.4, 100
-    };
-    return utils::pick_one(msm_cost, MSM_N, state.prng);
-  };
-
-
-  // --- --- --- TWE nu & lambda parameters
-  tsc_nn1::T_GetterState<F> getter_twe_nu = [](tsc::TreeState& state) {
-    constexpr size_t N = 10;
-    constexpr F nus[N]{0.00001, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1};
-    return utils::pick_one(nus, N, state.prng);
-  };
-
-  tsc_nn1::T_GetterState<F> getter_twe_lambda = [](tsc::TreeState& state) {
-    constexpr size_t N = 10;
-    constexpr F lambdas[N]{0, 0.011111111, 0.022222222, 0.033333333, 0.044444444,
-                           0.055555556, 0.066666667, 0.077777778, 0.088888889, 0.1};
-    return utils::pick_one(lambdas, N, state.prng);
-  };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Build the snode generators
+  // Configure the splitters
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  // --- --- --- Leaf Generator
-  auto leaf_gen = std::make_shared<tsc::sleaf::GenLeaf_Pure>(get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
+  std::shared_ptr<tsc::i_GenNode> node_gen;
+  // --- temp for experiments
+  std::vector<F> exponents{0.5, 1, 2};
+  std::vector<std::string> transforms{tr_default, tr_d1};
 
-  // --- --- --- Node Generator
-  vector<shared_ptr<tsc::i_GenNode>> generators;
-
-  // --- NN1 distance node generator
-  {
-    // List of distance generators (this is specific to our collection of NN1 Splitter generators)
-    vector<shared_ptr<tsc_nn1::i_GenDist>> gendist;
-
-    // Direct Alignment
-    gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
-
-    // ADTW, with state and access to train data for sampling
-    gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
-
-    // DTW
-    gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
-
-    // WDTW
-    gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_set, getter_cfe_set, train_header.length_max()));
-
-    // DTWFull
-    gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
-
-    // ERP
-    gendist.push_back(make_shared<tsc_nn1::ERPGen>(getter_tr_set, getter_cfe_2, frac_stddev, getter_window));
-
-    // LCSS
-    gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
-
-    // MSM
-    gendist.push_back(make_shared<tsc_nn1::MSMGen>(getter_tr_set, getter_msm_cost));
-
-    // TWE
-    gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_set, getter_twe_nu, getter_twe_lambda));
-
-    // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
-    for (auto const& gd : gendist) {
-      generators.push_back(
-        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
-      );
-    }
+  // extract distances
+  regex r(":");
+  auto const& str = opt.pfconfig;
+  std::set<std::string> distances(sregex_token_iterator(str.begin(), str.end(), r, -1), sregex_token_iterator());
+  if (distances.empty()) {
+    throw std::invalid_argument("No distances registered (" + str + ")");
   }
 
-  // --- Put a node chooser over all generators
-  auto node_gen = make_shared<tsc::snode::meta::SplitterChooserGen>(std::move(generators), opt.nb_candidates);
+  opt.pfconfig = "PF";
+  for (const auto& d : distances) {
+    std::cout << "distance: " << d << std::endl;
+    opt.pfconfig += ":" + d;
+  }
 
+  node_gen = pf2018::splitters::make_node_splitter(exponents, transforms, distances, opt.nb_candidates,
+                                                   train_header.length_max(), get_train_data, get_test_data, tstate);
 
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Make PF and use it
+  // Use the forest
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  // --- --- ---
-  // --- --- --- Build the forest
-  // --- --- ---
 
   auto tree_trainer = std::make_shared<tsc::TreeTrainer>(leaf_gen, node_gen);
   tsc::ForestTrainer forest_trainer(get_train_header, tree_trainer, opt.nb_trees);
 
-  // --- --- ---
   // --- --- --- TRAIN
-  // --- --- ---
 
   auto train_start_time = utils::now();
   auto forest = forest_trainer.train(tstate, tdata, train_bcm, opt.nb_threads, &std::cout);
   auto train_elapsed = utils::now() - train_start_time;
 
-  // --- --- ---
   // --- --- --- TEST
-  // --- --- ---
 
   classifier::ResultN result;
   auto test_start_time = utils::now();

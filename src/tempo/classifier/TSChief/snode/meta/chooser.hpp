@@ -6,7 +6,6 @@
 #include <tempo/classifier/TSChief/treestate.hpp>
 #include <tempo/classifier/TSChief/treedata.hpp>
 
-
 namespace tempo::classifier::TSChief::snode::meta {
 
   namespace {
@@ -42,7 +41,9 @@ namespace tempo::classifier::TSChief::snode::meta {
 
     SplitterChooserGen(std::vector<std::shared_ptr<i_GenNode>>&& sgvec, size_t nb_candidates) :
       generators(std::move(sgvec)),
-      nb_candidates(nb_candidates) {}
+      nb_candidates(nb_candidates) {
+      if (generators.empty()) { throw std::invalid_argument("Empty set of generators to choose from"); }
+    }
 
     // --- --- --- Method
 

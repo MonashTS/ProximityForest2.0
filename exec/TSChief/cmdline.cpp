@@ -85,9 +85,10 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
     }
 
     // --- PF Config
-    set<string> allowed{"pf2018"};
     opt.pfconfig = pfconfig.getValue();
 
+    /*
+    set<string> allowed{"pf2018"};
     if (!allowed.contains(opt.pfconfig)) {
       regex r(":");
       auto const& str = opt.pfconfig;
@@ -95,6 +96,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
       if(split[0]=="custom"){ return {"custom not implemented"}; }
       else { return {"Unrecognized configuration '" + str + "'"}; }
     }
+     */
 
     // --- Other options
     opt.nb_trees = nbt.getValue();

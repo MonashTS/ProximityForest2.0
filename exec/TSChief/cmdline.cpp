@@ -30,7 +30,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
 
     // --- Extra CSV
     TCLAP::SwitchArg csv_skip("", "csv-skip-header", "Skip the csv's first line", cmd, false);
-    TCLAP::ValueArg<char> csv_sep("", "csv-separator", "CSV columns separator", false, ',', "character", cmd);
+    TCLAP::ValueArg<std::string> csv_sep("", "csv-separator", "CSV columns separator", false, ",", "character", cmd);
 
     // --- PF version
     TCLAP::ValueArg<string> pfconfig("", "pfc", "PF Configuration", false, "pf2018", "PF Configuration", cmd);
@@ -77,7 +77,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
       rc.name = fs::path(remainder[2]);
       remainder.erase(remainder.begin(), remainder.begin()+3);
       rc.skip_header = csv_skip.getValue();
-      rc.sep = csv_sep.getValue();
+      rc.sep = csv_sep.getValue().at(0);
       // --- --- ---
       if (!fs::exists(rc.train)) { return {"CSV Train file " + rc.train.string() + " not found."}; }
       if (!fs::exists(rc.test)) { return {"CSV Test file " + rc.test.string() + " not found."}; }

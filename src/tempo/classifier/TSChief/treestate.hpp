@@ -21,6 +21,8 @@ namespace tempo::classifier::TSChief {
 
     // --- --- --- Start/End node
 
+    // TODO: think about the callbacks, to be updated (e.g. on leaf)
+
     /// Method called when a new branch is started - will be called before calling the "train" function for this branch.
     /// Branches are created in a "deep first" fashion.
     virtual void start_branch(size_t branch_idx) = 0;

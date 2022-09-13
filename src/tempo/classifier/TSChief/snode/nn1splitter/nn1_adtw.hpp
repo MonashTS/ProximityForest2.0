@@ -86,6 +86,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
           const F cost = distance::univariate::directa(q, s, e, utils::PINF);
           welford.update(cost);
         }
+        // State updated here through mutable reference
         sample = {welford.get_mean()};
       }
 

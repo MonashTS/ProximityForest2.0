@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <armadillo>
 
 namespace tempo::transform::univariate {
 

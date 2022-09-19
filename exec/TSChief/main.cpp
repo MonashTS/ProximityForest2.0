@@ -8,7 +8,7 @@
 
 #include <json/json.h>
 #include "cmdline.hpp"
-#include "pf2018.hpp"
+#include "pfsplitters.hpp"
 
 namespace fs = std::filesystem;
 
@@ -201,13 +201,16 @@ int main(int argc, char **argv) {
   // Configure the splitters
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
+   std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
+ //    std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
+
+
   std::shared_ptr<tsc::i_GenNode> node_gen;
   // --- temp for experiments
   std::vector<F> exponents{0.5, 1, 2};
   std::vector<std::string> transforms{tr_default, tr_d1};
 
-  // extract distances
+  // extract distances in a set
   regex r(":");
   auto const& str = opt.pfconfig;
   std::set<std::string> distances(sregex_token_iterator(str.begin(), str.end(), r, -1), sregex_token_iterator());
@@ -221,8 +224,14 @@ int main(int argc, char **argv) {
     opt.pfconfig += ":" + d;
   }
 
-  node_gen = pf2018::splitters::make_node_splitter(exponents, transforms, distances, opt.nb_candidates,
-                                                   train_header.length_max(), get_train_data, get_test_data, tstate);
+  node_gen = pf2018::splitters::make_node_splitter(
+    exponents, transforms, distances, opt.nb_candidates,
+    train_header.length_max(),
+    *train_map,
+    get_train_data,
+    get_test_data,
+    tstate
+  );
 
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
@@ -288,7 +297,7 @@ int main(int argc, char **argv) {
 
   { // 01 loss results
     Json::Value j;
-    j["nb_corrects"] = (int) nb_correct;
+    j["nb_corrects"] = (int)nb_correct;
     j["accuracy"] = accuracy;
     jv["01loss"] = j;
   }

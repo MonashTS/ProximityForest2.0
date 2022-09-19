@@ -1,8 +1,9 @@
-#include "pf2018.hpp"
+#include "pfsplitters.hpp"
 
 #include "tempo/classifier/TSChief/tree.hpp"
 #include "tempo/classifier/TSChief/forest.hpp"
 #include "tempo/classifier/TSChief/sleaf/pure_leaf.hpp"
+#include "tempo/classifier/TSChief/sleaf/pure_leaf_smoothp.hpp"
 #include "tempo/classifier/TSChief/snode/meta/chooser.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1splitter.hpp"
 #include "tempo/classifier/TSChief/snode/nn1splitter/nn1_directa.hpp"
@@ -117,12 +118,19 @@ namespace pf2018::splitters {
     return std::make_shared<tsc::sleaf::GenLeaf_Pure>(get_train_header);
   }
 
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(
+    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header)
+  {
+    return std::make_shared<tsc::sleaf::GenLeaf_PureSmoothP>(get_train_header);
+  }
+
   std::shared_ptr<tsc::i_GenNode> make_node_splitter(
-    std::vector<F> exponents,
-    std::vector<std::string> transforms,
+    std::vector<F> const& exponents,
+    std::vector<std::string> const& transforms,
     std::set<std::string> const& distances,
     size_t nbc,
     size_t series_max_length,
+    std::map<std::string, tempo::DTS> const& train_data,
     std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_train_data,
     std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_test_data,
     tsc::TreeState& tstate
@@ -135,9 +143,9 @@ namespace pf2018::splitters {
       tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
 
     // --- --- --- Getters
-    auto getter_cfe_set = make_get_vcfe(std::move(exponents));
+    auto getter_cfe_set = make_get_vcfe(exponents);
     auto getter_cfe_2 = make_get_cfe2();
-    auto getter_tr_set = make_get_transform(std::move(transforms));
+    auto getter_tr_set = make_get_transform(transforms);
     auto getter_window = make_get_window(series_max_length);
     auto frac_stddev = make_get_frac_stddev(get_train_data);
 
@@ -159,6 +167,13 @@ namespace pf2018::splitters {
           tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
         //
         gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
+      } else if (sname.starts_with("ADTWv1")) {
+        // --- --- --- ADTWv1
+        // Sample train data
+        constexpr size_t SAMPLE_SIZE = 4000;
+        auto samples = tsc_nn1::ADTWv1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+        // Create distance
+        gendist.push_back(make_shared<tsc_nn1::ADTWv1Gen>(getter_tr_set, getter_cfe_set, samples));
       } else if (sname.starts_with("DTW")&&!sname.starts_with("DTWFull")) {
         // --- --- --- DTW
         gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
@@ -192,7 +207,8 @@ namespace pf2018::splitters {
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {
       generators.push_back(
-        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data));
+        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
+      );
     }
 
     // --- Put a node chooser over all generators

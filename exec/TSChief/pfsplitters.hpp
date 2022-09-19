@@ -71,23 +71,28 @@ namespace pf2018::splitters {
   std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf(
     std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header);
 
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(
+    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header);
+
   /** Generate node splitters for PF (distance splitters)
    * @param exponents           List of exponents for the DTW (including DA) family (uniform choice)
    * @param transforms          List of transforms, for all distances (uniform choice)
    * @param distances           List of distance name (DA, ADTW, DTW, DTWFull, WDTW, ERP, LCSS, MSM, TWE)
    * @param nbc                 Number of distance candidates per node
    * @param series_max_length   Maximum length of the series
-   * @param get_train_data      How to access the train data
+   * @param train_data          Train data
+   * @param get_train_data      How to access the train data while training
    * @param get_test_data       How to access the test data
    * @param tstate              TrainState that will be used - updated
    * @return A node splitter generator
    */
   std::shared_ptr<tsc::i_GenNode> make_node_splitter(
-    std::vector<F> exponents,
-    std::vector<std::string> transforms,
+    std::vector<F> const& exponents,
+    std::vector<std::string> const& transforms,
     std::set<std::string> const& distances,
     size_t nbc,
     size_t series_max_length,
+    std::map<std::string, tempo::DTS> const& train_data,
     std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_train_data,
     std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_test_data,
     tsc::TreeState& tstate

@@ -23,6 +23,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   /// 1NN ADTW per node state
   struct ADTWGenState : public i_TreeState {
+    // TODO: map : sample per transform!
     std::optional<F> sample{std::nullopt};
 
     // --- --- --- Constructor/Destructor
@@ -97,6 +98,78 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
       // Build return
       return std::make_unique<ADTW>(tn, e, penalty);
     }
+  };
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // ADTWv1 : sample only once the max penalty
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  struct ADTWv1Gen : public i_GenDist {
+
+    static constexpr F omega_exponent = 3.0;
+
+    TransformGetter get_transform;
+    ExponentGetter get_fce;
+    std::map<std::tuple<F, std::string>, std::vector<F>> penalties;
+
+    ADTWv1Gen(TransformGetter gt, ExponentGetter get_cfe,
+              std::map<std::tuple<F, std::string>, std::vector<F>> penalties) :
+      get_transform(std::move(gt)),
+      get_fce(std::move(get_cfe)),
+      penalties(penalties) {}
+
+    std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /*data*/ , const ByClassMap& /*bcm*/) override {
+      const std::string tn = get_transform(state);
+      const F e = get_fce(state);
+      F penalty = utils::pick_one(penalties.at({e, tn}), state.prng);
+      return std::make_unique<ADTW>(tn, e, penalty);
+    }
+
+    static std::map<std::tuple<F, std::string>, std::vector<F>> do_sampling(
+      std::vector<F> const& exponent,
+      std::vector<std::string> const& transforms,
+      std::map<std::string, DTS> const& train_data,
+      size_t SAMPLE_SIZE,
+      PRNG& prng
+    ) {
+
+      // Number of penalty
+      constexpr size_t NBP = 20;
+      // Exponent when computing the penalties
+      constexpr double OMEGA_EXPONENT = 5.0;
+
+      std::map<std::tuple<F, std::string>, std::vector<F>> result;
+
+      for (auto const& tn : transforms) {
+        auto const& dts = train_data.at(tn);
+        if (dts.size()<=1) { throw std::invalid_argument("DataSplit transform " + tn + " as less than 2 values"); }
+
+        for (auto const& e : exponent) {
+          // --- Sampling
+          tempo::utils::StddevWelford welford;
+          std::uniform_int_distribution<> distrib(0, (int)dts.size() - 1);
+          for (size_t i = 0; i<SAMPLE_SIZE; ++i) {
+            const auto& q = dts[distrib(prng)];
+            const auto& s = dts[distrib(prng)];
+            const F cost = distance::univariate::directa(q, s, e, utils::PINF);
+            welford.update(cost);
+          }
+          F max_penalties = welford.get_mean();
+          // --- Compute penalties
+          std::vector<F> penalties;
+          penalties.push_back(0.0);
+          for (size_t i = 1; i<NBP; ++i) {
+            const F penalty = std::pow((F)i/20.0, OMEGA_EXPONENT)*max_penalties;
+            penalties.push_back(penalty);
+          }
+
+          result[std::tuple(e, tn)] = penalties;
+        }
+      }
+
+      return result;
+    }
+
   };
 
 } // End of namespace tempo::classifier::TSChief::snode::nn1splitter

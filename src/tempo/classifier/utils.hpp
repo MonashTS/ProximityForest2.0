@@ -38,6 +38,16 @@ namespace tempo::classifier {
       return Result1(std::move(p), weight);
     }
 
+    /// Create a Result for 'cardinality' classes, with smooth cardinality.
+    /// Count 'one' for each classes, add 'weight' (must be a count) to 'top_proba'
+    static inline Result1 make_smooth_probabilities(size_t cardinality, EL top_proba, double weight) {
+      arma::rowvec p(cardinality, arma::fill::ones);
+      p[top_proba] += weight;
+      double total = (double)cardinality+weight;
+      p = p/total;
+      return Result1(std::move(p), total);
+    }
+
     /// Obtain the classes with the max probability
     inline std::tuple<std::vector<EL>, double> most_probable_classes(){
       double maxv = probabilities.max();

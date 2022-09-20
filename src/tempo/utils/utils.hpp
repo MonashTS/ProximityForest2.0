@@ -34,9 +34,9 @@ namespace tempo::utils {
   // --- --- --- --- --- ---
 
   template<typename T>
-  inline Json::Value to_json(const T& vec) {
-    Json::Value a(Json::arrayValue);
-    for (const auto& v : vec) { a.append(v); }
+  inline nlohmann::json to_json(const T& vec) {
+    nlohmann::json a = nlohmann::json::array();
+    for (const auto& v : vec) { a.push_back(v); }
     return a;
   }
 

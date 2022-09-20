@@ -6,7 +6,7 @@
 #include <tempo/transform/tseries.univariate.hpp>
 #include <tempo/classifier/TSChief/forest.hpp>
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include "cmdline.hpp"
 #include "pfsplitters.hpp"
 
@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
   size_t tiebreak_seed = rd();
 
   // --- --- --- Prepare JSon record for output
-  Json::Value jv;
+  nlohmann::json jv;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Read args
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
     } else { tempo::utils::should_not_happen(); }
 
     auto delta = utils::now() - start;
-    Json::Value dataset;
+    nlohmann::json dataset;
     dataset["train"] = train_dataset.header().to_json();
     dataset["test"] = test_dataset.header().to_json();
     dataset["load_time_ns"] = delta.count();
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
     if (!errors.empty()) {
       jv["status"] = "error";
       jv["status_message"] = utils::cat(errors, "; ");
-      cout << jv.toStyledString() << endl;
+      cout << to_string(jv) << endl;
       if (opt.output) {
         auto out = ofstream(opt.output.value());
         out << jv << endl;
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
   jv["status"] = "success";
 
   { // Classifier information
-    Json::Value j;
+    nlohmann::json j;
     j["train_time_ns"] = train_elapsed.count();
     j["train_time_human"] = utils::as_string(train_elapsed);
     j["test_time_ns"] = test_elapsed.count();
@@ -296,17 +296,17 @@ int main(int argc, char **argv) {
   }
 
   { // 01 loss results
-    Json::Value j;
+    nlohmann::json j;
     j["nb_corrects"] = (int)nb_correct;
     j["accuracy"] = accuracy;
     jv["01loss"] = j;
   }
 
-  cout << jv << endl;
+  cout << jv.dump(2) << endl;
 
   if (opt.output) {
     auto out = ofstream(opt.output.value());
-    out << jv << endl;
+    out << jv.dump(2) << endl;
   }
 
   return 0;

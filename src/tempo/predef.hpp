@@ -37,7 +37,7 @@
 #include <mlpack/core.hpp>
 
 // JSONCPP
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 namespace tempo {
 

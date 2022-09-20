@@ -207,8 +207,8 @@ namespace tempo {
     // --- --- --- --- --- ---
 
     /// Json representation of the dataset header
-    [[nodiscard]] inline Json::Value to_json() const {
-      Json::Value jv;
+    [[nodiscard]] inline nlohmann::json to_json() const {
+      nlohmann::json jv;
       jv["name"] = name();
       jv["size"] = (int)size();
       jv["dimension"] = (int)(nb_dimensions());

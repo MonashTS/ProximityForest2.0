@@ -97,17 +97,21 @@ message(STATUS "================================================================
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Third party
 
-# JSON CPP
-if (USE_VCPKG)
-    find_package(jsoncpp CONFIG REQUIRED)
-else()
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(JSONCPP jsoncpp)
+# # JSON CPP
+# if (USE_VCPKG)
+#     find_package(jsoncpp CONFIG REQUIRED)
+# else()
+#     find_package(PkgConfig REQUIRED)
+#     pkg_check_modules(JSONCPP jsoncpp)
+#
+#     message(STATUS "JSONCPP_LINK_LIBRARIES: ${JSONCPP_LINK_LIBRARIES}")
+#     set(JSONCPP_LIBRARIES "${JSONCPP_LINK_LIBRARIES}")
+#     message(STATUS "JSONCPP_LIBRARIES: ${JSONCPP_LIBRARIES}")
+# endif()
 
-    message(STATUS "JSONCPP_LINK_LIBRARIES: ${JSONCPP_LINK_LIBRARIES}")
-    set(JSONCPP_LIBRARIES "${JSONCPP_LINK_LIBRARIES}")
-    message(STATUS "JSONCPP_LIBRARIES: ${JSONCPP_LIBRARIES}")
-endif()
+
+
+
 
 
 
@@ -143,6 +147,11 @@ endif()
 add_library(rapidcsv INTERFACE)
 target_include_directories(rapidcsv INTERFACE third_party/rapidcsv)
 target_sources(rapidcsv PUBLIC third_party/rapidcsv/rapidcsv.h)
+
+# NLOHMANN JSON
+add_library(json INTERFACE)
+target_include_directories(json INTERFACE third_party/nlohmann/include)
+target_sources(json PUBLIC third_party/nlohmann/include/nlohmann/json.hpp)
 
 # Command line parser
 add_subdirectory(third_party/cxxopts)

@@ -413,7 +413,23 @@ namespace rapidcsv
                               const char pCommentPrefix = '#',
                               const bool pSkipEmptyLines = false)
       : mSkipCommentLines(pSkipCommentLines)
-      , mCommentPrefix(pCommentPrefix)
+      , mCommentPrefix{pCommentPrefix} // TEMPOMOD
+      , mSkipEmptyLines(pSkipEmptyLines)
+    {
+    }
+
+    /** TEMPOMOD: accept a set of comment prefixs
+     * @brief   Constructor
+     * @param   pSkipCommentLines     specifies whether to skip lines prefixed with
+     *                                mCommentPrefix. Default: false
+     * @param   pCommentPrefix        Set of which prefix characters indicate a comment line. Default: {#}
+     * @param   pSkipEmptyLines       specifies whether to skip empty lines. Default: false
+     */
+    explicit LineReaderParams(const bool pSkipCommentLines,
+                              const std::set<char> pCommentPrefix,
+                              const bool pSkipEmptyLines)
+      : mSkipCommentLines(pSkipCommentLines)
+      , mCommentPrefix{pCommentPrefix}
       , mSkipEmptyLines(pSkipEmptyLines)
     {
     }
@@ -425,8 +441,9 @@ namespace rapidcsv
 
     /**
      * @brief   specifies which prefix character to indicate a comment line.
+     * TEMPOMOD: accept a set of char
      */
-    char mCommentPrefix;
+    std::set<char> mCommentPrefix;
 
     /**
      * @brief   specifies whether to skip empty lines.
@@ -1551,8 +1568,11 @@ namespace rapidcsv
               {
                 row.push_back(Unquote(Trim(cell)));
 
-                if (mLineReaderParams.mSkipCommentLines && !row.at(0).empty() &&
-                    (row.at(0)[0] == mLineReaderParams.mCommentPrefix))
+                if ( // TEMPOMOD
+                  mLineReaderParams.mSkipCommentLines
+                    && !row.at(0).empty()
+                    && (mLineReaderParams.mCommentPrefix.find(row.at(0)[0]) != mLineReaderParams.mCommentPrefix.end())
+                  )
                 {
                   // skip comment line
                 }

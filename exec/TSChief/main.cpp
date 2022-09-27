@@ -2,7 +2,7 @@
 #include <regex>
 
 #include <tempo/utils/readingtools.hpp>
-#include <tempo/reader/new_reader.hpp>
+#include <tempo/reader/reader.hpp>
 #include <tempo/transform/tseries.univariate.hpp>
 #include <tempo/classifier/TSChief/forest.hpp>
 
@@ -64,21 +64,21 @@ int main(int argc, char **argv) {
     if (opt.input.index()==0) {
       read_ucr ru = std::get<0>(opt.input);
       // --- --- --- Read train
-      auto variant_train = tempo::reader::load_dataset_ts(ru.train, "train");
+      auto variant_train = tempo::reader::load_udataset_ts(ru.train, "train");
       if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
       else { do_exit(1, {"Could not read train set '" + ru.train.string() + "': " + std::get<0>(variant_train)}); }
       // --- --- --- Read test
-      auto variant_test = tempo::reader::load_dataset_ts(ru.test, "test");
+      auto variant_test = tempo::reader::load_udataset_ts(ru.test, "test");
       if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
       else { do_exit(1, {"Could not read train set '" + ru.test.string() + "': " + std::get<0>(variant_test)}); }
     } else if (opt.input.index()==1) {
       read_csv rc = std::get<1>(opt.input);
       // --- --- --- Read train
-      auto variant_train = tempo::reader::load_dataset_csv(rc.train, rc.name, 1, "train", {}, rc.skip_header, rc.sep);
+      auto variant_train = tempo::reader::load_udataset_csv(rc.train, rc.name, "train", {}, rc.skip_header, rc.sep);
       if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
       else { do_exit(1, {"Could not read train set '" + rc.train.string() + "': " + std::get<0>(variant_train)}); }
       // --- --- --- Read test
-      auto variant_test = tempo::reader::load_dataset_csv(rc.test, rc.name, 1, "test", {}, rc.skip_header, rc.sep);
+      auto variant_test = tempo::reader::load_udataset_csv(rc.test, rc.name, "test", {}, rc.skip_header, rc.sep);
       if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
       else { do_exit(1, {"Could not read test set '" + rc.test.string() + "': " + std::get<0>(variant_test)}); }
     } else { tempo::utils::should_not_happen(); }

@@ -17,7 +17,7 @@ namespace tempo::reader {
   load_udataset_ts(
     std::filesystem::path const& path,
     std::string const& split_name,
-    LabelEncoder const& encoder = {}
+    LabelEncoder const& encoder
   ) {
     std::variant<std::string, TSData> vts = load_tsdata(path);
 

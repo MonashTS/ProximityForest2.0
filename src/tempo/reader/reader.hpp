@@ -15,7 +15,7 @@ namespace tempo::reader {
   /// Can use an existing label encoder.
   /// TODO: fix reader for multivariate, it is broken
   std::variant<std::string, DTS>
-  load_dataset_ts(
+  load_udataset_ts(
     std::filesystem::path const& path,
     std::string const& split_name,
     LabelEncoder const& encoder = {}

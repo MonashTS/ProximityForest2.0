@@ -19,9 +19,10 @@ namespace tempo {
     /// Helper function: create the mapping structures with the content from the set _labels.
     /// Also use as an update function if _label has been *extended*.
     template<typename Collection>
-    void update(Collection const& labels) {
-      size_t idx = _index_to_label.size();
-      for (L const& k : labels) {
+    void update(Collection const& clabels) {
+      std::set<std::string> ulabels(std::begin(clabels), std::end(clabels));
+      size_t idx = _index_to_label.size(); // Next index == size of the vector
+      for (L const& k : ulabels) {
         if (!_label_to_index.contains(k)) {
           _label_to_index[k] = idx;
           _index_to_label.push_back(k);

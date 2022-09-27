@@ -145,8 +145,8 @@ endif()
 
 # RAPID CSV
 add_library(rapidcsv INTERFACE)
-target_include_directories(rapidcsv INTERFACE third_party/rapidcsv)
-target_sources(rapidcsv PUBLIC third_party/rapidcsv/rapidcsv.h)
+target_include_directories(rapidcsv INTERFACE third_party/rapidcsv_mod)
+target_sources(rapidcsv PUBLIC third_party/rapidcsv_mod/rapidcsv.h)
 
 # NLOHMANN JSON
 add_library(json INTERFACE)

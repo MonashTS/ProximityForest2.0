@@ -2,6 +2,7 @@ target_sources(libtempo
         PRIVATE
             utils.cpp
         PUBLIC
+            label_encoder.hpp
             utils/uncopyable.hpp
             utils/stats.hpp
             concepts.hpp

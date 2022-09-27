@@ -1,8 +1,7 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-
-#include "label_encoder.hpp"
+#include <tempo/utils/label_encoder.hpp>
 
 namespace tempo {
 

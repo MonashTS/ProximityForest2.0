@@ -1,5 +1,7 @@
 #pragma once
 
+#include <tempo/utils/utils.hpp>
+
 namespace tempo {
 
   /** Label Encoder

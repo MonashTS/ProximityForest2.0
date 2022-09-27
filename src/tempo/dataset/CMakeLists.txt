@@ -1,6 +1,7 @@
 target_sources(libtempo
         INTERFACE
-        dataset.hpp
+            label_encoder.hpp
+            dataset.hpp
             dts.hpp
             tseries.hpp
         )

@@ -2,6 +2,8 @@
 
 #include <tempo/utils/utils.hpp>
 
+#include "label_encoder.hpp"
+
 namespace tempo {
 
   /* How we manage datasets
@@ -32,62 +34,6 @@ namespace tempo {
    *  The subset [0, n[ map into the dataset header set of index  [0, N[
    *
    */
-
-
-  class LabelEncoder {
-
-    /// Set of labels for the dataset, with index encoding
-    std::map<L, EL> _label_to_index;
-
-    /// Reverse mapping index top label - Note: EL must be an integral type for indexing purposes
-    std::vector<L> _index_to_label;
-
-    /// Helper function: create the mapping structures with the content from the set _labels.
-    /// Also use as an update function if _label has been *extended*.
-    template<typename Collection>
-    void update(Collection const& labels) {
-      size_t idx = _index_to_label.size();
-      for (auto const& k : labels) {
-        if (!_label_to_index.contains(k)) {
-          _label_to_index[k] = idx;
-          _index_to_label.push_back(k);
-          ++idx;
-        }
-      }
-    }
-
-  public:
-
-    LabelEncoder() = default;
-
-    LabelEncoder(LabelEncoder const& other) = default;
-
-    LabelEncoder(LabelEncoder&& other) = default;
-
-    LabelEncoder& operator =(LabelEncoder&& other) = default;
-
-    /// Create a new encoder given a set of label
-    explicit LabelEncoder(std::set<L> const& labels) { update(labels); }
-
-    /// Copy other into this, then add unknown label from 'labels'
-    LabelEncoder(LabelEncoder other, std::set<L> const& labels) : LabelEncoder(std::move(other)) {
-      update(labels);
-    }
-
-    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-    /// Labels to indexes encoding (reverse from index_to_label)
-    [[nodiscard]] inline std::map<L, EL> const& label_to_index() const { return _label_to_index; }
-
-    /// Indexes to labels encoding (reverse from label_to_index)
-    [[nodiscard]] inline std::vector<L> const& index_to_label() const { return _index_to_label; }
-
-    /// Encode a label
-    [[nodiscard]] inline EL encode(L const& l) const { return _label_to_index.at(l); }
-
-    /// Decode a label
-    [[nodiscard]] inline L decode(EL el) const { return _index_to_label[el]; }
-  };
 
   class DatasetHeader : tempo::utils::Uncopyable {
 
@@ -156,58 +102,58 @@ namespace tempo {
     // Dataset properties
 
     /// Base name of the dataset
-    [[nodiscard]] inline const std::string& name() const { return _name; }
+    inline const std::string& name() const { return _name; }
 
     /// The size of the dataset, i.e. the number of exemplars
-    [[nodiscard]] inline size_t size() const { return _labels.size(); }
+    inline size_t size() const { return _labels.size(); }
 
     /// The length of the shortest series in the dataset
-    [[nodiscard]] inline size_t length_min() const { return _length_min; }
+    inline size_t length_min() const { return _length_min; }
 
     /// The length of the longest series in the dataset
-    [[nodiscard]] inline size_t length_max() const { return _length_max; }
+    inline size_t length_max() const { return _length_max; }
 
     /// Check if all series have varying length (return true), or all have the same length (return false)
-    [[nodiscard]] inline bool variable_length() const { return _length_max!=_length_min; }
+    inline bool variable_length() const { return _length_max!=_length_min; }
 
     /// Number of dimensions
-    [[nodiscard]] inline size_t nb_dimensions() const { return _nb_dimensions; }
+    inline size_t nb_dimensions() const { return _nb_dimensions; }
 
     /// Index of instances with missing data
-    [[nodiscard]] inline const std::vector<size_t>& instances_with_missing() const { return _missing; }
+    inline const std::vector<size_t>& instances_with_missing() const { return _missing; }
 
     /// Check if any exemplar contains a missing value (encoded with "NaN")
-    [[nodiscard]] inline bool has_missing_value() const { return !(_missing.empty()); }
+    inline bool has_missing_value() const { return !(_missing.empty()); }
 
     // --- --- --- --- --- ---
     // Label access
 
     /// Access the original label of an instance
-    [[nodiscard]] inline std::optional<L> const& original_label(size_t idx) const { return _labels[idx]; }
+    inline std::optional<L> const& original_label(size_t idx) const { return _labels[idx]; }
 
     /// Get the encoded label of an instance
-    [[nodiscard]] inline std::optional<EL> label(size_t idx) const {
+    inline std::optional<EL> label(size_t idx) const {
       std::optional<L> const& ol = original_label(idx);
       if (ol) { return {_label_encoder.encode(ol.value())}; }
       else { return {}; }
     }
 
     /// Encode a Label
-    [[nodiscard]] inline EL encode(L const& l) const { return _label_encoder.encode(l); }
+    inline EL encode(L const& l) const { return _label_encoder.encode(l); }
 
     /// Decode an Encoded Label (EL)
-    [[nodiscard]] inline L decode(EL el) const { return _label_encoder.decode(el); }
+    inline L decode(EL el) const { return _label_encoder.decode(el); }
 
     /// Get the number of classes
-    [[nodiscard]] inline size_t nb_classes() const { return _label_encoder.index_to_label().size(); }
+    inline size_t nb_classes() const { return _label_encoder.index_to_label().size(); }
 
     /// Direct access to the label encoder
-    [[nodiscard]] inline LabelEncoder const& label_encoder() const { return _label_encoder; }
+    inline LabelEncoder const& label_encoder() const { return _label_encoder; }
 
     // --- --- --- --- --- ---
 
     /// Json representation of the dataset header
-    [[nodiscard]] inline nlohmann::json to_json() const {
+    inline nlohmann::json to_json() const {
       nlohmann::json jv;
       jv["name"] = name();
       jv["size"] = (int)size();
@@ -262,19 +208,19 @@ namespace tempo {
 
     auto end() const { return _storage.cend(); }
 
-    [[nodiscard]] size_t size() const { return _storage.size(); }
+    size_t size() const { return _storage.size(); }
 
     /// Name separator
     inline static std::string sep = ";";
 
     /// Transform name
-    [[nodiscard]] std::string name() const { return utils::cat(_vname, sep); }
+    std::string name() const { return utils::cat(_vname, sep); }
 
     /// Access to the header
-    [[nodiscard]] inline DatasetHeader const& header() const { return *_header; }
+    inline DatasetHeader const& header() const { return *_header; }
 
     /// Access to the header pointer
-    [[nodiscard]] inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
+    inline std::shared_ptr<DatasetHeader> header_ptr() const { return _header; }
 
     /// New transform resulting of applying a transform function per series
     template<typename R>
@@ -350,25 +296,25 @@ namespace tempo {
     // Accesses
 
     /// Index into the indexSet, returning a "real index" usable in a dataset.
-    [[nodiscard]] inline size_t get(size_t index) const { return vset->operator [](index); }
+    inline size_t get(size_t index) const { return vset->operator [](index); }
 
     /// Const Bracket operator aliasing 'get'
-    [[nodiscard]] inline size_t operator [](size_t index) const { return get(index); }
+    inline size_t operator [](size_t index) const { return get(index); }
 
     /// Size of the set
-    [[nodiscard]] inline size_t size() const { return vset->size(); }
+    inline size_t size() const { return vset->size(); }
 
     /// Number of indexes contained
-    [[nodiscard]] inline bool empty() const { return vset->empty(); }
+    inline bool empty() const { return vset->empty(); }
 
     /// Random Access Iterator begin
-    [[nodiscard]] inline auto begin() const { return vset->begin(); }
+    inline auto begin() const { return vset->begin(); }
 
     /// Random Access Iterator end
-    [[nodiscard]] inline auto end() const { return vset->end(); }
+    inline auto end() const { return vset->end(); }
 
     /// Access to the underlying vector
-    [[nodiscard]] inline const std::vector<size_t>& vector() const { return *vset; }
+    inline const std::vector<size_t>& vector() const { return *vset; }
   };
 
   /// ByClassMap (BCM): a type gathering indexes in a dataset by encoded label
@@ -581,7 +527,7 @@ namespace tempo {
 
     size_t size() const { return _index_set.size(); }
 
-    [[nodiscard]] IndexSet const& index_set() const { return _index_set; }
+    IndexSet const& index_set() const { return _index_set; }
 
     // --- --- --- --- --- ---
     // Header & transform access

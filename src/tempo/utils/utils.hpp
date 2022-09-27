@@ -8,9 +8,6 @@
 
 namespace tempo::utils {
 
-//  template<typename T>
-//  concept Iterable = std::ranges::range<std::ranges::range_value_t<T>>;
-
   /// Pick a random item from a subscriptable type, from [0] to [size-1]
   template<typename PRNG>
   inline const auto& pick_one(Subscriptable auto const& collection, size_t size, PRNG& prng) {

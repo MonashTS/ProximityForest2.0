@@ -4,6 +4,7 @@
 #include <tempo/dataset/tseries.hpp>
 #include "core/univariate.normalization.hpp"
 #include "core/univariate.derivative.hpp"
+#include "univariate.hpp"
 
 // Specialised implementation for TSeries
 // When possible, use the computed stat per TSeries (like the min/max values) instead of recomputing them.
@@ -16,7 +17,15 @@ namespace tempo::transform::univariate {
     const size_t l = ts.length();
     std::vector<F> d(l);
     double* data = d.data();
-    tempo::transform::core::univariate::derive<F, F const*, F*>(ts.data(), l, data);
+    tempo::transform::univariate::derive(ts.data(), l, data);
+    return TSeries::mk_from_rowmajor(ts, std::move(d));
+  }
+
+  TSeries derive(TSeries const& ts, size_t degree){
+    const size_t l = ts.length();
+    std::vector<F> d(l);
+    double* data = d.data();
+    tempo::transform::univariate::derive(ts.data(), l, data, degree);
     return TSeries::mk_from_rowmajor(ts, std::move(d));
   }
 

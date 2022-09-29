@@ -12,6 +12,7 @@ namespace tempo::transform::univariate {
   // --- --- --- Derivative
 
   template void derive<F>(F const* data, size_t length, F* output);
+  template void derive<F>(F const* data, size_t length, F* output, size_t degree);
 
   // --- --- --- Normalisation
 

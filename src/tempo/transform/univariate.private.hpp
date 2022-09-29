@@ -14,6 +14,34 @@ namespace tempo::transform::univariate {
     tempo::transform::core::univariate::derive<F, F const*, F*>(data, length, output);
   }
 
+  template<typename F>
+  void derive(F const* data, size_t length, F* output, size_t degree){
+    if(degree==0){
+      std::copy(data, data + length, output);
+    } else {
+      // D1
+      derive(data, length, output);
+
+      // D2 and after: need a temporary variable - derivative not computed "in place"
+      if(degree>1){
+        std::unique_ptr<F[]> tmp(new F[length]);
+        F* a = output;
+        F* b = tmp.get();
+
+        for(size_t d=2; d<=degree; ++d){
+          derive(a, length, b);
+          std::swap(a, b);
+        }
+
+        // Copy in the output evey two turns
+        if(degree%2==0){
+          assert(b==output);
+          std::copy(a, a+length, b);
+        }
+      }
+    }
+  }
+
   // --- --- --- Normalisation
 
   template<typename F>

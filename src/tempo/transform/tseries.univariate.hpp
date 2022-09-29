@@ -9,6 +9,9 @@ namespace tempo::transform::univariate {
   /// Derivative, as defined in DDTW, for univariate TSeries
   TSeries derive(TSeries const& ts);
 
+  /// n-th derivative
+  TSeries derive(TSeries const& ts, size_t degree);
+
   // --- --- --- Normalisation
 
   /// Normalisation MinMax for univariate TSeries

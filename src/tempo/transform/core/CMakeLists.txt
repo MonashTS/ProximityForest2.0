@@ -4,3 +4,12 @@ target_sources(libtempo
         univariate.derivative.hpp
         univariate.normalization.hpp
         )
+
+### Testing
+if (BUILD_TESTING)
+    target_sources(libtempo-test
+            # --- --- ---
+            PRIVATE
+            univariate.derivative.test.cpp
+            )
+endif ()

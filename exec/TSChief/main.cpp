@@ -151,7 +151,8 @@ int main(int argc, char **argv) {
     namespace ttu = tempo::transform::univariate;
 
     // --- TRAIN
-    auto train_derive_t1 = train_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
+    auto train_derive_t1 =
+      train_dataset.transform().map_shptr<TSeries>([](TSeries const& t) { return ttu::derive(t); }, tr_d1);
     DTS train_derive_1("train", train_derive_t1);
     train_map->emplace("default", train_dataset);
     train_map->emplace(tr_d1, train_derive_1);
@@ -160,7 +161,8 @@ int main(int argc, char **argv) {
     // train_map->emplace(tr_d2, train_derive_2);
 
     // --- TEST
-    auto test_derive_t1 = test_dataset.transform().map_shptr<TSeries>(ttu::derive, tr_d1);
+    auto test_derive_t1 =
+      test_dataset.transform().map_shptr<TSeries>([](TSeries const& t) { return ttu::derive(t); }, tr_d1);
     DTS test_derive_1("test", test_derive_t1);
     test_map->emplace("default", test_dataset);
     test_map->emplace(tr_d1, test_derive_1);
@@ -201,8 +203,8 @@ int main(int argc, char **argv) {
   // Configure the splitters
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-   std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
- //    std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
+  //    std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
 
 
   std::shared_ptr<tsc::i_GenNode> node_gen;

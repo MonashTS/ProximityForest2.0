@@ -1,5 +1,8 @@
 
 #include "cli.hpp"
+#include "tempo/distance/cost_functions.hpp"
+#include <tempo/distance/tseries.univariate.hpp>
+#include <tempo/transform/tseries.univariate.hpp>
 
 std::string usage =
   "Time Series NNK Classification - demonstration application\n"
@@ -124,14 +127,14 @@ bool n_meannorm(std::vector<std::string> const& v, Config& conf) {
       // none
 
       // Do the normalisation
-      auto f = [](TSeries const& input) -> TSeries { return transform::meannorm(input); };
+      auto f = [](TSeries const& input) -> TSeries { return transform::univariate::meannorm(input); };
 
       auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_train_split.transform().map<TSeries>(f, "meannorm"));
+        (conf.loaded_train_split.transform().map<TSeries>(f, "meannorm"));
       conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
 
       auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_test_split.transform().map<TSeries>(f, "meannorm"));
+        (conf.loaded_test_split.transform().map<TSeries>(f, "meannorm"));
       conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
 
       // Record params
@@ -166,14 +169,17 @@ bool n_minmax(std::vector<std::string> const& v, Config& conf) {
       }
       if (ok) {
         // Do the normalisation
-        auto f = [=](TSeries const& input) -> TSeries { return transform::minmax(input, min_range, max_range); };
+        auto f =
+          [=](TSeries const& input) -> TSeries { return transform::univariate::minmax(input, min_range, max_range); };
 
         auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
-        (conf.loaded_train_split.transform().map<TSeries>(f, "minmax"));
+          (conf.loaded_train_split.transform().map<TSeries>(f, "minmax"));
+
         conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
 
         auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
-        (conf.loaded_test_split.transform().map<TSeries>(f, "minmax"));
+          (conf.loaded_test_split.transform().map<TSeries>(f, "minmax"));
+
         conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
 
         // Record params
@@ -199,14 +205,16 @@ bool n_unitlength(std::vector<std::string> const& v, Config& conf) {
       // none
 
       // Do the normalisation
-      auto f = [](TSeries const& input) -> TSeries { return transform::unitlength(input); };
+      auto f = [](TSeries const& input) -> TSeries { return transform::univariate::unitlength(input); };
 
       auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_train_split.transform().map<TSeries>(f, "unitlength"));
+        (conf.loaded_train_split.transform().map<TSeries>(f, "unitlength"));
+
       conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
 
       auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_test_split.transform().map<TSeries>(f, "unitlength"));
+        (conf.loaded_test_split.transform().map<TSeries>(f, "unitlength"));
+
       conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
 
       // Record params
@@ -229,15 +237,15 @@ bool n_zscore(std::vector<std::string> const& v, Config& conf) {
     if (ok) {
 
       auto train_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_train_split.transform().map<TSeries>(static_cast<TSeries(*)(TSeries const&)>(transform::zscore),
-                                                        "zscore"
-      ));
+        (conf.loaded_train_split.transform().map<TSeries>(
+          static_cast<TSeries(*)(TSeries const&)>(transform::univariate::zscore), "zscore"
+        ));
       conf.loaded_train_split = DTS(conf.loaded_train_split, train_ptr);
 
       auto test_ptr = std::make_shared<DatasetTransform<TSeries>>
-      (conf.loaded_test_split.transform().map<TSeries>(static_cast<TSeries(*)(TSeries const&)>(transform::zscore),
-                                                       "zscore"
-      ));
+        (conf.loaded_test_split.transform().map<TSeries>(
+          static_cast<TSeries(*)(TSeries const&)>(transform::univariate::zscore), "zscore"
+        ));
       conf.loaded_test_split = DTS(conf.loaded_test_split, test_ptr);
 
     }
@@ -285,6 +293,7 @@ void cmd_normalisation(std::vector<std::string> const& args, Config& conf) {
 bool t_derivative(std::vector<std::string> const& v, Config& conf) {
   using namespace std;
   using namespace tempo;
+  namespace ttu = tempo::transform::univariate;
 
   if (v[0]=="derivative") {
     bool ok = v.size()==2;
@@ -295,17 +304,17 @@ bool t_derivative(std::vector<std::string> const& v, Config& conf) {
 
         int degree = od.value();
         conf.param_derivative_degree = {degree};
+        std::string strd = "d" + std::to_string(degree);
 
-        auto train_derive_t = std::make_shared<DatasetTransform<TSeries>>(
-          std::move(tempo::transform::derive(conf.loaded_train_split.transform(), degree).back())
+        auto train_derive = conf.loaded_train_split.transform().map_shptr<TSeries>(
+          [=](TSeries const& t) { return ttu::derive(t, degree); }, strd
         );
-        conf.train_split = DTS("train", train_derive_t);
+        conf.train_split = DTS("train", train_derive);
 
-        auto test_derive_t = std::make_shared<DatasetTransform<TSeries>>(
-          std::move(tempo::transform::derive(conf.loaded_test_split.transform(), degree).back())
+        auto test_derive = conf.loaded_test_split.transform().map_shptr<TSeries>(
+          [=](TSeries const& t) { return ttu::derive(t, degree); }, strd
         );
-
-        conf.test_split = DTS("test", test_derive_t);
+        conf.test_split = DTS("test", test_derive);
       }
     }
     // Catchall
@@ -366,7 +375,7 @@ bool d_minkowski(std::vector<std::string> const& v, Config& conf) {
         double param_cf_exponent = oe.value();
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
-          return distance::minkowski(A, B, param_cf_exponent);
+          return distance::univariate::minkowski(A, B, param_cf_exponent);
         };
         // Record params
         conf.param_cf_exponent = {param_cf_exponent};
@@ -390,7 +399,7 @@ bool d_lorentzian(std::vector<std::string> const& v, Config& conf) {
       // none
       // Create the distance
       conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
-        return distance::lorentzian(A, B);
+        return distance::univariate::lorentzian(A, B);
       };
       // Record params
       // none
@@ -416,7 +425,7 @@ bool d_sbd(std::vector<std::string> const& v, Config& conf) {
       // none
       // Create the distance
       conf.dist_fun = [=](TSeries const& A, TSeries const& B, double /* ub */) -> double {
-        return distance::sbd(A, B);
+        return distance::univariate::sbd(A, B);
       };
       // Record params
       // none
@@ -448,13 +457,7 @@ bool d_dtw(std::vector<std::string> const& v, Config& conf) {
         if (ow.value()>=0) { param_window = ow.value(); }
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::dtw(
-            A.size(),
-            B.size(),
-            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
-            param_window,
-            ub
-          );
+          return distance::univariate::dtw(A, B, param_cf_exponent, param_window, ub);
         };
         // Record params
         conf.param_cf_exponent = {param_cf_exponent};
@@ -487,13 +490,7 @@ bool d_adtw(std::vector<std::string> const& v, Config& conf) {
         double param_omega = oo.value();
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::adtw(
-            A.size(),
-            B.size(),
-            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
-            param_omega,
-            ub
-          );
+          return distance::univariate::adtw(A, B, param_cf_exponent, param_omega, ub);
         };
         // Record params
         conf.param_cf_exponent = {param_cf_exponent};
@@ -526,16 +523,10 @@ bool d_wdtw(std::vector<std::string> const& v, Config& conf) {
         const auto& header_train = conf.loaded_train_split.header();
         const auto& header_test = conf.loaded_test_split.header();
         size_t length = std::max(header_train.length_max(), header_test.length_max());
-        std::vector<F> weights = distance::generate_weights(param_g, length, distance::WDTW_MAX_WEIGHT);
+        std::vector<F> weights = distance::univariate::wdtw_weights(param_g, length);
         //
         conf.dist_fun = [=, w = std::move(weights)](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::wdtw(
-            A.size(),
-            B.size(),
-            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
-            w,
-            ub
-          );
+          return distance::univariate::wdtw(A, B, param_cf_exponent, w.data(), ub);
         };
         // Record params
         conf.param_cf_exponent = param_cf_exponent;
@@ -570,15 +561,7 @@ bool d_erp(std::vector<std::string> const& v, Config& conf) {
         if (ow.value()>=0) { param_window = ow.value(); }
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::erp(
-            A.size(),
-            B.size(),
-            tempo::distance::univariate::adegv<TSeries>(param_cf_exponent)(A, param_gv),
-            tempo::distance::univariate::adegv<TSeries>(param_cf_exponent)(B, param_gv),
-            distance::univariate::ade<TSeries>(param_cf_exponent)(A, B),
-            param_window,
-            ub
-          );
+          return distance::univariate::erp(A, B, param_cf_exponent, param_gv, param_window, ub);
         };
         // Record params
         conf.param_cf_exponent = {param_cf_exponent};
@@ -613,14 +596,7 @@ bool d_lcss(std::vector<std::string> const& v, Config& conf) {
         if (ow.value()>=0) { param_window = ow.value(); }
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::lcss(
-            A.size(),
-            B.size(),
-            distance::univariate::ad1<TSeries>(A, B),
-            param_window,
-            param_epsilon,
-            ub
-          );
+          return distance::univariate::lcss(A, B, param_window, param_epsilon, ub);
         };
         // Record params
         conf.param_epsilon = param_epsilon;
@@ -649,7 +625,7 @@ bool d_msm(std::vector<std::string> const& v, Config& conf) {
         double param_c = oc.value();
         // Create the distance
         conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
-          return distance::univariate::msm<TSeries>(A, B, param_c, ub);
+          return distance::univariate::msm(A, B, param_c, ub);
         };
         // Record params
         conf.param_c = param_c;

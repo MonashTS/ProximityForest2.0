@@ -1,5 +1,5 @@
-#include "pch.h"
-#include <tempo/reader/new_reader.hpp>
+#include <tempo/reader/reader.hpp>
+#include <nlohmann/json.hpp>
 
 #include "cli.hpp"
 
@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
   using namespace tempo;
   using namespace tempo::utils;
 
-  Json::Value jv;
+  nlohmann::json jv;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Parse Arg and setup
@@ -39,11 +39,11 @@ int main(int argc, char **argv) {
       // Load the datasets
       fs::path dspath = UCRPATH/dsname;
       // Load train set
-      auto train = tempo::reader::load_dataset_ts(dspath/(dsname + "_TRAIN.ts"), "train");
+      auto train = tempo::reader::load_udataset_ts(dspath/(dsname + "_TRAIN.ts"), "train");
       if (train.index()==0) { do_exit(2, "Could not load the train set: " + std::get<0>(train)); }
       conf.loaded_train_split = std::move(std::get<1>(train));
       // Load test set
-      auto test = tempo::reader::load_dataset_ts(dspath/(dsname + "_TEST.ts"), "test",
+      auto test = tempo::reader::load_udataset_ts(dspath/(dsname + "_TEST.ts"), "test",
                                                  conf.loaded_train_split.header().label_encoder());
       if (test.index()==0) { do_exit(2, "Could not load the test set: " + std::get<0>(test)); }
       conf.loaded_test_split = std::move(std::get<1>(test));
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
       jv = conf.to_json();
       jv["status"] = "error";
       jv["status_message"] = utils::cat(errors, "; ");
-      cout << jv.toStyledString() << endl;
+      cout << to_string(jv) << endl;
       if (conf.outpath) {
         auto out = ofstream(conf.outpath.value());
         out << jv << endl;
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 
     // --- --- --- Test Accuracy
     {
-      Json::Value j;
+      nlohmann::json j;
       j["t1"] = src1+":"+std::to_string(idx1);
       j["t2"] = src2+":"+std::to_string(idx2);
       j["value"] = d;
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
 
     // --- --- --- Test Accuracy
     {
-      Json::Value j;
+      nlohmann::json j;
       j["nb_correct"] = test_nb_correct;
       j["accuracy"] = (double)test_nb_correct/(double)(test_top);
       j["time_ns"] = elapsed.count();
@@ -206,10 +206,10 @@ int main(int argc, char **argv) {
     jv["status"] = "success";
   }
 
-  cout << endl << jv.toStyledString() << endl;
+  cout << endl << jv.dump(2) << endl;
   if (conf.outpath) {
     auto out = ofstream(conf.outpath.value());
-    out << jv << endl;
+    out << jv.dump(2) << endl;
   }
 
   return 0;

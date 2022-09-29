@@ -1,7 +1,10 @@
 #pragma once
 
-#include "pch.h"
+#include <tempo/utils/utils.hpp>
 #include <tempo/utils/simplecli.hpp>
+#include <tempo/dataset/dts.hpp>
+
+#include <algorithm>
 
 extern std::string usage;
 
@@ -57,13 +60,13 @@ struct Config {
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // To Json
-  [[nodiscard]] Json::Value to_json() const {
-    Json::Value jv;
+  nlohmann::json to_json() const {
+    nlohmann::json jv;
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Params
     {
-      Json::Value j;
+      nlohmann::json j;
       j["seed"] = (long)seed;
       if (outpath) { j["outpath"] = outpath.value().string(); }
       jv["general"] = j;
@@ -75,7 +78,7 @@ struct Config {
       jv["train"] = train_split.header().to_json();
       jv["test"] = test_split.header().to_json();
       // Normalisation
-      Json::Value j;
+      nlohmann::json j;
       j["name"] = normalisation_name;
       if (norm_min_range) { j["min_range"] = norm_min_range.value(); }
       if (norm_max_range) { j["max_range"] = norm_max_range.value(); }
@@ -86,7 +89,7 @@ struct Config {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Transform
     {
-      Json::Value j;
+      nlohmann::json j;
       //
       j["name"] = transform_name;
       if (param_derivative_degree) { j["degree"] = param_derivative_degree.value(); }
@@ -97,7 +100,7 @@ struct Config {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Distance
     {
-      Json::Value j;
+      nlohmann::json j;
       //
       j["name"] = dist_name;
       if (param_window) { j["window"] = param_window.value(); }

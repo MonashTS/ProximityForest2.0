@@ -167,13 +167,13 @@ namespace pf2018::splitters {
           tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
         //
         gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
-      } else if (sname.starts_with("ADTWv1")) {
+      } else if (sname.starts_with("ADTWs1")) {
         // --- --- --- ADTWv1
         // Sample train data
         constexpr size_t SAMPLE_SIZE = 4000;
-        auto samples = tsc_nn1::ADTWv1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+        auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
         // Create distance
-        gendist.push_back(make_shared<tsc_nn1::ADTWv1Gen>(getter_tr_set, getter_cfe_set, samples));
+        gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
       } else if (sname.starts_with("DTW")&&!sname.starts_with("DTWFull")) {
         // --- --- --- DTW
         gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));

@@ -101,10 +101,10 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   };
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // ADTWv1 : sample only once the max penalty
+  // ADTWs1 : sample only once the max penalty
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  struct ADTWv1Gen : public i_GenDist {
+  struct ADTWs1Gen : public i_GenDist {
 
     static constexpr F omega_exponent = 3.0;
 
@@ -112,7 +112,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     ExponentGetter get_fce;
     std::map<std::tuple<F, std::string>, std::vector<F>> penalties;
 
-    ADTWv1Gen(TransformGetter gt, ExponentGetter get_cfe,
+    ADTWs1Gen(TransformGetter gt, ExponentGetter get_cfe,
               std::map<std::tuple<F, std::string>, std::vector<F>> penalties) :
       get_transform(std::move(gt)),
       get_fce(std::move(get_cfe)),

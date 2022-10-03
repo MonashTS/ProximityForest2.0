@@ -28,8 +28,7 @@ int main(int argc, char **argv) {
 
   // --- --- --- Randomness
   std::random_device rd;
-  size_t train_seed = rd();
-  size_t test_seed = rd();
+  size_t state_seed = rd();
   size_t tiebreak_seed = rd();
 
   // --- --- --- Prepare JSon record for output
@@ -195,8 +194,8 @@ int main(int argc, char **argv) {
   // --- --- --- STATE
   // --- --- ---
 
-  std::cout << "Train seed = " << train_seed << std::endl;
-  tsc::TreeState tstate(train_seed, 0);
+  std::cout << "State seed = " << state_seed << std::endl;
+  tsc::TreeState tstate(state_seed, 0);
 
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

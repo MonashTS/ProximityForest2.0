@@ -15,7 +15,8 @@ std::string usage =
   "  -p:<UCR path>:<dataset name>             e.g. '-p:/home/myuser/Univariate_ts:Adiac'\n"
   "  -d:<distance>\n"
   "    Lockstep:\n"
-  "    -d:modminkowski:<float e>              Modified Minkowski distance with exponent 'e'\n"
+  "    -d:da:<float e>                        Direct Alignment - like Minkowski, but can early abandoned."
+  "    -d:modminkowski:<float e>              Modified Minkowski distance with exponent 'e' - like DA, but vectorized\n"
   "                                           Does not take the e-th root of the result.\n"
   "    -d:lorentzian                          Lorentzian distance\n"
   "\n"
@@ -411,6 +412,33 @@ bool d_lorentzian(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
+/// Direct Alignment
+bool d_da(std::vector<std::string> const& v, Config& conf){
+  using namespace std;
+  using namespace tempo;
+  if (v[0]=="da") {
+    bool ok = v.size()==2;
+    if (ok) {
+      auto oe = tempo::reader::as_double(v[1]);
+      ok = oe.has_value();
+      if (ok) {
+        // Extract params
+        double param_cf_exponent = oe.value();
+        // Create the distance
+        conf.dist_fun = [=](TSeries const& A, TSeries const& B, double ub) -> double {
+          return distance::univariate::directa(A, B, param_cf_exponent, ub);
+        };
+        // Record params
+        conf.param_cf_exponent = {param_cf_exponent};
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "DA parameter error"); }
+    return true;
+  }
+  return false;
+
+}
 
 // --- --- --- Sliding
 
@@ -689,7 +717,8 @@ void cmd_dist(std::vector<std::string> const& args, Config& conf) {
   // --- --- --- --- --- ---
   // Try parsing distance argument
   // Lockstep
-  if (d_minkowski(v, conf)) {}
+  if (d_da(v, conf)) {}
+  else if (d_minkowski(v, conf)) {}
   else if (d_lorentzian(v, conf)) {}
     // Sliding
   else if (d_sbd(v, conf)) {}

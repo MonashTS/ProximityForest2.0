@@ -75,8 +75,8 @@ struct Config {
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Loaded dataset & normalisation per series
     {
-      jv["train"] = train_split.header().to_json();
-      jv["test"] = test_split.header().to_json();
+      jv["train"] = loaded_train_split.header().to_json();
+      jv["test"] = loaded_test_split.header().to_json();
       // Normalisation
       nlohmann::json j;
       j["name"] = normalisation_name;

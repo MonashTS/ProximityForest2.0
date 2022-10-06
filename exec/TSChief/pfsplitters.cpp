@@ -148,16 +148,7 @@ namespace pf2018::splitters {
       tstate.register_state<GS1NNState>(std::make_unique<GS1NNState>());
 
     // --- --- --- Getters
-    auto getter_cfe_set = make_get_vcfe(exponents);
-    auto getter_cfe_2 = make_get_cfe2();
-    auto getter_tr_def = make_get_default();
-    auto getter_tr_dr1 = make_get_derivative(1);
-    auto getter_tr_set = make_get_transform(transforms);
-    auto getter_window = make_get_window(series_max_length);
-    auto frac_stddev = make_get_frac_stddev(get_train_data);
-    auto getter_msm_cost = make_get_msm_cost();
-    auto getter_twe_nu = make_get_twe_nu();
-    auto getter_twe_lambda = make_get_twe_lambda();
+
 
 
     // --- --- --- Build distance generators
@@ -167,7 +158,17 @@ namespace pf2018::splitters {
 
     if (distances.empty()) { throw std::invalid_argument("Empty set of distances"); }
 
+    // --- --- --- PF2018
     if (*distances.begin()=="pf2018") {
+
+      auto getter_cfe_2 = make_get_cfe2();
+      auto getter_tr_def = make_get_default();
+      auto getter_tr_dr1 = make_get_derivative(1);
+      auto getter_window = make_get_window(series_max_length);
+      auto frac_stddev = make_get_frac_stddev(get_train_data);
+      auto getter_msm_cost = make_get_msm_cost();
+      auto getter_twe_nu = make_get_twe_nu();
+      auto getter_twe_lambda = make_get_twe_lambda();
 
       // default ED
       gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_def, getter_cfe_2));
@@ -198,8 +199,39 @@ namespace pf2018::splitters {
 
       // TWE
       gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
+    } else
+      // --- --- --- PF2022
+    if (*distances.begin()=="pf2022") {
+
+      auto getter_cfe_set = make_get_vcfe(exponents);
+      auto getter_tr_set = make_get_transform(transforms);
+      auto getter_window = make_get_window(series_max_length);
+      auto frac_stddev = make_get_frac_stddev(get_train_data);
+
+      // ADTWs1
+      // Sample train data
+      constexpr size_t SAMPLE_SIZE = 4000;
+      auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+      // Create distance
+      gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
+
+      // DTW
+      gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+
+      // LCSS
+      gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
 
     } else {
+
+      auto getter_cfe_set = make_get_vcfe(exponents);
+      auto getter_cfe_2 = make_get_cfe2();
+      auto getter_tr_set = make_get_transform(transforms);
+      auto getter_window = make_get_window(series_max_length);
+      auto frac_stddev = make_get_frac_stddev(get_train_data);
+      auto getter_msm_cost = make_get_msm_cost();
+      auto getter_twe_nu = make_get_twe_nu();
+      auto getter_twe_lambda = make_get_twe_lambda();
+
       for (std::string const& sname : distances) {
 
         if (sname.starts_with("DA")) {
@@ -215,7 +247,7 @@ namespace pf2018::splitters {
           gendist.push_back(
             make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
         } else if (sname.starts_with("ADTWs1")) {
-          // --- --- --- ADTWv1
+          // --- --- --- ADTWs1
           // Sample train data
           constexpr size_t SAMPLE_SIZE = 4000;
           auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
@@ -245,7 +277,6 @@ namespace pf2018::splitters {
         }
       }
     }
-
 
     // Build vector for the node generator
     std::vector<std::shared_ptr<tsc::i_GenNode>> generators;

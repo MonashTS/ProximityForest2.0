@@ -1,3 +1,5 @@
+#include <exception>
+
 #include "pfsplitters.hpp"
 
 #include "tempo/classifier/TSChief/tree.hpp"
@@ -41,6 +43,10 @@ namespace pf2018::splitters {
 
   tsc_nn1::TransformGetter make_get_transform(std::vector<std::string> tr_set) {
     return [ts = std::move(tr_set)](tsc::TreeState& s) { return tempo::utils::pick_one(ts, s.prng); };
+  }
+
+  tsc_nn1::TransformGetter make_get_default() {
+    return [](tsc::TreeState& /*s*/) { return "default"; };
   }
 
   tsc_nn1::TransformGetter make_get_derivative(size_t d) {
@@ -119,8 +125,7 @@ namespace pf2018::splitters {
   }
 
   std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(
-    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header)
-  {
+    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header) {
     return std::make_shared<tsc::sleaf::GenLeaf_PureSmoothP>(get_train_header);
   }
 
@@ -145,61 +150,102 @@ namespace pf2018::splitters {
     // --- --- --- Getters
     auto getter_cfe_set = make_get_vcfe(exponents);
     auto getter_cfe_2 = make_get_cfe2();
+    auto getter_tr_def = make_get_default();
+    auto getter_tr_dr1 = make_get_derivative(1);
     auto getter_tr_set = make_get_transform(transforms);
     auto getter_window = make_get_window(series_max_length);
     auto frac_stddev = make_get_frac_stddev(get_train_data);
+    auto getter_msm_cost = make_get_msm_cost();
+    auto getter_twe_nu = make_get_twe_nu();
+    auto getter_twe_lambda = make_get_twe_lambda();
+
 
     // --- --- --- Build distance generators
 
     // List of distance generators (this is specific to our collection of NN1 Splitter generators)
     std::vector<std::shared_ptr<tsc_nn1::i_GenDist>> gendist;
 
-    for (std::string const& sname : distances) {
+    if (distances.empty()) { throw std::invalid_argument("Empty set of distances"); }
 
-      if (sname.starts_with("DA")) {
-        // --- --- --- Direct Alignment
-        gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
-      } else if (sname.starts_with("ADTW")) {
-        // --- --- --- ADTW
-        // ADTW, with state and access to train data for sampling
-        // ADTW train - cache sampling
-        std::shared_ptr<tsc::i_GetState<tsc_nn1::ADTWGenState>> get_adtw_state =
-          tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
-        //
-        gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
-      } else if (sname.starts_with("ADTWs1")) {
-        // --- --- --- ADTWv1
-        // Sample train data
-        constexpr size_t SAMPLE_SIZE = 4000;
-        auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
-        // Create distance
-        gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
-      } else if (sname.starts_with("DTW")&&!sname.starts_with("DTWFull")) {
-        // --- --- --- DTW
-        gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
-      } else if (sname.starts_with("WDTW")) {
-        // --- --- --- WDTW
-        gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_set, getter_cfe_set, series_max_length));
-      } else if (sname.starts_with("DTWFull")) {
-        // --- --- --- DTWFull
-        gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
-      } else if (sname.starts_with("ERP")) {
-        // --- --- --- ERP
-        gendist.push_back(make_shared<tsc_nn1::ERPGen>(getter_tr_set, getter_cfe_2, frac_stddev, getter_window));
-      } else if (sname.starts_with("LCSS")) {
-        // --- --- --- LCSS
-        gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
-      } else if (sname.starts_with("MSM")) {
-        // --- --- --- MSM
-        auto getter_msm_cost = make_get_msm_cost();
-        gendist.push_back(make_shared<tsc_nn1::MSMGen>(getter_tr_set, getter_msm_cost));
-      } else if (sname.starts_with("TWE")) {
-        // --- --- --- TWE
-        auto getter_twe_nu = make_get_twe_nu();
-        auto getter_twe_lambda = make_get_twe_lambda();
-        gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_set, getter_twe_nu, getter_twe_lambda));
+    if (*distances.begin()=="pf2018") {
+
+      // default ED
+      gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_def, getter_cfe_2));
+
+      // default DTW
+      gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_def, getter_cfe_2, getter_window));
+      // derivative 1 DTW
+      gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_dr1, getter_cfe_2, getter_window));
+
+      // default DTWFull
+      gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_def, getter_cfe_2));
+      // derivative 1 DTWFull
+      gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_dr1, getter_cfe_2));
+
+      // default WDTW
+      gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_def, getter_cfe_2, series_max_length));
+      // derivative 1 WDTW
+      gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_dr1, getter_cfe_2, series_max_length));
+
+      // ERP
+      gendist.push_back(make_shared<tsc_nn1::ERPGen>(getter_tr_def, getter_cfe_2, frac_stddev, getter_window));
+
+      // LCSS
+      gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_def, frac_stddev, getter_window));
+
+      // MSM
+      gendist.push_back(make_shared<tsc_nn1::MSMGen>(getter_tr_def, getter_msm_cost));
+
+      // TWE
+      gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
+
+    } else {
+      for (std::string const& sname : distances) {
+
+        if (sname.starts_with("DA")) {
+          // --- --- --- Direct Alignment
+          gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
+        } else if (sname.starts_with("ADTW")) {
+          // --- --- --- ADTW
+          // ADTW, with state and access to train data for sampling
+          // ADTW train - cache sampling
+          std::shared_ptr<tsc::i_GetState<tsc_nn1::ADTWGenState>> get_adtw_state =
+            tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
+          //
+          gendist.push_back(
+            make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
+        } else if (sname.starts_with("ADTWs1")) {
+          // --- --- --- ADTWv1
+          // Sample train data
+          constexpr size_t SAMPLE_SIZE = 4000;
+          auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+          // Create distance
+          gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
+        } else if (sname.starts_with("DTW")&&!sname.starts_with("DTWFull")) {
+          // --- --- --- DTW
+          gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+        } else if (sname.starts_with("WDTW")) {
+          // --- --- --- WDTW
+          gendist.push_back(make_shared<tsc_nn1::WDTWGen>(getter_tr_set, getter_cfe_set, series_max_length));
+        } else if (sname.starts_with("DTWFull")) {
+          // --- --- --- DTWFull
+          gendist.push_back(make_shared<tsc_nn1::DTWFullGen>(getter_tr_set, getter_cfe_set));
+        } else if (sname.starts_with("ERP")) {
+          // --- --- --- ERP
+          gendist.push_back(make_shared<tsc_nn1::ERPGen>(getter_tr_set, getter_cfe_2, frac_stddev, getter_window));
+        } else if (sname.starts_with("LCSS")) {
+          // --- --- --- LCSS
+          gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
+        } else if (sname.starts_with("MSM")) {
+          // --- --- --- MSM
+          gendist.push_back(make_shared<tsc_nn1::MSMGen>(getter_tr_set, getter_msm_cost));
+        } else if (sname.starts_with("TWE")) {
+          // --- --- --- TWE
+          gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_set, getter_twe_nu, getter_twe_lambda));
+        }
       }
     }
+
 
     // Build vector for the node generator
     std::vector<std::shared_ptr<tsc::i_GenNode>> generators;

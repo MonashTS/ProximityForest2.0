@@ -38,6 +38,9 @@ namespace pf2018::splitters {
   /// Give a set of transform names to uniformly choose from
   tsc_nn1::TransformGetter make_get_transform(std::vector<std::string> tr_set);
 
+  /// Get the transform "default"
+  tsc_nn1::TransformGetter make_get_default();
+
   /// Get the transform "derivative<d>" where "<d>" is the degree, e.g. "derivative1"
   tsc_nn1::TransformGetter make_get_derivative(size_t d);
 

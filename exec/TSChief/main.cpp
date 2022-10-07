@@ -275,6 +275,12 @@ int main(int argc, char **argv) {
   size_t nb_correct = result.nb_correct_01loss(test_header, IndexSet(test_header.size()), prng);
   double accuracy = (double)nb_correct/(double)test_header.size();
 
+  if(opt.prob_output){
+    arma::field<std::string> header(test_header.nb_classes());
+    for(size_t i=0; i<test_header.nb_classes(); ++i){ header(i) = test_header.decode(i); }
+    result.probabilities.save(arma::csv_name(opt.prob_output.value(), header));
+  }
+
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Generate output and exit

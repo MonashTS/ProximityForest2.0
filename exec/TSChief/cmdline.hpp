@@ -29,6 +29,7 @@ struct cmdopt {
   int nb_threads;
   std::string pfconfig;
   std::optional<fs::path> output;
+  std::optional<fs::path> prob_output;
 };
 
 std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv);

@@ -44,6 +44,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
 
     // --- Output
     TCLAP::ValueArg<string> out("o", "out", "path to output json file", false, "", "string", cmd);
+    TCLAP::ValueArg<string> probout("", "probout", "path to output csv file for result", false, "", "string", cmd);
 
     // --- --- --- Parse the argv array.
     cmd.parse(argc, argv);
@@ -103,6 +104,7 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
     opt.nb_candidates = nbc.getValue();
     opt.nb_threads = nbp.getValue()<=0 ? std::thread::hardware_concurrency() : nbp.getValue();
     if(out.isSet()){ opt.output = {out.getValue()}; }
+    if(probout.isSet()){ opt.prob_output = {probout.getValue()}; }
 
     return {opt};
 

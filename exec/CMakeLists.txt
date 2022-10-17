@@ -6,5 +6,5 @@ add_subdirectory(nn1)
 
 # add_subdirectory(distance_loocv)
 # add_subdirectory(nnkgridsearch)
-# add_subdirectory(scratch)
+add_subdirectory(scratch)
 # add_subdirectory(UCRInfo)

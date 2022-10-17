@@ -1,60 +1,50 @@
 #pragma once
 
 #include <functional>
+#include <tempo/dataset/dts.hpp>
 
-#include <tempo/utils/utils.hpp>
-#include <tempo/dataset/dataset.hpp>
-#include "tempo/distance/helpers.hpp"
+namespace tempo::classifier::nn1loocv {
 
-namespace tempo::classifier::loocv::partable {
+  /// Given a query, a candidate, and a parameter index, compute the distance between the query and the candidate.
+  /// Can be early abandoned with 'bsf' (best so far)
+  using dist_ft = std::function<F(size_t query_idx, size_t candidate_idx, size_t param_idx, F bsf)>;
 
-  /// Type of functions used to compute a distance between two time series while performing LOOCV.
-  /// The function is indexed by a "parameter index" in the range [0, nb_params[ (see loocv_incparams below).
-  /// It must internalise these parameters.
-  /// @param pindex       Index parameter in the [0, nb_params[ range
-  /// @param query        Index of the query in the train set
-  /// @param candidate    Index of the candidate in the train set
-  /// @param ub           Upper bound on the process (such as the distance of the 'best so far')
-  using distance_fun_t = std::function<tempo::F(size_t pindex, size_t query_idx, size_t candidate_idx, tempo::F ub)>;
+  /// Same as above, but must produce an Upper Bound (UB) of the distance.
+  /// For elastic distances using a cost matrix, this is usually done by taking the diagonal of the cost matrix,
+  /// i.e. a form of direct alignment (eventually completed along the last line/column for disparate lengths)
+  using distUB_ft = std::function<F(size_t query_idx, size_t candidate_idx, size_t param_idx)>;
 
-  /// Type of functions used to compute an upper bound of a distance between two time series.
-  /// The function is indexed by a "parameter index" in the range [0, nb_params[ (see loocv_incparams below).
-  /// It must internalise these parameters.
-  /// @param pindex       Index parameter in the [0, nb_params[ range (see loocv_incparams below)
-  /// @param query        Index of the query in the train set
-  /// @param candidate    Index of the candidate in the train set
-  using upperbound_fun_t = std::function<FloatType(size_t pindex, size_t query_idx, size_t candidate_idx)>;
+  /// Nearest Neighbour Cell
+  /// A cell of our table, with its own mutex
+  struct NNC {
+    std::mutex mutex{};   // Lock/unlock for multithreading
+    size_t NNindex{};     // Index of the NN
+    F NNdistance{};       // Distance to the NN
+  };
 
-
-  /** Search for the best parameter through LOOCV through parameters leading to increasing costs.
-   * @param  nb_params      Number of parameters.
-   *                        It is understood that the distance and UB functions find the current parameter value
-   *                        by indexing in an array 'params' of parameter from 0 to nb_params-1, ordered such that
-   *                            params[0] is a LB for params[1] ... for params[last]
-   *                            i.e. for two time series A and B and a distance 'dist', we must have
-   *                            dist(A, B, p[0]) <= dist(A, B, p[1]) ... <= dist(A, B, p[n])
-   *                            In turns, params[last] is an upper bound for params[last-1] ... for p[0]
-   *                        When searching over several parameters, such an ordering may not be possible.
-   *                        However, it may be recovered after fixing one parameter.
-   *                        In this case, simply call this function several time, searching over the unfixed parameters.
-   * @param train_header    Header of the used train set
-   * @param distance        How to compute a distance between two series, given a parameter index
-   * @param upper_bound     How to compute an upper bound between two series, given a parameter index
-   * @param nb_threads      The number of thread to use
-   * @return (vector of best parameters' index, bestError)
-   */
-  std::tuple<std::vector<size_t>, size_t> loocv_incparams(
-    size_t                        nb_params,
-    tempo::DatasetHeader const&   train_header,
-    distance_fun_t                distance,
-    upperbound_fun_t              upper_bound,
-    size_t                        nb_threads
+  /// Search for the best parameter through LOOCV
+  /// @param distance A distance computation function of type 'dist_fb'.
+  ///     Must capture the series, the actual distance, and the parameters, so that it can be called with indexes.
+  /// @param distanceUB Simular as above, of type 'distUB_fb', producing an upper bound.
+  /// @param nbtrain Number of train exemplars: the distances will be call with distance(i, j, p) with
+  ///     0<=i<nbtrain, 0<=j<nbtrain, i!=j, and p a parameter index
+  /// @param nbparams Number of parameters
+  ///     It is assumed that the distance functions capture a mapping of parameter N->Internal Parameter,
+  ///     usually with a vector of parameter p, with 0 <= n:N < nbparams.
+  ///     It is assumed that the parameter are ordered such that the distance computed with p[0] is a LB for p[1], etc:
+  ///         dist(a, b, 0) <= dist(a, b, 1) ... <= dist(a, b, n-1)
+  ///     In turns, p[last] produces an upper bound for p[last-1] ... etc ... for p[0]
+  /// @param nbthreads parallelize the process on nbthreads -
+  ///     Note that if nbthreads<2, this is not the best method as we spend time taking/realising mutexes!
+  /// @return (vector of best parameters' index, bestError)
+  std::tuple<std::vector<size_t>, size_t> spEEdy_LOOCV_threaded(
+    dist_ft distance,
+    distUB_ft distanceUB,
+    DatasetHeader const& train_header,
+    size_t nbparams,
+    size_t nbthreads
   );
 
- // std::tuple<std::vector<size_t>, size_t>
 
 
-
-
-} // End of namespace tempo::classifier::loocv_incparams::partable
-
+}

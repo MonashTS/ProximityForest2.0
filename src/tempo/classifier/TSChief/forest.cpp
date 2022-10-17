@@ -22,7 +22,7 @@ namespace tempo::classifier::TSChief {
     };
 
     tempo::utils::ParTasks p;
-    for (size_t i = 0; i<nb_trees; ++i) { p.push_task(test_task, i); }
+    for (size_t i = 0; i<nb_trees; ++i) { p.push_task_args(test_task, i); }
     p.execute(nb_threads);
 
     // --- Merge states
@@ -75,7 +75,7 @@ namespace tempo::classifier::TSChief {
     };
 
     tempo::utils::ParTasks p;
-    for (size_t i = 0; i<nb_trees; ++i) { p.push_task(test_task, i); }
+    for (size_t i = 0; i<nb_trees; ++i) { p.push_task_args(test_task, i); }
     p.execute(nb_threads);
 
     // --- Merge states

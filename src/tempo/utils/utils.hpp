@@ -242,7 +242,7 @@ namespace tempo::utils {
 
     /// Template version
     template<class F, class... Args>
-    void push_task(F&& f, Args&& ... args) {
+    void push_task_args(F&& f, Args&& ... args) {
       tasklist.emplace(std::move(std::bind(std::forward<F>(f), std::forward<Args...>(args...))));
     }
 

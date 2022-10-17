@@ -11,6 +11,7 @@ target_sources(libtempo
         elastic/erp.hpp
         elastic/lcss.hpp
         elastic/msm.hpp
+        elastic/softdtw.hpp
         elastic/twe.hpp
         elastic/wdtw.hpp
         # Lock Step

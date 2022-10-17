@@ -37,7 +37,7 @@ namespace tempo::classifier::nn1loocv {
   /// @param nbthreads parallelize the process on nbthreads -
   ///     Note that if nbthreads<2, this is not the best method as we spend time taking/realising mutexes!
   /// @return (vector of best parameters' index, bestError)
-  std::tuple<std::vector<size_t>, size_t> spEEdy_LOOCV_threaded(
+  std::tuple<std::vector<size_t>, size_t> partable(
     dist_ft distance,
     distUB_ft distanceUB,
     DatasetHeader const& train_header,

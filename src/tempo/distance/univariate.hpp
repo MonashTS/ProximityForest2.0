@@ -1,7 +1,8 @@
 #pragma once
 
-#include <vector>
 #include "utils.hpp"
+#include <armadillo>
+#include <vector>
 
 namespace tempo::distance::univariate {
 

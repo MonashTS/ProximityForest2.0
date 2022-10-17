@@ -125,27 +125,6 @@ namespace tempo::utils {
   void inline should_not_happen(std::string msg) { throw std::logic_error("Should not happen: " + msg); }
 
 
-
-
-
-// --- --- --- --- --- ---
-  // --- Initialisation tool
-  // --- --- --- --- --- ---
-
-  namespace initBlock_detail {
-    struct tag {};
-
-    template<class F>
-    decltype(auto) operator +(tag, F&& f) {
-      return std::forward<F>(f)();
-    }
-  }
-
-#define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
-
-#define initBlockStatic initBlock_detail::tag{} + []() -> decltype(auto)
-
-
   // --- --- --- --- --- ---
   // --- Capsule
   // --- --- --- --- --- ---

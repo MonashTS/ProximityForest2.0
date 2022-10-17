@@ -4,7 +4,7 @@
 
 namespace tempo::classifier::nn1loocv {
 
-  std::tuple<std::vector<size_t>, size_t> spEEdy_LOOCV_threaded(
+  std::tuple<std::vector<size_t>, size_t> partable(
     dist_ft distance,
     distUB_ft distanceUB,
     DatasetHeader const& train_header,

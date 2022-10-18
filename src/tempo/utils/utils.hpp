@@ -266,6 +266,9 @@ namespace tempo::utils {
 
     /// Print progress
     void print_progress(std::ostream& out, size_t nbdone);
+
+    /// Print progress - do nothing on nullptr
+    void print_progress(std::ostream *out, size_t nbdone);
   };
 
 }

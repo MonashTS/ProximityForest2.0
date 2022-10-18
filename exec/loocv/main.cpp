@@ -1,21 +1,23 @@
-#include <string>
-#include <vector>
+#include "iloocv_adtw.cpp"
+#include "iloocv_dtw.cpp"
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/utils/utils/stats.hpp>
 #include <tempo/utils/readingtools.hpp>
 #include <tempo/reader/reader.hpp>
 #include <tempo/transform/tseries.univariate.hpp>
-#include <tempo/distance/tseries.univariate.hpp>
 #include <tempo/dataset/dts.hpp>
 #include <tempo/classifier/loocv/partable/partable.hpp>
 
 #include <nlohmann/json.hpp>
 
+#include <string>
+#include <vector>
+
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg = {}) {
   if (msg) { std::cerr << msg.value() << std::endl; }
   exit(code);
 }
+
 
 int main(int argc, char **argv) {
 
@@ -54,14 +56,12 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Prepare result
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
   nlohmann::json jv;
   std::ofstream outfile(outpath);
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Load the datasets
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
   tempo::DTS raw_train;
   tempo::DTS raw_test;
   {
@@ -121,257 +121,83 @@ int main(int argc, char **argv) {
       std::cout << to_string(jv) << std::endl;
       outfile << jv << std::endl;
     }
-  } // End of Sanity Check
+  }
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Check the transform
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   tempo::DTS train = raw_train;
   tempo::DTS test = raw_test;
+  {
+    auto derive = [](tempo::TSeries const& ts) { return tempo::transform::univariate::derive(ts); };
 
-  auto derive = [](tempo::TSeries const& ts) { return tempo::transform::univariate::derive(ts); };
-
-  if (transform=="derivative") {
-    {
-      auto train_d = raw_train.transform().map_shptr<tempo::TSeries>(derive, transform);
-      train = tempo::DTS("train", train_d);
+    if (transform=="derivative") {
+      {
+        auto train_d = raw_train.transform().map_shptr<tempo::TSeries>(derive, transform);
+        train = tempo::DTS("train", train_d);
+      }
+      {
+        auto test_d = raw_test.transform().map_shptr<tempo::TSeries>(derive, transform);
+        test = tempo::DTS("test", test_d);
+      }
+    } else if (transform=="raw") {
+      //
+    } else {
+      do_exit(1, "Wrong transform name");
     }
-    {
-      auto test_d = raw_test.transform().map_shptr<tempo::TSeries>(derive, transform);
-      test = tempo::DTS("test", test_d);
-    }
-  } else if (transform=="raw") {
-    //
-  } else {
-    do_exit(1, "Wrong transform name");
   }
-
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Prepare the distances/argument range (EE style)
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
   std::random_device rd;
   tempo::PRNG prng(rd());
-
-  using testfun = std::function<double(tempo::TSeries const& a, tempo::TSeries const& b, double bsf)>;
-  testfun distance_test_fun;
+  std::shared_ptr<tempo::classifier::nn1loocv::i_LOOCVDist> iloocv;
+  std::function<nlohmann::json(void)> distance_json;
 
   if (distance_name=="ADTW") {
-    const size_t SAMPLE_SIZE = 4000;
-    const double omega_exp = 5;
-
-    // --- --- --- Sampling
-    tempo::utils::StddevWelford welford;
-    std::uniform_int_distribution<> distrib(0, (int)train_size - 1);
-    for (size_t i = 0; i<SAMPLE_SIZE; ++i) {
-      const auto& q = train[distrib(prng)];
-      const auto& s = train[distrib(prng)];
-      const double cost = tempo::distance::univariate::directa(q, s, cfe, tempo::utils::PINF);
-      welford.update(cost);
-    }
-    // State updated here through mutable reference
-    const double sampled_mean_dist = welford.get_mean();
-
-    // --- --- --- Generate parameters
-    using PType = std::tuple<size_t, double>;    // i, omega
-    auto params = std::make_shared<std::vector<PType>>();
-    // 0-98 : sampling
-    for (size_t i = 0; i<99; ++i) {
-      const double r = std::pow((double)i/100.0, omega_exp);
-      const double omega = r*sampled_mean_dist;
-      params->emplace_back(std::tuple{i, omega});
-    }
-    // 99: PINF
-    params->emplace_back(std::tuple{99, tempo::utils::PINF});
-
-
-    // --- --- --- Build data for LOOCV
-    tempo::classifier::nn1loocv::dist_ft distance;
-    distance = [params, cfe, &train](size_t query_idx, size_t candidate_idx, size_t param_idx, double bsf) -> double {
-      const double penalty = std::get<1>(params->at(param_idx));
-      return tempo::distance::univariate::adtw(train[query_idx], train[candidate_idx], cfe, penalty, bsf);
-    };
-
-    tempo::classifier::nn1loocv::distUB_ft distanceUB;
-    distanceUB = [cfe, &train](size_t query_idx, size_t candidate_idx, size_t param_idx) -> double {
-      return tempo::distance::univariate::directa(train[query_idx], train[candidate_idx], cfe, tempo::utils::PINF);
-    };
-
-    size_t nbparams = params->size();
-
-    // --- Exec LOOCV
-    tempo::utils::duration_t loocv_time;
-    auto start = tempo::utils::now();
-    auto [loocv_params, loocv_nbcorrect] =
-      tempo::classifier::nn1loocv::partable(distance, distanceUB, train_header, nbparams, nbthreads);
-    loocv_time = tempo::utils::now() - start;
-
-    double train_accuracy = (double)loocv_nbcorrect/(double)train_size;
-
-    // --- --- ---
-    // Prepare JSON output
-    {
-      nlohmann::json j_loocv;
-      j_loocv["timing_ns"] = loocv_time.count();
-      j_loocv["timing_human"] = tempo::utils::as_string(loocv_time);
-      j_loocv["nb_correct"] = loocv_nbcorrect;
-      j_loocv["accuracy"] = train_accuracy;
-      jv["loocv_results"] = j_loocv;
-    }
-
-
-    // --- --- --- Get penalty
-    {
-      // All best parameters have the same accuracy
-      std::cout << dataset_name
-                << " Best parameter(s): " << loocv_nbcorrect << "/" << train_size
-                << " = " << train_accuracy << std::endl;
-
-      // Report all the best in order - extract r and omega for json report
-      // Note: sort on tuples, where first component is size_t
-      std::sort(loocv_params.begin(), loocv_params.end());
-      std::vector<size_t> all_index;
-      std::vector<double> all_omega;
-      double median_penalty;
-      for (const auto& pi : loocv_params) {
-        auto [i, omega] = params->at(pi);
-        all_index.push_back(i);
-        all_omega.push_back(omega);
-        std::cout << "parameter " << i << " penalty = " << omega << std::endl;
-      }
-
-      // Pick the median as "the best"
-      {
-        auto size = loocv_params.size();
-        if (size%2==0) { // Median "without a middle" = average
-          const double omega1 = std::get<1>(params->at(loocv_params[size/2 - 1]));
-          const double omega2 = std::get<1>(params->at(loocv_params[size/2]));
-          median_penalty = (omega1 + omega2)/2.0;
-        } else { // Median "middle"
-          median_penalty = std::get<1>(params->at(loocv_params[size/2]));
-        }
-      }
-
-      std::cout << dataset_name << " Pick median penalty = " << median_penalty << std::endl;
-
-      // Warning: must copy microcontext as we exit the current lexical block before using this function
-      distance_test_fun = [=](tempo::TSeries const& query, tempo::TSeries const& candidate, double bsf) -> double {
-        return tempo::distance::univariate::adtw(query, candidate, cfe, median_penalty, bsf);
-      };
-
-      {
-        nlohmann::json j;
-        j["name"] = "adtw";
-        j["sample_size"] = SAMPLE_SIZE;
-        j["sample_value"] = sampled_mean_dist;
-        j["penalty_exponent"] = omega_exp;
-        j["param_indexes"] = tempo::utils::to_json(all_index);
-        j["penalties"] = tempo::utils::to_json(all_omega);
-        j["median_penalty"] = median_penalty;
-        j["cost_function_exponent"] = cfe;
-        jv["distance"] = j;
-      }
-
-    } // End of get penalty
-
-  } // END OF ADTW
-
-
-
-  /*
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Do LOOCV
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  assert(distance.operator bool());
-  assert(UBdistance.operator bool());
-  assert(nbparams != -1);
-   */
-
-
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Test Accuracy
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-  size_t test_nb_correct = 0;
-  tempo::utils::duration_t test_time{0};
-  {
-    // --- --- ---
-    // Progress reporting
-    tempo::utils::ProgressMonitor pm(test_size);    // How many to do, both train and test accuracy
-    size_t nb_done = 0;                             // How many done up to "now"
-
-    // --- --- ---
-    // Accuracy variables
-    // Multithreading control
-    tempo::utils::ParTasks ptasks;
-    std::mutex mutex;
-
-    auto nn1_test_task = [&](size_t test_idx) mutable {
-      // --- Test exemplar
-      tempo::TSeries const& self = test[test_idx];
-      // --- 1NN bests with tie management
-      double bsf = tempo::utils::PINF;
-      std::set<tempo::EL> labels{};
-      // --- 1NN Loop
-      for (size_t train_idx{0}; train_idx<train_size; train_idx++) {
-        tempo::TSeries const& candidate = train[train_idx];
-        double d = distance_test_fun(self, candidate, bsf);
-        if (d<bsf) { // Best: clear labels and insert new
-          labels.clear();
-          labels.insert(train_header.label(train_idx).value());
-          bsf = d;
-        } else if (d==bsf) { // Same: add label in
-          labels.insert(train_header.label(train_idx).value());
-        }
-      }
-      // --- Update accuracy
-      {
-        std::lock_guard lock(mutex);
-        tempo::EL result = -1;
-        std::sample(labels.begin(), labels.end(), &result, 1, prng);
-        assert(0<=result&&result<train_header.nb_classes());
-        if (result==test_header.label(test_idx).value()) { ++test_nb_correct; }
-        nb_done++;
-        pm.print_progress(std::cout, nb_done);
-      }
-    };
-
-    // Create the tasks per tree. Note that we clone the state.
-    tempo::utils::ParTasks p;
-    auto test_start = tempo::utils::now();
-    p.execute(nbthreads, nn1_test_task, 0, test_size, 1);
-    test_time = tempo::utils::now() - test_start;
+    auto adtw = std::make_shared<ADTW>(train, test, cfe, prng);
+    iloocv = adtw;
+    distance_json = [adtw]() { return adtw->to_json(); };
+  }
+  else if (distance_name == "DTW"){
+    auto dtw = std::make_shared<DTW>(train, test, cfe);
+    iloocv = dtw;
+    distance_json = [dtw]() { return dtw->to_json(); };
+  }
+  else {
+    do_exit(2, "Unknown distance " + distance_name);
   }
 
-  // --- Generate results
-  double test_accuracy = ((double)test_nb_correct)/(double)test_size;
-  std::cout << std::endl;
-  std::cout << dataset_name << " NN1 test result: " << test_nb_correct << "/" << test_size << " = " << test_accuracy
-            << "  (" << tempo::utils::as_string(test_time) << ")" << std::endl;
 
-
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Run LOOCV and test
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  tempo::classifier::nn1loocv::partable(
+    *iloocv, train_size, train.header(), test_size, test.header(), prng, nbthreads, &std::cout
+  );
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- Output
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
   jv["status"] = "success";
-
-  {
-    nlohmann::json j;
-    j["nb_correct"] = test_nb_correct;
-    j["accuracy"] = test_accuracy;
-    j["timing_ns"] = test_time.count();
-    j["timing_human"] = tempo::utils::as_string(test_time);
-    jv["test_results"] = j;
-  }
+  jv["distance"] = distance_json();
+  jv["loocv_train"] = iloocv->result_train.to_json();
+  jv["loocv_test"] = iloocv->result_test.to_json();
 
   std::cout << dataset_name << " output to " << outpath << std::endl;
-
   std::cout << jv.dump(2) << std::endl;
   outfile << jv << std::endl;
+
+  std::cout << std::endl;
+
+  std::cout << dataset_name << " LOOCV result: "
+            << iloocv->result_train.nb_correct << "/" << train_size << " = " << iloocv->result_train.accuracy
+            << "  (" << tempo::utils::as_string(iloocv->result_train.time) << ")" << std::endl;
+
+  std::cout << dataset_name << " NN1 test result: "
+            << iloocv->result_test.nb_correct << "/" << test_size << " = " << iloocv->result_test.accuracy
+            << "  (" << tempo::utils::as_string(iloocv->result_test.time) << ")" << std::endl;
 
   return 0;
 }

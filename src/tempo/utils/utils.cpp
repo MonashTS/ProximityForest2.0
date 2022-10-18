@@ -248,4 +248,9 @@ namespace tempo::utils {
       }
     }
   }
+
+  void ProgressMonitor::print_progress(std::ostream* out, size_t nbdone) {
+    if(out!=nullptr){ print_progress(*out, nbdone); }
+  }
+
 }

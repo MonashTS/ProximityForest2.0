@@ -57,47 +57,28 @@ std::variant<std::string, cmdopt> parse_cmd(int argc, char **argv) {
     // --- Input
     if (ucr.isSet()) {
       // --- --- --- UCR
-      read_ucr ru{};
+      trd::ts_ucr ru{};
       if (remainder.size()<2) { return {"Expects ucr <path to ucr> <ucr dataset name>"}; }
       ru.ucr_dir = fs::path(remainder[0]);
       ru.name = remainder[1];
       remainder.erase(remainder.begin(), remainder.begin()+1);
-      // --- --- ---
-      ru.train = ru.ucr_dir/ru.name/(ru.name + "_TRAIN.ts");
-      ru.test = ru.ucr_dir/ru.name/(ru.name + "_TEST.ts");
-      if (!fs::exists(ru.train)) { return {"UCR Train file " + ru.train.string() + " not found."}; }
-      if (!fs::exists(ru.test)) { return {"UCR Test file " + ru.test.string() + " not found."}; }
       opt.input = {ru};
     } else {
       // --- --- --- CSV
       assert(csv.isSet());
-      read_csv rc{};
+      trd::csv rc{};
       if (remainder.size()<3) { return {"Expects csv <train path> <test path> <dataset name>"}; }
-      rc.train = fs::path(remainder[0]);
-      rc.test = fs::path(remainder[1]);
-      rc.name = fs::path(remainder[2]);
+      rc.path_to_train = fs::path(remainder[0]);
+      rc.path_to_test = fs::path(remainder[1]);
+      rc.dataset_name = fs::path(remainder[2]);
       remainder.erase(remainder.begin(), remainder.begin()+3);
-      rc.skip_header = csv_skip.getValue();
-      rc.sep = csv_sep.getValue().at(0);
-      // --- --- ---
-      if (!fs::exists(rc.train)) { return {"CSV Train file " + rc.train.string() + " not found."}; }
-      if (!fs::exists(rc.test)) { return {"CSV Test file " + rc.test.string() + " not found."}; }
+      rc.csv_skip_header = csv_skip.getValue();
+      rc.csv_separator = csv_sep.getValue().at(0);
       opt.input = {rc};
     }
 
     // --- PF Config
     opt.pfconfig = pfconfig.getValue();
-
-    /*
-    set<string> allowed{"pf2018"};
-    if (!allowed.contains(opt.pfconfig)) {
-      regex r(":");
-      auto const& str = opt.pfconfig;
-      vector<string> split(sregex_token_iterator(str.begin(), str.end(), r, -1), sregex_token_iterator());
-      if(split[0]=="custom"){ return {"custom not implemented"}; }
-      else { return {"Unrecognized configuration '" + str + "'"}; }
-    }
-     */
 
     // --- Other options
     opt.nb_trees = nbt.getValue();

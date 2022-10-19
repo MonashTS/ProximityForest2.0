@@ -14,14 +14,11 @@ namespace tempo::reader {
   /// Read a TS file - univariate only
   /// Can use an existing label encoder.
   /// TODO: fix reader for multivariate, it is broken
-  std::variant<std::string, DTS>
-  load_udataset_ts(
+  std::variant<std::string, DTS> load_udataset_ts(
     std::filesystem::path const& path,
     std::string const& split_name,
     LabelEncoder const& encoder = {}
   );
-
-
 
   /// Read a csv file - univariate series
   /// Can use an existing label encoder.

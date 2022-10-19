@@ -1,29 +1,17 @@
 #pragma once
 
+#include <tempo/reader/dts.reader.hpp>
+
 #include <string>
 #include <optional>
 #include <variant>
 
 #include <filesystem>
 namespace fs = std::filesystem;
-
-struct read_csv {
-  fs::path train;
-  fs::path test;
-  std::string name;
-  bool skip_header;
-  char sep;
-};
-
-struct read_ucr {
-  fs::path ucr_dir;
-  std::string name;
-  fs::path train;
-  fs::path test;
-};
+namespace trd = tempo::reader::dataset;
 
 struct cmdopt {
-  std::variant<read_ucr, read_csv> input;
+  std::variant<trd::ts_ucr, trd::csv> input;
   size_t nb_trees;
   size_t nb_candidates;
   int nb_threads;

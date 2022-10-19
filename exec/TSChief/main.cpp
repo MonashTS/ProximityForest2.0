@@ -2,7 +2,8 @@
 #include <regex>
 
 #include <tempo/utils/readingtools.hpp>
-#include <tempo/reader/reader.hpp>
+#include <tempo/dataset/dts.hpp>
+#include <tempo/reader/dts.reader.hpp>
 #include <tempo/transform/tseries.univariate.hpp>
 #include <tempo/classifier/TSChief/forest.hpp>
 
@@ -54,63 +55,27 @@ int main(int argc, char **argv) {
   // Read dataset
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  // --- --- --- Load UCR train and test dataset
   DTS train_dataset;
   DTS test_dataset;
   {
-    auto start = utils::now();
+    using namespace tempo::reader::dataset;
+    Result read_dataset_result;
+    read_dataset_result = load(opt.input);
 
-    if (opt.input.index()==0) {
-      read_ucr ru = std::get<0>(opt.input);
-      // --- --- --- Read train
-      auto variant_train = tempo::reader::load_udataset_ts(ru.train, "train");
-      if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
-      else { do_exit(1, {"Could not read train set '" + ru.train.string() + "': " + std::get<0>(variant_train)}); }
-      // --- --- --- Read test
-      auto variant_test = tempo::reader::load_udataset_ts(ru.test, "test");
-      if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
-      else { do_exit(1, {"Could not read train set '" + ru.test.string() + "': " + std::get<0>(variant_test)}); }
-    } else if (opt.input.index()==1) {
-      read_csv rc = std::get<1>(opt.input);
-      // --- --- --- Read train
-      auto variant_train = tempo::reader::load_udataset_csv(rc.train, rc.name, "train", {}, rc.skip_header, rc.sep);
-      if (variant_train.index()==1) { train_dataset = std::get<1>(variant_train); }
-      else { do_exit(1, {"Could not read train set '" + rc.train.string() + "': " + std::get<0>(variant_train)}); }
-      // --- --- --- Read test
-      auto variant_test = tempo::reader::load_udataset_csv(rc.test, rc.name, "test", {}, rc.skip_header, rc.sep);
-      if (variant_test.index()==1) { test_dataset = std::get<1>(variant_test); }
-      else { do_exit(1, {"Could not read test set '" + rc.test.string() + "': " + std::get<0>(variant_test)}); }
-    } else { tempo::utils::should_not_happen(); }
+    if(read_dataset_result.index()==0) { do_exit(1, std::get<0>(read_dataset_result)); }
+    TrainTest traintest = std::get<1>(std::move(read_dataset_result));
+    train_dataset = traintest.train_dataset;
+    test_dataset = traintest.test_dataset;
 
-    auto delta = utils::now() - start;
     nlohmann::json dataset;
     dataset["train"] = train_dataset.header().to_json();
     dataset["test"] = test_dataset.header().to_json();
-    dataset["load_time_ns"] = delta.count();
-    dataset["load_time_str"] = utils::as_string(delta);
+    dataset["load_time_ns"] = traintest.load_time.count();
+    dataset["load_time_str"] = utils::as_string(traintest.load_time);
     jv["dataset"] = dataset;
-  } // End of dataset loading
 
-  DatasetHeader const& train_header = train_dataset.header();
-  DatasetHeader const& test_header = test_dataset.header();
-
-  auto [train_bcm, train_bcm_remains] = train_dataset.get_BCM();
-
-  // --- --- --- Sanity check
-  {
-    std::vector<std::string> errors = {};
-
-    if (!train_bcm_remains.empty()) {
-      errors.emplace_back("Could not take the By Class Map for all train exemplar (exemplar without label)");
-    }
-
-    if (train_header.variable_length()||train_header.has_missing_value()) {
-      errors.emplace_back("Train set: variable length or missing data");
-    }
-
-    if (test_header.has_missing_value()||test_header.variable_length()) {
-      errors.emplace_back("Test set: variable length or missing data");
-    }
+    // --- --- --- Sanity check
+    std::vector<std::string> errors = sanity_check(traintest);
 
     if (!errors.empty()) {
       jv["status"] = "error";
@@ -122,14 +87,15 @@ int main(int argc, char **argv) {
       }
       exit(1);
     }
+  } // End of dataset loading
 
-  } // End of Sanity Check
-
+  DatasetHeader const& train_header = train_dataset.header();
+  DatasetHeader const& test_header = test_dataset.header();
+  auto [train_bcm, train_bcm_remains] = train_dataset.get_BCM();
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Prepare data and state for the PF configuration
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
 
   // --- --- ---
   // --- --- --- Constants & configurations
@@ -169,6 +135,7 @@ int main(int argc, char **argv) {
     // DTS test_derive_2("test", test_derive_t2);
     // test_map->emplace(tr_d2, test_derive_2);
   }
+
 
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
@@ -275,9 +242,9 @@ int main(int argc, char **argv) {
   size_t nb_correct = result.nb_correct_01loss(test_header, IndexSet(test_header.size()), prng);
   double accuracy = (double)nb_correct/(double)test_header.size();
 
-  if(opt.prob_output){
+  if (opt.prob_output) {
     arma::field<std::string> header(test_header.nb_classes());
-    for(size_t i=0; i<test_header.nb_classes(); ++i){ header(i) = test_header.decode(i); }
+    for (size_t i = 0; i<test_header.nb_classes(); ++i) { header(i) = test_header.decode(i); }
     result.probabilities.save(arma::csv_name(opt.prob_output.value(), header));
   }
 

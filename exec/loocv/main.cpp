@@ -3,9 +3,9 @@
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/utils/readingtools.hpp>
-#include <tempo/reader/reader.hpp>
-#include <tempo/transform/tseries.univariate.hpp>
 #include <tempo/dataset/dts.hpp>
+#include <tempo/reader/dts.reader.hpp>
+#include <tempo/transform/tseries.univariate.hpp>
 #include <tempo/classifier/loocv/partable/partable.hpp>
 
 #include <nlohmann/json.hpp>
@@ -17,7 +17,6 @@
   if (msg) { std::cerr << msg.value() << std::endl; }
   exit(code);
 }
-
 
 int main(int argc, char **argv) {
 
@@ -59,69 +58,47 @@ int main(int argc, char **argv) {
   nlohmann::json jv;
   std::ofstream outfile(outpath);
 
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Load the datasets
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+  // Read dataset
+  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   tempo::DTS raw_train;
   tempo::DTS raw_test;
   {
-    auto start = tempo::utils::now();
+    using namespace tempo::reader::dataset;
+    Result read_dataset_result;
+    ts_ucr conf;
+    conf.ucr_dir = path_ucr;
+    conf.name = dataset_name;
 
-    auto trainpath = path_ucr/dataset_name/(dataset_name + "_TRAIN.ts");
-    auto testpath = path_ucr/dataset_name/(dataset_name + "_TEST.ts");
+    read_dataset_result = load({conf});
 
-    // --- --- --- Read train
-    auto variant_train = tempo::reader::load_udataset_ts(trainpath, "train");
-    if (variant_train.index()==1) { raw_train = std::get<1>(variant_train); }
-    else { do_exit(1, {"Could not read train set '" + trainpath.string() + "': " + std::get<0>(variant_train)}); }
+    if (read_dataset_result.index()==0) { do_exit(1, std::get<0>(read_dataset_result)); }
+    TrainTest traintest = std::get<1>(std::move(read_dataset_result));
+    raw_train = traintest.train_dataset;
+    raw_test = traintest.test_dataset;
 
-    // --- --- --- Read test
-    auto variant_test = tempo::reader::load_udataset_ts(testpath, "test");
-    if (variant_test.index()==1) { raw_test = std::get<1>(variant_test); }
-    else { do_exit(1, {"Could not read train set '" + testpath.string() + "': " + std::get<0>(variant_test)}); }
-
-    auto delta = tempo::utils::now() - start;
     nlohmann::json dataset;
     dataset["train"] = raw_train.header().to_json();
     dataset["test"] = raw_test.header().to_json();
-    dataset["load_time_ns"] = delta.count();
-    dataset["load_time_str"] = tempo::utils::as_string(delta);
+    dataset["load_time_ns"] = traintest.load_time.count();
+    dataset["load_time_str"] = tempo::utils::as_string(traintest.load_time);
     jv["dataset"] = dataset;
-  } //
 
-  tempo::DatasetHeader const& train_header = raw_train.header();
-  const size_t train_size = train_header.size();
-  auto [train_bcm, train_bcm_remains] = raw_train.get_BCM();
-
-  tempo::DatasetHeader const& test_header = raw_test.header();
-  const size_t test_size = test_header.size();
-  auto [test_bcm, test_bcm_remains] = raw_test.get_BCM();
-
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Sanity Check
-  // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  {
-    std::vector<std::string> errors = {};
-
-    if (!train_bcm_remains.empty()) {
-      errors.emplace_back("Could not take the By Class Map for all train exemplar (exemplar without label)");
-    }
-
-    if (train_header.variable_length()||train_header.has_missing_value()) {
-      errors.emplace_back("Train set: variable length or missing data");
-    }
-
-    if (test_header.has_missing_value()||test_header.variable_length()) {
-      errors.emplace_back("Test set: variable length or missing data");
-    }
+    // --- --- --- Sanity check
+    std::vector<std::string> errors = sanity_check(traintest);
 
     if (!errors.empty()) {
       jv["status"] = "error";
       jv["status_message"] = tempo::utils::cat(errors, "; ");
       std::cout << to_string(jv) << std::endl;
       outfile << jv << std::endl;
+      exit(0);
     }
-  }
+  } // End of dataset loading
+
+  const size_t train_size = raw_train.header().size();
+  const size_t test_size = raw_test.header().size();
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Check the transform
@@ -159,13 +136,11 @@ int main(int argc, char **argv) {
     auto adtw = std::make_shared<ADTW>(train, test, cfe, prng);
     iloocv = adtw;
     distance_json = [adtw]() { return adtw->to_json(); };
-  }
-  else if (distance_name == "DTW"){
+  } else if (distance_name=="DTW") {
     auto dtw = std::make_shared<DTW>(train, test, cfe);
     iloocv = dtw;
     distance_json = [dtw]() { return dtw->to_json(); };
-  }
-  else {
+  } else {
     do_exit(2, "Unknown distance " + distance_name);
   }
 

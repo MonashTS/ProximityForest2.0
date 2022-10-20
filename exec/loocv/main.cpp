@@ -1,5 +1,6 @@
 #include "iloocv_adtw.cpp"
 #include "iloocv_dtw.cpp"
+#include "iloocv_wdtw.cpp"
 
 #include <tempo/utils/utils.hpp>
 #include <tempo/utils/readingtools.hpp>
@@ -140,6 +141,10 @@ int main(int argc, char **argv) {
     auto dtw = std::make_shared<DTW>(train, test, cfe);
     iloocv = dtw;
     distance_json = [dtw]() { return dtw->to_json(); };
+  } else if(distance_name=="WDTW"){
+    auto wdtw = std::make_shared<WDTW>(train, test, cfe);
+    iloocv = wdtw;
+    distance_json = [wdtw]() { return wdtw->to_json(); };
   } else {
     do_exit(2, "Unknown distance " + distance_name);
   }

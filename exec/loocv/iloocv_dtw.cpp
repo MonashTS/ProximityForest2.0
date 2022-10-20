@@ -18,7 +18,7 @@ struct DTW : tempo::classifier::nn1loocv::i_LOOCVDist {
 
   void generate_params() {
     constexpr size_t NBP = 100;
-    const size_t maxw = train.header().length_max()-2;
+    const size_t maxw = train.header().length_max(); // -2; -// In theory -2, but for now, stick with EE
 
     // For DTW, we must have dtw(a, b, w0) <= dtw(a, b, w1), i.e. w0 >= w1.
     // I.e. param[0] is the largest window, and params[last] is the smallest one.

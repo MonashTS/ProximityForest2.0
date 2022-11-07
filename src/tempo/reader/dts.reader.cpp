@@ -10,8 +10,8 @@ namespace tempo::reader::dataset {
     };
 
     // Helper load CSV
-    auto load_csv = [](csv& conf, std::string const& split_name) {
-      return load_udataset_csv(conf.path_to_train, conf.dataset_name, split_name, {}, conf.csv_skip_header,
+    auto load_csv = [](csv& conf, std::filesystem::path csvpath, std::string const& split_name) {
+      return load_udataset_csv(csvpath, conf.dataset_name, split_name, {}, conf.csv_skip_header,
                                conf.csv_separator);
     };
 
@@ -39,13 +39,13 @@ namespace tempo::reader::dataset {
         csv conf = std::get<1>(config);
         // --- --- --- Read train
         {
-          auto variant_train = load_csv(conf, "train");
+          auto variant_train = load_csv(conf, conf.path_to_train, "train");
           if (variant_train.index()==1) { result.train_dataset = std::get<1>(variant_train); }
           else { return make_error("train set '" + conf.path_to_train.string() + "': " + std::get<0>(variant_train)); }
         }
         // --- --- --- Read test
         {
-          auto variant_test = load_csv(conf, "test");
+          auto variant_test = load_csv(conf, conf.path_to_test, "test");
           if (variant_test.index()==1) { result.test_dataset = std::get<1>(variant_test); }
           else { return make_error("test set '" + conf.path_to_test.string() + "': " + std::get<0>(variant_test)); }
         }

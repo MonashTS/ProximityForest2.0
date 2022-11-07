@@ -30,4 +30,5 @@ target_sources(libtempo
         nn1_erp.cpp
         nn1_lcss.cpp
         nn1_msm.cpp
+        nn1_twe.cpp
 )

@@ -57,9 +57,34 @@ namespace pf2018::splitters {
 
   tsc_nn1::WindowGetter make_get_window(size_t maxlength) {
     return [=](tsc::TreeState& s, tsc::TreeData const& /* d */) {
-      const size_t win_top = std::floor((double)maxlength + 1/4.0);
+      const size_t win_top = std::floor(((double)maxlength + 1)/4.0);
       return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
     };
+  }
+
+  tsc_nn1::WindowGetter make_proba_window(size_t maxlength){
+    // Check arg
+    if(maxlength<2){ throw std::invalid_argument("maxlength < 2 (" + std::to_string(maxlength) + ")"); }
+
+    // Generate weights - Note: proba i==0 never added
+    // std::discrete_distribution produces random integer i in [0, n[ where i probability depends on a weight.
+    // Example: for maxlength=4, we make the weights [3, 2, 1], resulting in distribution of integers [0, 1, 2],
+    // where, '0' is three times more likely than '2' - actual chances are [3/6, 2/6, 1/6]
+    // We can directly use the produced integer as window
+    std::vector<double> weights;
+    weights.reserve(maxlength-1);
+    for(size_t i=maxlength-1; i==0; --i){
+      weights.push_back((double)i);
+    }
+
+    // Note: for some reason, the '()' operator is not const, even if the doc states that
+    // 'the associated parameter set is not modified' - we need the 'mutable' qualifier
+    std::discrete_distribution<size_t> d(weights.begin(), weights.end());
+    return [dd = std::move(d)](tsc::TreeState& s, tsc::TreeData const& /* d */) mutable {
+      size_t r = dd(s.prng);
+      return r;
+    };
+
   }
 
   // --- --- --- ERP Gap Value *AND* LCSS epsilon.
@@ -201,11 +226,12 @@ namespace pf2018::splitters {
       gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
     } else
       // --- --- --- PF2022
-    if (*distances.begin()=="pf2022") {
+    if (distances.contains("pf2022")) {
 
       auto getter_cfe_set = make_get_vcfe(exponents);
       auto getter_tr_set = make_get_transform(transforms);
       auto getter_window = make_get_window(series_max_length);
+      auto getter_window_proba = make_proba_window(series_max_length);
       auto frac_stddev = make_get_frac_stddev(get_train_data);
 
       // ADTWs1
@@ -216,7 +242,13 @@ namespace pf2018::splitters {
       gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
 
       // DTW
-      gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+      if(distances.contains("dtwproba")){
+        // Proba way
+        gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window_proba));
+      } else {
+        // Classic way
+        gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+      }
 
       // LCSS
       gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));

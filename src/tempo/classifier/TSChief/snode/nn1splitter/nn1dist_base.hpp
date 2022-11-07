@@ -1,8 +1,8 @@
 #pragma once
 
-#include <string>
-
 #include "nn1dist_interface.hpp"
+
+#include <string>
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 

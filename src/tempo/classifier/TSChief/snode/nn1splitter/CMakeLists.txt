@@ -23,4 +23,5 @@ target_sources(libtempo
         PRIVATE
         nn1splitter.private.hpp
         nn1splitter.cpp
+        nn1_adtw.cpp
 )

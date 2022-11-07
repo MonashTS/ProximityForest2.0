@@ -234,12 +234,12 @@ namespace pf2018::splitters {
       auto getter_window_proba = make_proba_window(series_max_length);
       auto frac_stddev = make_get_frac_stddev(get_train_data);
 
-      // ADTWs1
+      // ADTW
       // Sample train data
       constexpr size_t SAMPLE_SIZE = 4000;
-      auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+      auto samples = tsc_nn1::ADTWGen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
       // Create distance
-      gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
+      gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, samples));
 
       // DTW
       if(distances.contains("dtwproba")){
@@ -271,20 +271,11 @@ namespace pf2018::splitters {
           gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_set, getter_cfe_set));
         } else if (sname.starts_with("ADTW")) {
           // --- --- --- ADTW
-          // ADTW, with state and access to train data for sampling
-          // ADTW train - cache sampling
-          std::shared_ptr<tsc::i_GetState<tsc_nn1::ADTWGenState>> get_adtw_state =
-            tstate.register_state<tsc_nn1::ADTWGenState>(std::make_unique<tsc_nn1::ADTWGenState>());
-          //
-          gendist.push_back(
-            make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, get_adtw_state, get_train_data));
-        } else if (sname.starts_with("ADTWs1")) {
-          // --- --- --- ADTWs1
           // Sample train data
           constexpr size_t SAMPLE_SIZE = 4000;
-          auto samples = tsc_nn1::ADTWs1Gen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+          auto samples = tsc_nn1::ADTWGen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
           // Create distance
-          gendist.push_back(make_shared<tsc_nn1::ADTWs1Gen>(getter_tr_set, getter_cfe_set, samples));
+          gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, samples));
         } else if (sname.starts_with("DTW")&&!sname.starts_with("DTWFull")) {
           // --- --- --- DTW
           gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));

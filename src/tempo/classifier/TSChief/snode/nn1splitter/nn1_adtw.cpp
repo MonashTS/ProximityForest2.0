@@ -1,5 +1,7 @@
 #include "nn1_adtw.hpp"
 
+#include <tempo/distance/tseries.univariate.hpp>
+
 namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---

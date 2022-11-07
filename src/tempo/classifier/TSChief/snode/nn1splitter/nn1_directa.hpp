@@ -1,9 +1,5 @@
 #pragma once
 
-#include <tempo/utils/utils.hpp>
-#include <tempo/dataset/tseries.hpp>
-#include <tempo/distance/tseries.univariate.hpp>
-
 #include "nn1dist_base.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {

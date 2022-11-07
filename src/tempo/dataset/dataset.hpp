@@ -3,6 +3,8 @@
 #include <tempo/utils/utils.hpp>
 #include <tempo/utils/label_encoder.hpp>
 
+#include <armadillo>
+
 namespace tempo {
 
   /* How we manage datasets

@@ -2,6 +2,8 @@
 
 #include <tempo/utils/utils.hpp>
 
+#include <armadillo>
+
 namespace tempo {
 
   namespace { // Unnamed namespace: visibility local to the file (when in header, do not declare variable here!)

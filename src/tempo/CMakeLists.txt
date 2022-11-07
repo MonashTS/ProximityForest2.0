@@ -2,8 +2,6 @@
 add_library(libtempo)
 target_include_directories(libtempo PUBLIC ${CMAKE_CURRENT_LIST_DIR}/..)
 
-target_precompile_headers(libtempo PRIVATE predef.hpp)
-
 # Gather the sources (including the header)
 target_sources(libtempo PRIVATE predef.hpp )
 

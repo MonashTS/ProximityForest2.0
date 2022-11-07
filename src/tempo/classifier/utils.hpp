@@ -1,7 +1,10 @@
 #pragma once
 
-#include <tempo/predef.hpp>
 #include <tempo/dataset/dataset.hpp>
+
+#include <tempo/predef.hpp>
+
+#include <armadillo>
 
 namespace tempo::classifier {
 

@@ -97,25 +97,6 @@ message(STATUS "================================================================
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Third party
 
-# # JSON CPP
-# if (USE_VCPKG)
-#     find_package(jsoncpp CONFIG REQUIRED)
-# else()
-#     find_package(PkgConfig REQUIRED)
-#     pkg_check_modules(JSONCPP jsoncpp)
-#
-#     message(STATUS "JSONCPP_LINK_LIBRARIES: ${JSONCPP_LINK_LIBRARIES}")
-#     set(JSONCPP_LIBRARIES "${JSONCPP_LINK_LIBRARIES}")
-#     message(STATUS "JSONCPP_LIBRARIES: ${JSONCPP_LIBRARIES}")
-# endif()
-
-
-
-
-
-
-
-
 # MLPACK
 if (USE_VCPKG)
     find_package(mlpack CONFIG REQUIRED)

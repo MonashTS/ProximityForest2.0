@@ -29,4 +29,5 @@ target_sources(libtempo
         nn1_dtwfull.cpp
         nn1_erp.cpp
         nn1_lcss.cpp
+        nn1_msm.cpp
 )

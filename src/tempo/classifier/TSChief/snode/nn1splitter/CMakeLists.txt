@@ -26,4 +26,5 @@ target_sources(libtempo
         nn1_adtw.cpp
         nn1_directa.cpp
         nn1_dtw.cpp
+        nn1_dtwfull.cpp
 )

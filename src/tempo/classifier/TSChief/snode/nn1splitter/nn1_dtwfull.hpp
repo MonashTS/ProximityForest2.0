@@ -1,9 +1,5 @@
 #pragma once
 
-#include <tempo/utils/utils.hpp>
-#include <tempo/dataset/tseries.hpp>
-#include <tempo/distance/tseries.univariate.hpp>
-
 #include "nn1dist_base.hpp"
 
 namespace tempo::classifier::TSChief::snode::nn1splitter {
@@ -11,27 +7,20 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   struct DTWFull : public BaseDist {
     F cfe;
 
-    DTWFull(std::string tname, F cfe) : BaseDist(std::move(tname)), cfe(cfe) {}
+    DTWFull(std::string tname, F cfe);
 
-    F eval(const TSeries& t1, const TSeries& t2, F bsf) override {
-      return distance::univariate::dtw(t1, t2, cfe, utils::NO_WINDOW, bsf);
-    }
+    F eval(const TSeries& t1, const TSeries& t2, F bsf) override;
 
-    std::string get_distance_name() override { return "DTWFull:" + std::to_string(cfe); }
+    std::string get_distance_name() override;
   };
 
   struct DTWFullGen : public i_GenDist {
     TransformGetter get_transform;
     ExponentGetter get_fce;
 
-    DTWFullGen(TransformGetter gt, ExponentGetter get_cfe) :
-      get_transform(std::move(gt)), get_fce(std::move(get_cfe)) {}
+    DTWFullGen(TransformGetter gt, ExponentGetter get_cfe);
 
-    std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /*data*/, const ByClassMap& /* bcm */) override {
-      const std::string tn = get_transform(state);
-      const F e = get_fce(state);
-      return std::make_unique<DTWFull>(tn, e);
-    }
+    std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /*data*/, const ByClassMap& /* bcm */) override;
   };
 
 } // End of namespace tempo::classifier::TSChief::snode::nn1splitter

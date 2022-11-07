@@ -18,7 +18,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   std::string ADTW::get_distance_name() { return "ADTW:" + std::to_string(cfe) + ":" + std::to_string(penalty); }
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // ADTW Splitter
+  // ADTW Splitter Generator
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   ADTWGen::ADTWGen(TransformGetter gt, ExponentGetter get_cfe,
                    std::map<std::tuple<F, std::string>, std::vector<F>> penalties) :

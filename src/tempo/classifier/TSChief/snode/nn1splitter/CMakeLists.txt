@@ -25,4 +25,5 @@ target_sources(libtempo
         nn1splitter.cpp
         nn1_adtw.cpp
         nn1_directa.cpp
+        nn1_dtw.cpp
 )

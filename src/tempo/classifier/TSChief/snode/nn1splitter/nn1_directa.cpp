@@ -19,7 +19,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
   }
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // DA splitter
+  // DA splitter Generator
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   DAGen::DAGen(TransformGetter gt, ExponentGetter ge) :

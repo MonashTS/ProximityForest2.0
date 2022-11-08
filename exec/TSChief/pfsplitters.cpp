@@ -174,8 +174,6 @@ namespace pf2018::splitters {
 
     // --- --- --- Getters
 
-
-
     // --- --- --- Build distance generators
 
     // List of distance generators (this is specific to our collection of NN1 Splitter generators)

@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     Result read_dataset_result;
     read_dataset_result = load(opt.input);
 
-    if(read_dataset_result.index()==0) { do_exit(1, std::get<0>(read_dataset_result)); }
+    if (read_dataset_result.index()==0) { do_exit(1, std::get<0>(read_dataset_result)); }
     TrainTest traintest = std::get<1>(std::move(read_dataset_result));
     train_dataset = traintest.train_dataset;
     test_dataset = traintest.test_dataset;
@@ -136,7 +136,6 @@ int main(int argc, char **argv) {
     // test_map->emplace(tr_d2, test_derive_2);
   }
 
-
   auto prepare_data_elapsed = utils::now() - prepare_data_start_time;
 
   // --- --- ---
@@ -170,7 +169,7 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
-  //    std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
+  //std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
 
 
   std::shared_ptr<tsc::i_GenNode> node_gen;

@@ -46,11 +46,11 @@ namespace tempo::classifier::TSChief::sleaf {
       // Generate sleaf on pure node:
       // Vector of probabilities at 0 except for the position matching the encoded label
       if (bcm.nb_classes()==1) {
-        size_t cardinality = get_train_header->at(data).nb_classes();
-        EL elabel = *bcm.classes().begin();  // Get the encoded label
+        size_t nb_class = get_train_header->at(data).nb_classes();
+        EL elabel = *bcm.classes().begin();       // Get the encoded label
         return {
           std::make_unique<SplitterLeaf_Pure>(
-            classifier::Result1::make_probabilities_one(cardinality, elabel, 1.0)
+            classifier::Result1::make_probabilities_one(nb_class, elabel, 1.0)
           )
         };
       } else { return {}; } // Else, return the empty option

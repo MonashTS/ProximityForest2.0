@@ -18,13 +18,18 @@ namespace tempo::classifier::TSChief {
   }
 
 
-  size_t TreeNode::nb_nodes() const {
+  std::tuple<size_t, size_t> TreeNode::nb_nodes() const {
     if (node_kind==LEAF) {
-      return 1;
+      return {1, 0};
     } else {
-      size_t n = 1;
-      for (const auto& branch : as_node.branches) { n += branch->nb_nodes(); }
-      return n;
+      size_t nbl=0;
+      size_t nbn=1;
+      for (const auto& branch : as_node.branches) {
+        const auto [nl, nn] = branch->nb_nodes();
+        nbl += nl;
+        nbn += nn;
+      }
+      return {nbl, nbn};
     }
   }
 

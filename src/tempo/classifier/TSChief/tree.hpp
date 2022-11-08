@@ -45,8 +45,8 @@ namespace tempo::classifier::TSChief {
     /// Given a testing state and testing data, do a prediction for the exemplar 'index'
     classifier::Result1 predict(TreeState& state, TreeData const& data, size_t index) const;
 
-    /// Count the number of nodes
-    size_t nb_nodes() const;
+    /// Count the number of nodes (number of leaf, number of internal node)
+    std::tuple<size_t, size_t> nb_nodes() const;
 
     /// Get the maximal depth
     size_t depth() const;

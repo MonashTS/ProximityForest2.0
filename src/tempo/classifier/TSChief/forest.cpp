@@ -63,10 +63,12 @@ namespace tempo::classifier::TSChief {
         // --- Printing
         auto& cout = *out;
         auto cf = cout.fill();
+        const auto [nbleaf, nbnode] = tree->nb_nodes();
         cout << std::setfill('0');
         cout << std::setw(3) << tree_index + 1 << " / " << nb_trees << "   ";
         cout << std::setw(3) << "Depth = " << tree->depth() << "   ";
-        cout << std::setw(3) << "Nb nodes = " << tree->nb_nodes() << "   ";
+        cout << std::setw(3) << "Nb nodes = " << nbnode << "   ";
+        cout << std::setw(3) << "Nb leaves = " << nbleaf << "   ";
         cout.fill(cf);
         cout << " timing: " << tempo::utils::as_string(delta) << std::endl;
       }

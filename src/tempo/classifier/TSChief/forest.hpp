@@ -71,8 +71,7 @@ namespace tempo::classifier::TSChief {
 
     // --- --- --- Fields
 
-    /// Access train header
-    std::shared_ptr<i_GetData<DatasetHeader>> get_train_header;
+    DatasetHeader const& train_header;
 
     /// The tree trainer to use
     std::shared_ptr<const TreeTrainer> tree_trainer;
@@ -83,11 +82,11 @@ namespace tempo::classifier::TSChief {
     // --- --- --- Constructors/Destructors
 
     ForestTrainer(
-      std::shared_ptr<i_GetData<DatasetHeader>> get_train_header,
+      DatasetHeader const& train_header,
       std::shared_ptr<TreeTrainer> tree_trainer,
       size_t nbtrees
     ) :
-      get_train_header(std::move(get_train_header)),
+      train_header(train_header),
       tree_trainer(std::move(tree_trainer)),
       nb_trees(nbtrees) {}
 

@@ -32,21 +32,21 @@ namespace tempo::classifier::TSChief::sleaf {
 
     // --- --- --- types
 
-    std::shared_ptr<i_GetData<DatasetHeader>> get_train_header;
+    DatasetHeader const& train_header;
 
 
     // --- --- --- Constructors/Destructors
 
-    explicit GenLeaf_Pure(std::shared_ptr<i_GetData<DatasetHeader>> get_train_header) :
-      get_train_header(std::move(get_train_header)) {}
+    explicit GenLeaf_Pure(DatasetHeader const& train_header) :
+      train_header(std::move(train_header)) {}
 
     // --- --- --- Methods
 
-    i_GenLeaf::Result generate(TreeState& /* state */, TreeData const& data, ByClassMap const& bcm) override {
+    i_GenLeaf::Result generate(TreeState& /* state */, TreeData const& /* data */, ByClassMap const& bcm) override {
       // Generate sleaf on pure node:
       // Vector of probabilities at 0 except for the position matching the encoded label
       if (bcm.nb_classes()==1) {
-        size_t nb_class = get_train_header->at(data).nb_classes();
+        size_t nb_class = train_header.nb_classes();
         EL elabel = *bcm.classes().begin();       // Get the encoded label
         return {
           std::make_unique<SplitterLeaf_Pure>(

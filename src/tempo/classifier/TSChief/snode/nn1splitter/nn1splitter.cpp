@@ -9,6 +9,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
 
   /// Generate a snode based on the distance generator specifed at build time
   i_GenNode::Result GenSplitterNN1::generate(TreeState& state, TreeData const& data, ByClassMap const& bcm) {
+    using MDTS = std::map<std::string, DTS>;
 
     // --- --- --- Generate a distance
     auto distance = distance_generator->generate(state, data, bcm);
@@ -19,7 +20,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     const IndexSet& all_indexset = get_train_state->at(state).get_index_set(bcm);
 
     // --- --- --- Data access
-    const DTS& train_dataset = get_train_data->at(data).at(transform_name);
+    const DTS& train_dataset = at<MDTS>(data, "train_mdts").at(transform_name);
 
     // --- --- --- Splitter training algorithm
     // Pick on exemplar per class using the pseudo random number generator from the state
@@ -78,9 +79,7 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     }
 
     return i_GenNode::Result{
-      .splitter = std::make_unique<SplitterNN1>(train_idxset, label_to_branchIdx, std::move(distance), get_train_data,
-                                                get_test_data
-      ),
+      .splitter = std::make_unique<SplitterNN1>(train_idxset, label_to_branchIdx, std::move(distance)),
       .branch_splits = std::move(v_bcm)
     };
   } // End of generate function

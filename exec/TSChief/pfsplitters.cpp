@@ -62,9 +62,9 @@ namespace pf2018::splitters {
     };
   }
 
-  tsc_nn1::WindowGetter make_proba_window(size_t maxlength){
+  tsc_nn1::WindowGetter make_proba_window(size_t maxlength) {
     // Check arg
-    if(maxlength<2){ throw std::invalid_argument("maxlength < 2 (" + std::to_string(maxlength) + ")"); }
+    if (maxlength<2) { throw std::invalid_argument("maxlength < 2 (" + std::to_string(maxlength) + ")"); }
 
     // Generate weights - Note: proba i==0 never added
     // std::discrete_distribution produces random integer i in [0, n[ where i probability depends on a weight.
@@ -72,8 +72,8 @@ namespace pf2018::splitters {
     // where, '0' is three times more likely than '2' - actual chances are [3/6, 2/6, 1/6]
     // We can directly use the produced integer as window
     std::vector<double> weights;
-    weights.reserve(maxlength-1);
-    for(size_t i=maxlength-1; i==0; --i){
+    weights.reserve(maxlength - 1);
+    for (size_t i = maxlength - 1; i==0; --i) {
       weights.push_back((double)i);
     }
 
@@ -89,9 +89,9 @@ namespace pf2018::splitters {
 
   // --- --- --- ERP Gap Value *AND* LCSS epsilon.
 
-  tsc_nn1::StatGetter make_get_frac_stddev(const std::shared_ptr<tsc::i_GetData<MDTS>>& get_train_data) {
+  tsc_nn1::StatGetter make_get_frac_stddev() {
     return [=](tsc::TreeState& s, tsc::TreeData const& data, tempo::ByClassMap const& bcm, std::string const& tr_name) {
-      const tempo::DTS& train_dataset = get_train_data->at(data).at(tr_name);
+      const tempo::DTS& train_dataset = tempo::classifier::TSChief::at_train(data).at(tr_name);
       auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
       return std::uniform_real_distribution<F>(stddev_/5.0, stddev_)(s.prng);
     };
@@ -143,15 +143,12 @@ namespace pf2018::splitters {
 
   // --- --- --- Leaf Generator
 
-  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf(
-    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header
-  ) {
-    return std::make_shared<tsc::sleaf::GenLeaf_Pure>(get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf(tempo::DatasetHeader const& train_header) {
+    return std::make_shared<tsc::sleaf::GenLeaf_Pure>(train_header);
   }
 
-  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(
-    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header) {
-    return std::make_shared<tsc::sleaf::GenLeaf_PureSmoothP>(get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(tempo::DatasetHeader const& train_header) {
+    return std::make_shared<tsc::sleaf::GenLeaf_PureSmoothP>(train_header);
   }
 
   std::shared_ptr<tsc::i_GenNode> make_node_splitter(
@@ -161,8 +158,6 @@ namespace pf2018::splitters {
     size_t nbc,
     size_t series_max_length,
     std::map<std::string, tempo::DTS> const& train_data,
-    std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_train_data,
-    std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_test_data,
     tsc::TreeState& tstate
   ) {
 
@@ -188,7 +183,7 @@ namespace pf2018::splitters {
       auto getter_tr_def = make_get_default();
       auto getter_tr_dr1 = make_get_derivative(1);
       auto getter_window = make_get_window(series_max_length);
-      auto frac_stddev = make_get_frac_stddev(get_train_data);
+      auto frac_stddev = make_get_frac_stddev();
       auto getter_msm_cost = make_get_msm_cost();
       auto getter_twe_nu = make_get_twe_nu();
       auto getter_twe_lambda = make_get_twe_lambda();
@@ -230,7 +225,7 @@ namespace pf2018::splitters {
       auto getter_tr_set = make_get_transform(transforms);
       auto getter_window = make_get_window(series_max_length);
       auto getter_window_proba = make_proba_window(series_max_length);
-      auto frac_stddev = make_get_frac_stddev(get_train_data);
+      auto frac_stddev = make_get_frac_stddev();
 
       // ADTW
       // Sample train data
@@ -240,7 +235,7 @@ namespace pf2018::splitters {
       gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, samples));
 
       // DTW
-      if(distances.contains("dtwproba")){
+      if (distances.contains("dtwproba")) {
         // Proba way
         gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window_proba));
       } else {
@@ -257,7 +252,7 @@ namespace pf2018::splitters {
       auto getter_cfe_2 = make_get_cfe2();
       auto getter_tr_set = make_get_transform(transforms);
       auto getter_window = make_get_window(series_max_length);
-      auto frac_stddev = make_get_frac_stddev(get_train_data);
+      auto frac_stddev = make_get_frac_stddev();
       auto getter_msm_cost = make_get_msm_cost();
       auto getter_twe_nu = make_get_twe_nu();
       auto getter_twe_lambda = make_get_twe_lambda();
@@ -305,7 +300,7 @@ namespace pf2018::splitters {
     // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
     for (auto const& gd : gendist) {
       generators.push_back(
-        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State, get_train_data, get_test_data)
+        make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State) //, get_train_data, get_test_data)
       );
     }
 

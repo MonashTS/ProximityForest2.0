@@ -72,29 +72,20 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     /// Train State access
     std::shared_ptr<i_GetState<GenSplitterNN1_State>> get_train_state;
 
-    /// Train Data access
-    std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_train_data;
-
-    /// Test Data access
-    std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_test_data;
-
     // --- --- --- Constructors/Destructors
 
     /// Construction with a distance generator
     GenSplitterNN1(
       std::shared_ptr<i_GenDist> distance_generator,
-      std::shared_ptr<i_GetState<GenSplitterNN1_State>> get_train_state,
-      std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_train_data,
-      std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_test_data
+      std::shared_ptr<i_GetState<GenSplitterNN1_State>> get_train_state
     ) :
       distance_generator(std::move(distance_generator)),
-      get_train_state(std::move(get_train_state)),
-      get_train_data(std::move(get_train_data)),
-      get_test_data(std::move(get_test_data)) {}
+      get_train_state(std::move(get_train_state))
+       {}
 
     // --- --- --- Methods
 
-    /// Generate a snode based on the distance generator specifed at build time
+    /// Generate a snode based on the distance generator specified at build time
     i_GenNode::Result generate(TreeState& state, TreeData const& data, ByClassMap const& bcm) override;
 
   };

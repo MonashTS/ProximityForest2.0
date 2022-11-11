@@ -76,6 +76,13 @@ namespace tempo::classifier::TSChief {
       return std::make_shared<GetState<State>>(idx);
     }
 
+    template<typename State, typename... _Args>
+    std::shared_ptr<i_GetState<State>> build_state(_Args&& ... __args) {
+      size_t idx = states.size();
+      states.push_back(std::make_unique<State>(std::forward<_Args>(__args)...));
+      return std::make_shared<GetState<State>>(idx);
+    }
+
     std::unique_ptr<i_TreeState> forest_fork(size_t tree_idx) const override;
 
     void forest_merge_in(std::unique_ptr<i_TreeState>&& other) override;

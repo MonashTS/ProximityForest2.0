@@ -84,7 +84,7 @@ namespace tempo::classifier::TSChief {
     state.forest_merge_in_vec(std::move(local_states));
 
     // Build result & return
-    return std::make_shared<Forest>(std::move(result), get_train_header->at(data).nb_classes());
+    return std::make_shared<Forest>(std::move(result), train_header.nb_classes());
   }
 
 } // End of tempo::classifier::TSChief

@@ -30,26 +30,17 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     /// Distance function
     std::unique_ptr<i_Dist> distance;
 
-    /// Train Data access
-    std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_train_data;
-
-    /// Test Data access
-    std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_test_data;
-
     // --- --- --- Constructors/Destructors
 
     SplitterNN1(
       IndexSet is,
       std::map<EL, size_t> labels_to_branch_idx,
-      std::unique_ptr<i_Dist> dist,
-      std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_train_data,
-      std::shared_ptr<i_GetData<std::map<std::string, DTS>>> get_test_data
+      std::unique_ptr<i_Dist> dist
     ) :
       train_indexset(std::move(is)),
       labels_to_branch_idx(std::move(labels_to_branch_idx)),
-      distance(std::move(dist)),
-      get_train_data(std::move(get_train_data)),
-      get_test_data(std::move(get_test_data)) {}
+      distance(std::move(dist))
+    {}
 
     // --- --- --- Methods
 
@@ -58,8 +49,8 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
       std::string tname = distance->get_transformation_name();
 
       // Data access
-      const DTS& train_dataset = get_train_data->at(tdata).at(tname);
-      const DTS& test_dataset = get_test_data->at(tdata).at(tname);
+      const DTS& train_dataset = at_train(tdata).at(tname);
+      const DTS& test_dataset = at_test(tdata).at(tname);
       const TSeries& test_exemplar = test_dataset[index];
 
       // NN1 test loop

@@ -144,16 +144,8 @@ int main(int argc, char **argv) {
 
   tsc::TreeData tdata;
 
-  // --- TRAIN
-  std::shared_ptr<tsc::i_GetData<DatasetHeader>> get_train_header =
-    tdata.register_data<DatasetHeader>(train_dataset.header_ptr());
-
-  std::shared_ptr<tsc::i_GetData<std::map<std::string, DTS>>> get_train_data =
-    tdata.register_data<map<string, DTS>>(train_map);
-
-  // --- TEST
-  std::shared_ptr<tsc::i_GetData<std::map<std::string, DTS>>> get_test_data =
-    tdata.register_data<map<string, DTS>>(test_map);
+  tsc::register_train(tdata, train_map);
+  tsc::register_test(tdata, test_map);
 
 
   // --- --- ---
@@ -168,8 +160,8 @@ int main(int argc, char **argv) {
   // Configure the splitters
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(get_train_header);
-  //std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf(train_header);
+  //std::shared_ptr<tsc::i_GenLeaf> leaf_gen = pf2018::splitters::make_pure_leaf_smoothp(train_header);
 
 
   std::shared_ptr<tsc::i_GenNode> node_gen;
@@ -195,8 +187,6 @@ int main(int argc, char **argv) {
     exponents, transforms, distances, opt.nb_candidates,
     train_header.length_max(),
     *train_map,
-    get_train_data,
-    get_test_data,
     tstate
   );
 
@@ -206,7 +196,7 @@ int main(int argc, char **argv) {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
   auto tree_trainer = std::make_shared<tsc::TreeTrainer>(leaf_gen, node_gen);
-  tsc::ForestTrainer forest_trainer(get_train_header, tree_trainer, opt.nb_trees);
+  tsc::ForestTrainer forest_trainer(train_header, tree_trainer, opt.nb_trees);
 
   // --- --- --- TRAIN
 

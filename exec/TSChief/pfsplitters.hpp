@@ -53,7 +53,7 @@ namespace pf2018::splitters {
 
   /// Random fraction of the incoming data standard deviation, within [stddev/5, stddev[
   /// Must be able to access the dataset to compute the stddev at the node
-  tsc_nn1::StatGetter make_get_frac_stddev(std::shared_ptr<tsc::i_GetData<MDTS>> const& get_train_data);
+  tsc_nn1::StatGetter make_get_frac_stddev();
 
   // --- --- --- MSM Cost
 
@@ -71,11 +71,9 @@ namespace pf2018::splitters {
 
   // --- --- --- Leaf Generator
 
-  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf(
-    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf( tempo::DatasetHeader const& train_header);
 
-  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp(
-    std::shared_ptr<tsc::i_GetData<tempo::DatasetHeader>> const& get_train_header);
+  std::shared_ptr<tsc::i_GenLeaf> make_pure_leaf_smoothp( tempo::DatasetHeader const& train_header);
 
   /** Generate node splitters for PF (distance splitters)
    * @param exponents           List of exponents for the DTW (including DA) family (uniform choice)
@@ -84,8 +82,6 @@ namespace pf2018::splitters {
    * @param nbc                 Number of distance candidates per node
    * @param series_max_length   Maximum length of the series
    * @param train_data          Train data
-   * @param get_train_data      How to access the train data while training
-   * @param get_test_data       How to access the test data
    * @param tstate              TrainState that will be used - updated
    * @return A node splitter generator
    */
@@ -96,8 +92,6 @@ namespace pf2018::splitters {
     size_t nbc,
     size_t series_max_length,
     std::map<std::string, tempo::DTS> const& train_data,
-    std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_train_data,
-    std::shared_ptr<tsc::i_GetData<std::map<std::string, tempo::DTS>>> const& get_test_data,
     tsc::TreeState& tstate
   );
 

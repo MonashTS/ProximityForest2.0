@@ -1,6 +1,3 @@
-#add_subdirectory(loocv/fastmps)
 add_subdirectory(loocv/partable)
-#add_subdirectory(SForest)
-#add_subdirectory(ProximityForest)
 add_subdirectory(TSChief)
-#add_subdirectory(PF2018)
+add_subdirectory(PF2018)

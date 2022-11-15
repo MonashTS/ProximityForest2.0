@@ -55,7 +55,6 @@ namespace tempo::classifier::TSChief::snode::meta {
       for (size_t i = 0; i<nb_candidates; ++i) {
         // Pick a splitter and call it
         i_GenNode::Result result = utils::pick_one(generators, state.prng)->generate(state, data, bcm);
-        // Extract the state so we can transmit it
         double score = weighted_gini_impurity(result.branch_splits);
         if (score<best_score) {
           best_score = score;
@@ -68,4 +67,46 @@ namespace tempo::classifier::TSChief::snode::meta {
 
   };
 
+  /// Splitter Try All generator: try all candidates, pick the best one according to gini
+  struct SplitterTryAllGen : public i_GenNode {
+
+    // --- --- --- Fields
+    /// A vector of splitter generator
+    std::vector<std::shared_ptr<i_GenNode>> generators;
+
+    // --- --- --- Constructor/Destructor
+
+    SplitterTryAllGen(std::vector<std::shared_ptr<i_GenNode>>&& sgvec) : generators(std::move(sgvec)) {
+      if (generators.empty()) { throw std::invalid_argument("Empty set of generators to choose from"); }
+    }
+
+    // --- --- --- Method
+
+    /// Implementation fo the generate function
+    /// Generate all the candidates, evaluate them, keep the best (the lowest score is best)
+    i_GenNode::Result generate(TreeState& state, TreeData const& data, const ByClassMap& bcm) override {
+      std::vector<i_GenNode::Result> best_results{};
+      double best_score = utils::PINF;
+
+      for (const auto& candidate : generators) {
+        i_GenNode::Result result = candidate->generate(state, data, bcm);
+        double score = weighted_gini_impurity(result.branch_splits);
+        if (score<best_score) {
+          best_score = score;
+          best_results.clear();
+          best_results.push_back(std::move(result));
+        } else if (score==best_score) {
+          best_results.push_back(std::move(result));
+        }
+      }
+
+      const size_t size = best_results.size();
+      if (size==1) { return std::move(best_results.front()); }
+      else {
+        auto distribution = std::uniform_int_distribution<size_t>(0, size - 1);
+        return std::move(best_results[distribution(state.prng)]);
+      }
+    }
+
+  };
 }

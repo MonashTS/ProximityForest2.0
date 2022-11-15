@@ -62,6 +62,13 @@ namespace pf2018::splitters {
     };
   }
 
+  tsc_nn1::WindowGetter make_get_window(size_t maxlength, const double ratio) {
+    const size_t win_top = std::floor((double)maxlength*ratio);
+    return [=](tsc::TreeState& s, tsc::TreeData const& /* d */) {
+      return std::uniform_int_distribution<size_t>(0, win_top)(s.prng);
+    };
+  }
+
   tsc_nn1::WindowGetter make_proba_window(size_t maxlength) {
     // Check arg
     if (maxlength<2) { throw std::invalid_argument("maxlength < 2 (" + std::to_string(maxlength) + ")"); }
@@ -90,6 +97,14 @@ namespace pf2018::splitters {
   // --- --- --- ERP Gap Value *AND* LCSS epsilon.
 
   tsc_nn1::StatGetter make_get_frac_stddev() {
+    return [=](tsc::TreeState& s, tsc::TreeData const& data, tempo::ByClassMap const& bcm, std::string const& tr_name) {
+      const tempo::DTS& train_dataset = tempo::classifier::TSChief::at_train(data).at(tr_name);
+      auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
+      return std::uniform_real_distribution<F>(stddev_/5.0, stddev_)(s.prng);
+    };
+  }
+
+  tsc_nn1::StatGetter make_get_frac_stddev_0_stddev() {
     return [=](tsc::TreeState& s, tsc::TreeData const& data, tempo::ByClassMap const& bcm, std::string const& tr_name) {
       const tempo::DTS& train_dataset = tempo::classifier::TSChief::at_train(data).at(tr_name);
       auto stddev_ = stddev(train_dataset, bcm.to_IndexSet());
@@ -219,6 +234,7 @@ namespace pf2018::splitters {
       gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
     } else
       // --- --- --- PF2022
+      /*
     if (distances.contains("pf2022")) {
 
       auto getter_cfe_set = make_get_vcfe(exponents);
@@ -245,6 +261,51 @@ namespace pf2018::splitters {
 
       // LCSS
       gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
+
+    }*/
+    if (distances.contains("pf2023")) {
+
+      auto trd0 = [](tsc::TreeState& /*s*/) { return "default"; };
+      auto trd1 = [](tsc::TreeState& /*s*/) { return "derivative1"; };
+
+      auto getter_cfe_set = make_get_vcfe(exponents);
+      auto getter_window = make_get_window(series_max_length, 0.25);
+      auto frac_stddev = make_get_frac_stddev_0_stddev();
+
+      // --- --- --- ADTW
+      constexpr size_t SAMPLE_SIZE = 4000;
+      auto samples = tsc_nn1::ADTWGen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+      // --- default
+      gendist.push_back(make_shared<tsc_nn1::ADTWGen>(trd0, getter_cfe_set, samples));
+      // --- d1
+      gendist.push_back(make_shared<tsc_nn1::ADTWGen>(trd1, getter_cfe_set, samples));
+
+      // --- --- --- DTW
+      // --- default
+      gendist.push_back(make_shared<tsc_nn1::DTWGen>(trd0, getter_cfe_set, getter_window));
+      // --- d1
+      gendist.push_back(make_shared<tsc_nn1::DTWGen>(trd1, getter_cfe_set, getter_window));
+
+      // --- --- --- LCSS
+      // --- default
+      gendist.push_back(make_shared<tsc_nn1::LCSSGen>(trd0, frac_stddev, getter_window));
+      // --- d1
+      gendist.push_back(make_shared<tsc_nn1::LCSSGen>(trd1, frac_stddev, getter_window));
+
+
+      // Build vector for the node generator
+      std::vector<std::shared_ptr<tsc::i_GenNode>> generators;
+
+      // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
+      for (auto const& gd : gendist) {
+        generators.push_back(
+          make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State) //, get_train_data, get_test_data)
+        );
+      }
+
+      // use a try all chooser over all generators
+      return make_shared<tsc::snode::meta::SplitterTryAllGen>(std::move(generators));
+
 
     } else {
 

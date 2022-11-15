@@ -173,9 +173,7 @@ int main(int argc, char **argv) {
   regex r(":");
   auto const& str = opt.pfconfig;
   std::set<std::string> distances(sregex_token_iterator(str.begin(), str.end(), r, -1), sregex_token_iterator());
-  if (distances.empty()) {
-    throw std::invalid_argument("No distances registered (" + str + ")");
-  }
+  if (distances.empty()) { throw std::invalid_argument("No distances registered (" + str + ")"); }
 
   opt.pfconfig = "PF";
   for (const auto& d : distances) {

@@ -66,12 +66,20 @@ namespace tempo::reader::dataset {
       errors.emplace_back("Could not take the By Class Map for all train exemplar (exemplar without label)");
     }
 
-    if (train_header.variable_length()||train_header.has_missing_value()) {
-      errors.emplace_back("Train set: variable length or missing data");
+    if (train_header.variable_length()) {
+      errors.emplace_back("Train set: variable length");
     }
 
-    if (test_header.has_missing_value()||test_header.variable_length()) {
-      errors.emplace_back("Test set: variable length or missing data");
+    if (train_header.has_missing_value()) {
+      errors.emplace_back("Train set: missing data");
+    }
+
+    if (test_header.variable_length()) {
+      errors.emplace_back("Test set: variable length");
+    }
+
+    if (test_header.has_missing_value()) {
+      errors.emplace_back("Test set: missing data");
     }
 
     return errors;

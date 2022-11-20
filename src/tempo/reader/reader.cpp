@@ -18,6 +18,10 @@ namespace tempo::reader {
     std::string const& split_name,
     LabelEncoder const& encoder
   ) {
+    if( !(std::filesystem::exists(path) && std::filesystem::is_regular_file(path)) ){
+      return {"Could not read file " + path.string()};
+    }
+
     std::variant<std::string, TSData> vts = load_tsdata(path);
 
     if (vts.index()==1) {
@@ -67,6 +71,10 @@ namespace tempo::reader {
     char csvsep,
     std::set<char> csvcomment
   ) {
+
+    if( !(std::filesystem::exists(path) && std::filesystem::is_regular_file(path)) ){
+      return {"Could not read file " + path.string()};
+    }
 
     using namespace univariate;
     constexpr size_t nb_var = 1; // Univariate

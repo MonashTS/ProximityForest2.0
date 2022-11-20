@@ -234,7 +234,6 @@ namespace pf2018::splitters {
       gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
     } else
       // --- --- --- PF2022
-      /*
     if (distances.contains("pf2022")) {
 
       auto getter_cfe_set = make_get_vcfe(exponents);
@@ -262,11 +261,12 @@ namespace pf2018::splitters {
       // LCSS
       gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
 
-    }*/
+    }
+    /*
     if (distances.contains("pf2023")) {
 
-      auto trd0 = [](tsc::TreeState& /*s*/) { return "default"; };
-      auto trd1 = [](tsc::TreeState& /*s*/) { return "derivative1"; };
+      auto trd0 = [](tsc::TreeState& s) { return "default"; };
+      auto trd1 = [](tsc::TreeState& s* { return "derivative1"; };
 
       auto getter_cfe_set = make_get_vcfe(exponents);
       auto getter_window = make_get_window(series_max_length, 0.25);
@@ -305,9 +305,8 @@ namespace pf2018::splitters {
 
       // use a try all chooser over all generators
       return make_shared<tsc::snode::meta::SplitterTryAllGen>(std::move(generators));
-
-
-    } else {
+    } */
+    else {
 
       auto getter_cfe_set = make_get_vcfe(exponents);
       auto getter_cfe_2 = make_get_cfe2();

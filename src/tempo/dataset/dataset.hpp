@@ -351,7 +351,7 @@ namespace tempo {
     // --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---  --- --- ---
 
     /// Default constructor
-    inline ByClassMap() = default;
+    ByClassMap() = default;
 
     /// Constructor taking ownership of a map<std::string, IndexSet>.
     /// The map is then used as provided.
@@ -464,6 +464,43 @@ namespace tempo {
       for (const auto& [_, is] : *this) { v.insert(v.end(), is.begin(), is.end()); }
       std::sort(v.begin(), v.end());
       return IndexSet(std::move(v));
+    }
+
+    /// Stratified sampling
+    ByClassMap stratified_sampling(const double ratio, PRNG& prng) const {
+      BCM_t result;
+      for (const auto& [label, is] : _bcm) {
+        // ---
+        auto const& isv = is.vector();
+        const size_t isv_size = isv.size();
+        size_t nb = std::ceil(ratio*(double)isv_size); // Up rounding, ensure we have at least one item...
+        // ---
+        std::vector<size_t> idx{};
+        // ---
+        if (nb==0 && isv_size>0){
+          idx.push_back(tempo::utils::pick_one(isv, prng));
+        } else if (nb<isv_size){
+          idx = is.vector();
+          std::shuffle(idx.begin(), idx.end(), prng);
+          idx.resize(nb);
+        } else if (nb==isv_size){
+          idx = isv;
+        } else { // nb>isv_size
+          size_t xfull = nb/isv_size;                   // how many time we take the full array
+          size_t xremainder = nb - (xfull * isv_size);
+          // Allocate the capacity and copy
+          idx.reserve(isv_size);
+          std::copy(isv.begin(), isv.end(), std::back_inserter(idx));
+          // Take care of the remainder
+          std::shuffle(idx.begin(), idx.end(), prng);
+          idx.resize(xremainder);
+          // Add xfull time everything
+          for(size_t i=0; i<xfull; ++i){ std::copy(isv.begin(), isv.end(), std::back_inserter(idx)); }
+        }
+        // ---
+        result[label] = IndexSet(std::move(idx));
+      }
+      return ByClassMap(std::move(result));
     }
   };
 

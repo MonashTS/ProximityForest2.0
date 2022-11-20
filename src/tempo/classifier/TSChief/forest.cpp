@@ -36,8 +36,13 @@ namespace tempo::classifier::TSChief {
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
-  std::shared_ptr<Forest> ForestTrainer::train(TreeState& state, TreeData const& data, ByClassMap const& bcm,
-                                               size_t nb_threads, std::ostream *out
+  std::shared_ptr<Forest> ForestTrainer::train(
+    TreeState& state,
+    TreeData const& data,
+    ByClassMap const& bcm,
+    size_t nb_threads,
+    std::optional<double> opt_sampling,
+    std::ostream *out
   ) const {
 
     // --- Fork states
@@ -55,8 +60,16 @@ namespace tempo::classifier::TSChief {
       }
       //
       auto start = tempo::utils::now();
-      Forest::TREE tree = tree_trainer->train(*local_states[tree_index], data, bcm);
+      ByClassMap const* my_bcm = &bcm;
+      ByClassMap local_bcm;
+      if(opt_sampling.has_value()){
+        local_bcm = bcm.stratified_sampling(opt_sampling.value(), local_states[tree_index]->prng);
+        my_bcm = &local_bcm;
+      }
+
+      Forest::TREE tree = tree_trainer->train(*local_states[tree_index], data, *my_bcm);
       auto delta = tempo::utils::now() - start;
+
       //
       if (out!=nullptr) {
         std::lock_guard lock(mutex);

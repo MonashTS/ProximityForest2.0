@@ -96,6 +96,7 @@ namespace tempo::classifier::TSChief {
     /// Training a forest by training each tree individually
     std::shared_ptr<Forest> train(TreeState& state, TreeData const& data, ByClassMap const& bcm,
                                   size_t nb_threads,
+                                  std::optional<double> opt_sampling = std::nullopt,
                                   std::ostream* out=nullptr
                                   ) const;
 

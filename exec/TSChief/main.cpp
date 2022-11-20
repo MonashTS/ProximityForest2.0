@@ -198,8 +198,16 @@ int main(int argc, char **argv) {
 
   // --- --- --- TRAIN
 
+  double nbwanted = 5000.0;
+  auto rs = nbwanted/(double)train_header.size();
+  std::optional<double> ratio = {rs};
+  if (rs>=1.0) { ratio = {}; }
+  else {
+    std::cout << "ratio : " << rs << std::endl;
+  }
+
   auto train_start_time = utils::now();
-  auto forest = forest_trainer.train(tstate, tdata, train_bcm, opt.nb_threads, &std::cout);
+  auto forest = forest_trainer.train(tstate, tdata, train_bcm, opt.nb_threads, ratio, &std::cout);
   auto train_elapsed = utils::now() - train_start_time;
 
   // --- --- --- TEST

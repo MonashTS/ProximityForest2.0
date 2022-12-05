@@ -213,9 +213,12 @@ int main(int argc, char **argv) {
   // --- --- --- TEST
 
   classifier::ResultN result;
+
   auto test_start_time = utils::now();
   {
     const size_t test_size = test_dataset.size();
+    tempo::utils::ProgressMonitor pm(test_size);
+
     for (size_t test_idx = 0; test_idx<test_size; ++test_idx) {
       // Get the prediction per tree
       std::vector<classifier::Result1> vecr = forest->predict(tstate, tdata, test_idx, opt.nb_threads);
@@ -229,8 +232,11 @@ int main(int argc, char **argv) {
       r1.probabilities /= r1.weight;
       //
       result.append(r1);
+      //
+      pm.print_progress(std::cout, test_idx);
     }
   }
+  std::cout << std::endl;
   auto test_elapsed = utils::now() - test_start_time;
 
   PRNG prng(tiebreak_seed);

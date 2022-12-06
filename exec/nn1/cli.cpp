@@ -44,10 +44,11 @@ std::string usage =
   "  Transformation:  applied after the transformation\n"
   "  -t:<transformation>\n"
   "    -t:derivative:<int degree>             Compute the 'degree'-th derivative of the series\n"
+  "    -t:noise:<float delta>                 Add noise to the series, weighted by delta (0 = no noise)\n"
   "\n"
   "  Other:\n"
   "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
-  "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1] !\n"
+  "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1]\n"
   "  -out:<path>     Where to write the json file. If the file exists, overwrite it.\n"
   "  -pair:<[train|test]:idx><[train|test]:idx> Only run the distance between a pair of series."
   "";
@@ -67,6 +68,7 @@ std::string usage =
 // Optional args
 // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
+/// Warning: must be processed first when reading arguments: set variables used by other such as prng
 void cmd_optional(std::vector<std::string> const& args, Config& conf) {
 
   // Number of threads
@@ -325,6 +327,41 @@ bool t_derivative(std::vector<std::string> const& v, Config& conf) {
   return false;
 }
 
+/// Noise -t:noise:<delta>
+bool t_noise(std::vector<std::string> const& v, Config& conf) {
+  using namespace std;
+  using namespace tempo;
+  namespace ttu = tempo::transform::univariate;
+
+  if (v[0]=="noise") {
+    bool ok = v.size()==2;
+    if (ok) {
+      auto od = tempo::reader::as_double(v[1]);
+      ok = od.has_value();
+      if (ok) {
+
+        double delta = od.value();
+        conf.param_noise_delta = {delta};
+        std::string strd = "n" + std::to_string(delta);
+
+        auto train_derive = conf.loaded_train_split.transform().map_shptr<TSeries>(
+          [=, &conf](TSeries const& t) { return ttu::noise(t, delta, *conf.pprng); }, strd
+        );
+        conf.train_split = DTS("train", train_derive);
+
+        auto test_derive = conf.loaded_test_split.transform().map_shptr<TSeries>(
+          [=, &conf](TSeries const& t) { return ttu::noise(t, delta, *conf.pprng); }, strd
+        );
+        conf.test_split = DTS("test", test_derive);
+      }
+    }
+    // Catchall
+    if (!ok) { do_exit(1, "Derivative parameter error"); }
+    return true;
+  }
+  return false;
+}
+
 /// Command line parsing: special helper for the configuration of the transform
 void cmd_transform(std::vector<std::string> const& args, Config& conf) {
   using namespace std;
@@ -339,6 +376,7 @@ void cmd_transform(std::vector<std::string> const& args, Config& conf) {
     // --- --- --- --- --- ---
     // Try parsing distance argument
     if (t_derivative(v, conf)) {}
+    else if (t_noise(v, conf)) {}
     else if (conf.transform_name=="default") {
       conf.train_split = conf.loaded_train_split;
       conf.test_split = conf.loaded_test_split;

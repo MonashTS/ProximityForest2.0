@@ -42,6 +42,7 @@ struct Config {
   tempo::DTS test_split;
   std::string transform_name{"null"};
   std::optional<int> param_derivative_degree;
+  std::optional<double> param_noise_delta;
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // DISTANCE
@@ -93,6 +94,7 @@ struct Config {
       //
       j["name"] = transform_name;
       if (param_derivative_degree) { j["degree"] = param_derivative_degree.value(); }
+      if (param_noise_delta) { j["delta"] = param_noise_delta.value(); }
       //
       jv["transform"] = std::move(j);
     }

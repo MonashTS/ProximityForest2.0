@@ -13,6 +13,11 @@ namespace tempo::transform::univariate {
   template<typename F>
   void derive(F const* data, size_t length, F* output, size_t degree);
 
+  // --- --- --- Noise
+
+  template<typename F, typename PRNG>
+  void noise(F const* data, size_t length, F stddev, F delta, PRNG& prng, F* output);
+
   // --- --- --- Normalisation
 
   template<typename F>

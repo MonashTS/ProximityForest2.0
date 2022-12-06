@@ -4,6 +4,7 @@
 #include <tempo/dataset/tseries.hpp>
 #include "core/univariate.normalization.hpp"
 #include "core/univariate.derivative.hpp"
+#include "core/univariate.noise.hpp"
 #include "univariate.hpp"
 
 // Specialised implementation for TSeries
@@ -26,6 +27,17 @@ namespace tempo::transform::univariate {
     std::vector<F> d(l);
     double* data = d.data();
     tempo::transform::univariate::derive(ts.data(), l, data, degree);
+    return TSeries::mk_from_rowmajor(ts, std::move(d));
+  }
+
+  // --- --- --- Noise
+
+  TSeries noise(TSeries const& ts, F delta, PRNG& prng){
+    const size_t l = ts.length();
+    const F stddev = ts.stddev()[0];
+    std::vector<F> d(l);
+    double* data = d.data();
+    tempo::transform::univariate::noise(ts.data(), l, stddev, delta, prng, data);
     return TSeries::mk_from_rowmajor(ts, std::move(d));
   }
 

@@ -4,6 +4,7 @@
 
 #include "core/univariate.derivative.hpp"
 #include "core/univariate.normalization.hpp"
+#include "core/univariate.noise.hpp"
 
 namespace tempo::transform::univariate {
 
@@ -40,6 +41,13 @@ namespace tempo::transform::univariate {
         }
       }
     }
+  }
+
+  // --- --- --- Noise
+
+  template<typename F, typename PRNG>
+  void noise(F const* data, size_t length, F stddev, F delta, PRNG& prng, F* output){
+    tempo::transform::core::univariate::noise<F, F const*, PRNG, F*>(data, length, stddev, delta, prng, output);
   }
 
   // --- --- --- Normalisation

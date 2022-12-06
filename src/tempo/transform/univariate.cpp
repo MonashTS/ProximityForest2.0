@@ -5,14 +5,19 @@ namespace tempo::transform::univariate {
   // Implementation through template explicit instantiation
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-  // Double implementation
+  // Double & Mersenne Twister implementation
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   using F = double;
+  using PRNG = std::mt19937_64;
 
   // --- --- --- Derivative
 
   template void derive<F>(F const* data, size_t length, F* output);
   template void derive<F>(F const* data, size_t length, F* output, size_t degree);
+
+  // --- --- --- Noise
+
+  template void noise<F, PRNG>(F const* data, size_t length, F stddev, F delta, PRNG& prng, F* output);
 
   // --- --- --- Normalisation
 

@@ -12,6 +12,11 @@ namespace tempo::transform::univariate {
   /// n-th derivative
   TSeries derive(TSeries const& ts, size_t degree);
 
+  // --- --- --- Noise
+
+  /// Add noise n to each timestamp where n = delta*U(0, stddev of the series)
+  TSeries noise(TSeries const& ts, F delta, PRNG& prng);
+
   // --- --- --- Normalisation
 
   /// Normalisation MinMax for univariate TSeries

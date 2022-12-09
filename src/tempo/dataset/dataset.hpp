@@ -582,6 +582,22 @@ namespace tempo {
     /// Access to the header pointer
     inline std::shared_ptr<DatasetHeader> header_ptr() const { return transform().header_ptr(); }
 
+    // --- --- --- --- --- ---
+    // Helpers
+
+    /// Check if this split has missing data
+    inline bool has_missing() const {
+      // Early abandon
+      if(!header().has_missing_value()){ return false; }
+      // Else, we need to check data in our split
+      // Use a set for efficiency
+      const auto& vec = header().instances_with_missing();
+      std::set<size_t> idx_missing(vec.begin(), vec.end());
+      for(const auto& i: index_set()){ if(idx_missing.contains(i)){ return true; } }
+      // No missing found
+      return false;
+    }
+
 
     // --- --- --- --- --- ---
     // Label

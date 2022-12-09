@@ -9,10 +9,11 @@ target_sources(libtempo PRIVATE predef.hpp )
 add_subdirectory(utils)
 
 add_subdirectory(classifier)
+add_subdirectory(dataset)
 add_subdirectory(distance)
 add_subdirectory(reader)
+add_subdirectory(writer)
 add_subdirectory(transform)
-add_subdirectory(dataset)
 
 
 # Linking

@@ -178,6 +178,16 @@ namespace tempo::reader {
         }
       }
 
+        // Do we have target label?
+      case DirectiveCode::dir_target_label: {
+        if (read_word_to_lower(input, buffer)==EOF) { return {"Error while reading directive @classlabel: reached EOF."}; }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) { data.targetlabel = {ob.value()}; }
+        else { return {"Error whole reading directive @targetlabel ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
+      }
+
         // Data directive
       case DirectiveCode::dir_data: {
         skip_line(input);

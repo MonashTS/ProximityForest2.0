@@ -24,6 +24,7 @@ namespace tempo::reader {
     std::optional<bool> missing{};
     std::optional<bool> univariate{};
     std::optional<bool> equallength{};
+    std::optional<bool> targetlabel{};
     std::optional<size_t> serieslength{};
     std::set<std::string> labels{};
 
@@ -107,6 +108,7 @@ namespace tempo::reader {
       dir_equal_length,
       dir_series_length,
       dir_class_label,
+      dir_target_label,
       dir_data,
     };
 
@@ -118,6 +120,7 @@ namespace tempo::reader {
     inline static std::string str_equallength = "equallength";
     inline static std::string str_serieslength = "serieslength";
     inline static std::string str_classlabel = "classlabel";
+    inline static std::string str_targetlabel = "targetlabel";
     inline static std::string str_data = "data";
 
     // Map (directive string |-> directive switch code)
@@ -129,6 +132,7 @@ namespace tempo::reader {
       {str_equallength, DirectiveCode::dir_equal_length},
       {str_serieslength, DirectiveCode::dir_series_length},
       {str_classlabel, DirectiveCode::dir_class_label},
+      {str_targetlabel, DirectiveCode::dir_target_label},
       {str_data, DirectiveCode::dir_data}
     };
 

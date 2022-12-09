@@ -1,6 +1,3 @@
-#include "pch.h"
-#include <tempo/reader/new_reader.hpp>
-
 #include "cli.hpp"
 
 namespace fs = std::filesystem;

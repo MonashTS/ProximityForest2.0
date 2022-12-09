@@ -1,7 +1,17 @@
 #pragma once
 
-#include "pch.h"
+#include <tempo/utils/utils.hpp>
+#include <tempo/dataset/dts.hpp>
+#include <tempo/dataset/dataset.hpp>
+#include <tempo/dataset/tseries.hpp>
+#include <tempo/reader/dts.reader.hpp>
+
 #include <tempo/utils/simplecli.hpp>
+
+#include <nlohmann/json.hpp>
+
+/// Alias type for distance functions
+using distfun_t = std::function<double(tempo::TSeries const& A, tempo::TSeries const& B, double ub)>;
 
 extern std::string usage;
 
@@ -47,13 +57,13 @@ struct Config {
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // To Json
-  [[nodiscard]] Json::Value to_json() const {
-    Json::Value jv;
+  [[nodiscard]] nlohmann::json to_json() const {
+    nlohmann::json jv;
 
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
     // Params
     {
-      Json::Value j;
+      nlohmann::json j;
       j["k"] = (int)k;
       j["seed"] = (long)seed;
       if (outpath) { j["outpath"] = outpath.value().string(); }

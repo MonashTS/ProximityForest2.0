@@ -27,6 +27,7 @@ struct Config {
   std::unique_ptr<tempo::PRNG> pprng;
   std::optional<std::filesystem::path> outpath{};
   std::optional<PairWise> opair{};
+  bool do_train_acc{false};
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
   // Loaded dataset + normalisation

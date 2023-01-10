@@ -50,7 +50,8 @@ std::string usage =
   "  -et:<int n>     Number of execution threads. Autodetect if n=<0 [n = 0]\n"
   "  -seed:<int n>   Fixed seed of randomness. Generate a random seed if n<0 [n = -1]\n"
   "  -out:<path>     Where to write the json file. If the file exists, overwrite it.\n"
-  "  -pair:<[train|test]:idx><[train|test]:idx> Only run the distance between a pair of series."
+  "  -pair:<[train|test]:idx><[train|test]:idx> Only run the distance between a pair of series.\n"
+  "  -train_ac       Only run train accuracy."
   "";
 
 [[noreturn]] void do_exit(int code, std::optional<std::string> msg) {
@@ -89,6 +90,12 @@ void cmd_optional(std::vector<std::string> const& args, Config& conf) {
   {
     auto p_out = tempo::scli::get_parameter<std::string>(args, "-out", tempo::scli::extract_string);
     if (p_out) { conf.outpath = {std::filesystem::path{p_out.value()}}; }
+  }
+
+  // Train file
+  {
+    bool p_train = tempo::scli::get_switch(args, "-train_acc");
+    if (p_train) { conf.do_train_acc = true; }
   }
 
   // Pairwise run

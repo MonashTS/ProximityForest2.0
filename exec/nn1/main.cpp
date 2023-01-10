@@ -132,9 +132,85 @@ int main(int argc, char **argv) {
     // --- --- --- Output
     jv["status"] = "success";
 
-  } else {
+  } else if(conf.do_train_acc){
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-    // Computation NN1
+    // Computation NN1 train accuracy
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+    // --- --- --- --- --- ---
+    // Train accuracy
+    size_t train_nb_correct = 0;
+    auto now = utils::now();
+
+    // --- --- ---
+    // Progress reporting
+    utils::ProgressMonitor pm(train_top);    // How many to do
+    size_t nb_done = 0;                      // How many done up to "now"
+
+    // --- --- ---
+    // Accuracy variables
+    // Multithreading control
+    utils::ParTasks ptasks;
+    std::mutex mutex;
+
+    auto nn1_train_task = [&](size_t train_idx) mutable {
+      // --- Test exemplar
+      TSeries const& self = conf.train_split[train_idx];
+      // --- 1NN bests with tie management
+      double bsf = tempo::utils::PINF;
+      std::set<tempo::EL> labels{};
+      // --- 1NN Loop
+      for (size_t other_train_idx{0}; other_train_idx<train_top; other_train_idx++) {
+        if(other_train_idx == train_idx){continue;}
+        TSeries const& candidate = conf.train_split[other_train_idx];
+        double d = conf.dist_fun(self, candidate, bsf);
+        if (d<bsf) { // Best: clear labels and insert new
+          labels.clear();
+          labels.insert(train_header.label(other_train_idx).value());
+          bsf = d;
+        } else if (d==bsf) { // Same: add label in
+          labels.insert(train_header.label(other_train_idx).value());
+        }
+      }
+      // --- Update accuracy
+      {
+        std::lock_guard lock(mutex);
+        tempo::EL result = std::numeric_limits<EL>::max();
+        std::sample(labels.begin(), labels.end(), &result, 1, *conf.pprng);
+        assert(result!=std::numeric_limits<EL>::max());
+        if (result==train_header.label(train_idx).value()) { ++train_nb_correct; }
+        nb_done++;
+        pm.print_progress(std::cout, nb_done);
+      }
+    };
+
+    // Create the tasks per tree. Note that we clone the state.
+    tempo::utils::ParTasks p;
+    p.execute(conf.nbthreads, nn1_train_task, 0, train_top, 1);
+
+    auto elapsed = utils::now() - now;
+
+    // --- --- --- --- --- ---
+    // Output
+
+    // --- --- --- Train Accuracy
+    {
+      nlohmann::json j;
+      j["nb_correct"] = train_nb_correct;
+      j["accuracy"] = (double)train_nb_correct/(double)(train_top);
+      j["time_ns"] = elapsed.count();
+      j["time_human"] = utils::as_string(elapsed);
+      jv["01_loss_train"] = j;
+    }
+
+    // --- --- --- Output
+    jv["status"] = "success";
+
+
+  }
+  else {
+    // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+    // Computation NN1 test accuracy
     // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
     // --- --- --- --- --- ---

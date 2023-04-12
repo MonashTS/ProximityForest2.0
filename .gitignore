@@ -13,3 +13,6 @@ _deps
 /.idea/
 /cmake-build-debug
 /cmake-build-release
+/build/
+/third_party/
+/docker/

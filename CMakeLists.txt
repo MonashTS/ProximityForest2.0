@@ -1,6 +1,32 @@
 cmake_minimum_required(VERSION 3.22)
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+# Basic Settings
+# Some of these settings are required to be set before the project call
+
+# Include utility functions
+include(cmake/cmake_utils.cmake)
+detect_os()
+
+# Set vcpkg settings
+set(USE_VCPKG 1)
+
+if (USE_VCPKG)
+    if(WINDOWS)
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/${OS_NAME}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+#        set(CMAKE_TOOLCHAIN_FILE "E:/git/dotnet54/TS-CHIEF2/third_party/windows/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    elseif(LINUX OR OSX)
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/${OS_NAME}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+#        set(CMAKE_TOOLCHAIN_FILE "E:/git/dotnet54/TS-CHIEF2/third_party/x64-linux/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    else()
+        message(FATAL_ERROR "Failed to setup vcpkg. Problem detecting OS, try resting CMake cache and then reloading.")
+    endif()
+    message(STATUS "Using vcpkg CMAKE_TOOLCHAIN_FILE ${CMAKE_TOOLCHAIN_FILE}")
+    message(STATUS "Using VCPKG_TARGET_TRIPLET ${VCPKG_TARGET_TRIPLET}")
+endif()
+
+
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Use ccache if available
 # Must be before 'project', as the project command performs check on the compiler
 
@@ -32,6 +58,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 string(TOLOWER ${CMAKE_SYSTEM_NAME} OS_NAME)
 message(STATUS "CMAKE_SYSTEM_NAME (CMAKE_SYSTEM): ${OS_NAME} (${CMAKE_SYSTEM})")
 
+print_env_info()
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Configurable options
@@ -97,10 +124,19 @@ message(STATUS "================================================================
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # Third party
 
+# JSON CPP
+if (USE_VCPKG)
+    find_package(jsoncpp CONFIG REQUIRED)
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(JSONCPP jsoncpp)
+endif()
+
 # MLPACK
 if (USE_VCPKG)
     find_package(mlpack CONFIG REQUIRED)
     find_package(Armadillo CONFIG REQUIRED)
+
     #    message(STATUS "MLPACK_INCLUDE_DIRS: ${MLPACK_INCLUDE_DIRS}")
     #    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARIES}")
 else()
@@ -118,6 +154,25 @@ endif()
 
 # OPENMP
 # This works without vcpkg
+
+#    message(STATUS "MLPACK_INCLUDE_DIRS: ${MLPACK_INCLUDE_DIRS}")
+#    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARIES}")
+else()
+    # Put 'cmake' in the module path to get access to the 'FindMLPACK.cmake' file.
+    # This file is provided by the mlpack project.
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+    find_package(MLPACK REQUIRED)
+    message(STATUS "MLPack include: ${MLPACK_INCLUDE_DIRS}")
+    message(STATUS "MLPack library: ${MLPACK_LIBRARY}")
+
+    # Armadillo: dependency of mlpack
+    find_package(Armadillo REQUIRED)
+endif()
+
+
+# OPENMP
+# this works without vcpkg
+
 find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP include: ${OpenMP_CXX_INCLUDE_DIRS}")

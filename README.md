@@ -36,5 +36,19 @@ pf_configs:
    3. [distance_selection_adtw.csv](results/distance_selection_adtw.csv)
 
 <p align="center">
-  <img src="results/figures/"MCM_ProximityForest 2.0.png"/>
+  <img src="results/figures/MCM_ProximityForest 2.0.png"/>
 </p>
+
+<p align="center">
+  <img src="results/figures/MCM_SOTA.png"/>
+</p>
+
+**ProximityForest 2.0 as the most accurate similarity measure**
+<p align="center">
+  <img src="results/figures/distance_based_fold0_heatmap.png"/>
+</p>
+
+## Acknowledgement
+We would like to thank Professor Eamonn Keogh, Professor Tony Bagnall and their team who have provided the
+[UCR time series classification archive](https://www.cs.ucr.edu/~eamonn/time_series_data_2018/) and
+making a comprehensive benchmark [results](http://timeseriesclassification.com/results.php) widely available.

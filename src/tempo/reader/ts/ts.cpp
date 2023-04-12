@@ -13,41 +13,6 @@ namespace tempo::reader {
 
   bool TSData::has_labels() const { return !labels.empty(); }
 
-  std::tuple<DatasetHeader, std::vector<TSeries>> TSData::to_datasetheader(
-    std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder
-  ) {
-    // Build label vector
-    std::vector<std::optional<std::string>> vlabels;
-    for (const auto& ts : series) { vlabels.emplace_back(ts.label()); }
-
-    // Build header
-    DatasetHeader hd;
-    if (mbencoder) {
-      hd = DatasetHeader(
-        problem_name.value(),
-        shortest_length,
-        longest_length,
-        nb_dimensions,
-        labels,
-        std::move(vlabels),
-        std::move(series_with_missing_values),
-        mbencoder->get()
-      );
-
-    } else {
-      hd = DatasetHeader(
-        problem_name.value(),
-        shortest_length,
-        longest_length,
-        nb_dimensions,
-        labels,
-        std::move(vlabels),
-        std::move(series_with_missing_values)
-      );
-    }
-
-    return {std::move(hd), std::move(series)};
-  }
 
   // --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
@@ -211,6 +176,16 @@ namespace tempo::reader {
         } else {
           return {"Error whole reading directive @classlabel ('true' or 'false' expected)"};
         }
+      }
+
+        // Do we have target label?
+      case DirectiveCode::dir_target_label: {
+        if (read_word_to_lower(input, buffer)==EOF) { return {"Error while reading directive @classlabel: reached EOF."}; }
+        auto ob = as_bool(buffer);
+        if (ob.has_value()) { data.targetlabel = {ob.value()}; }
+        else { return {"Error whole reading directive @targetlabel ('true' or 'false' expected)"}; }
+        state = (&TSReader::read_header);
+        return {};
       }
 
         // Data directive

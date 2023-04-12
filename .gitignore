@@ -9,6 +9,10 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+/out/
+/.idea/
+/cmake-build-debug
+/cmake-build-release
 /build/
 /third_party/
 /docker/

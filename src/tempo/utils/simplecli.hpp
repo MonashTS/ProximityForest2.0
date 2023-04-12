@@ -1,7 +1,5 @@
 #pragma once
 
-#include <tempo/pch_std.hpp>
-
 #include "utils.hpp"
 #include "readingtools.hpp"
 
@@ -67,7 +65,6 @@ namespace tempo::scli {
     } else { return {}; }
   }
 
-
   /// Extract a "real"
   inline std::optional<double> extract_double(std::string const& arg, std::string const& pfx) {
     if (arg.starts_with(pfx)) {
@@ -82,7 +79,11 @@ namespace tempo::scli {
 
   /// Check for a switch
   inline bool get_switch(std::vector<std::string> const& args, std::string pfx) {
-    return get_parameter<bool>(args, [=](std::string const& a) -> bool { return a==pfx; }, false);
+    return get_parameter<bool>(
+      args,
+      [=](std::string const& a) -> std::optional<bool> { if (a==pfx) { return {true}; } else { return {}; } },
+      false
+    );
   }
 
   /// Check for an optional parameter

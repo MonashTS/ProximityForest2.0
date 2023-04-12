@@ -1,5 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <istream>
+#include <sstream>
+#include <limits>
+#include <optional>
+#include <string>
+#include <vector>
+
 namespace tempo::reader {
 
   // --- --- ---

@@ -1,51 +1,35 @@
 #pragma once
 
 #include <tempo/utils/utils.hpp>
-#include <tempo/tseries/tseries.hpp>
-#include <tempo/tseries/dataset.hpp>
+#include <tempo/utils/label_encoder.hpp>
+#include <tempo/dataset/dts.hpp>
 
 #include "ts/ts.hpp"
 
+/**
+ * Give access to readers
+ */
 namespace tempo::reader {
 
-  /// Helper for TS file format and path
-  inline std::variant<std::string, TSData>
-  load_tsdata(const std::filesystem::path& path) {
-    std::ifstream istream_(path);
-    return tempo::reader::TSReader::read(istream_);
-  }
+  /// Read a TS file - univariate only
+  /// Can use an existing label encoder.
+  /// TODO: fix reader for multivariate, it is broken
+  std::variant<std::string, DTS> load_udataset_ts(
+    std::filesystem::path const& path,
+    std::string const& split_name,
+    LabelEncoder const& encoder = {}
+  );
 
-  /// Helper for TS file format and path, with an optional existing encoder
-  inline std::variant<std::string, Dataset<TSeries>>
-  load_dataset_ts(const std::filesystem::path& path,
-                  std::optional<std::reference_wrapper<LabelEncoder const>> mbencoder = {}) {
-    auto vts = load_tsdata(path);
-    if (vts.index()==1) {
-      TSData tsdata = std::move(std::get<1>(vts));
-      auto [hd, v] = tsdata.to_datasetheader(mbencoder);
-      auto header = std::make_shared<DatasetHeader>(std::move(hd));
-      return {DTS(move(header), "default", std::move(v))};
-    } else {
-      return {std::get<0>(vts)};
-    }
-  }
-
-
-  /// Helper for the UCR archive
-  struct UCRDataset {
-    DTS alldata;
-    size_t default_train_size;
-    size_t default_test_size;
-    tempo::utils::duration_t load_time_ns;
-
-    IndexSet trainIS() const { return IndexSet(default_train_size); }
-
-    IndexSet testIS() const { return IndexSet(default_train_size, default_test_size); }
-
-    Json::Value to_json();
-  };
-
-  std::variant<std::string, UCRDataset> load_ucr_ts(std::filesystem::path const& ucrpath,
-                                                    std::string const& datasetname);
+  /// Read a csv file - univariate series
+  /// Can use an existing label encoder.
+  std::variant<std::string, DTS> load_udataset_csv(
+    std::filesystem::path const& path,
+    std::string const& dataset_name,
+    std::string const& split_name,
+    LabelEncoder const& encoder = {},
+    bool csvheader = false,
+    char csvsep = ',',
+    std::set<char> csvcomment = {'%', '@'}
+  );
 
 } // End of namespace tempo::reader

@@ -8,12 +8,9 @@
 
 namespace tempo::utils {
 
-  template<typename T>
-  concept Iterable = std::ranges::range<std::ranges::range_value_t<T>>;
-
   /// Pick a random item from a subscriptable type, from [0] to [size-1]
   template<typename PRNG>
-  inline const auto& pick_one(const Subscriptable auto& collection, size_t size, PRNG& prng) {
+  inline const auto& pick_one(Subscriptable auto const& collection, size_t size, PRNG& prng) {
     if (size==1) { return collection[0]; }
     else if (size>1) {
       auto distribution = std::uniform_int_distribution<size_t>(0, size - 1);
@@ -34,9 +31,9 @@ namespace tempo::utils {
   // --- --- --- --- --- ---
 
   template<typename T>
-  inline Json::Value to_json(const T& vec) {
-    Json::Value a(Json::arrayValue);
-    for (const auto& v : vec) { a.append(v); }
+  inline nlohmann::json to_json(const T& vec) {
+    nlohmann::json a = nlohmann::json::array();
+    for (const auto& v : vec) { a.push_back(v); }
     return a;
   }
 
@@ -48,20 +45,16 @@ namespace tempo::utils {
   constexpr size_t NO_WINDOW{std::numeric_limits<size_t>::max()};
 
   /// Positive infinity for float types
-  template<typename FloatType>
   constexpr FloatType PINF{std::numeric_limits<FloatType>::infinity()};
 
   /// Negative infinity for float types
-  template<typename FloatType>
-  constexpr FloatType NINF{-PINF<FloatType>};
+  constexpr FloatType NINF{-PINF};
 
   /// Not A Number
-  template<typename FloatType>
   constexpr FloatType QNAN{std::numeric_limits<FloatType>::quiet_NaN()};
 
   /// Lower Bound inital value, use to deal with numerical instability
-  template<typename FloatType>
-  FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
+  inline FloatType INITLB{-pow(FloatType(10), -(std::numeric_limits<FloatType>::digits10 - 1))};
 
 
   // --- --- --- --- --- ---
@@ -128,26 +121,8 @@ namespace tempo::utils {
   /// Throw an exception "should not happen". Used as default case in switches.
   void inline should_not_happen() { throw std::logic_error("Should not happen"); }
 
-
-
-
-
-  // --- --- --- --- --- ---
-  // --- Initialisation tool
-  // --- --- --- --- --- ---
-
-  namespace initBlock_detail {
-    struct tag {};
-
-    template<class F>
-    decltype(auto) operator +(tag, F&& f) {
-      return std::forward<F>(f)();
-    }
-  }
-
-#define initBlock initBlock_detail::tag{} + [&]() -> decltype(auto)
-
-#define initBlockStatic initBlock_detail::tag{} + []() -> decltype(auto)
+  /// Throw an exception "should not happen". Used as default case in switches.
+  void inline should_not_happen(std::string msg) { throw std::logic_error("Should not happen: " + msg); }
 
 
   // --- --- --- --- --- ---
@@ -167,6 +142,20 @@ namespace tempo::utils {
   template<typename T>
   inline T *get_capsule_ptr(const std::shared_ptr<std::any>& capsule) {
     return std::any_cast<T>(capsule.get());
+  }
+
+
+  // --- --- --- --- --- ---
+  // --- Misc
+  // --- --- --- --- --- ---
+
+  inline std::string cat(std::vector<std::string> v, std::string sep) {
+    if (v.empty()) { return ""; }
+    else {
+      std::string res = v.front();
+      for (size_t i{1}; i<v.size(); ++i) { res += sep + v[i]; }
+      return res;
+    }
   }
 
 } // End of namespace tempo::utils
@@ -232,7 +221,7 @@ namespace tempo::utils {
 
     /// Template version
     template<class F, class... Args>
-    void push_task(F&& f, Args&& ... args) {
+    void push_task_args(F&& f, Args&& ... args) {
       tasklist.emplace(std::move(std::bind(std::forward<F>(f), std::forward<Args...>(args...))));
     }
 
@@ -277,6 +266,9 @@ namespace tempo::utils {
 
     /// Print progress
     void print_progress(std::ostream& out, size_t nbdone);
+
+    /// Print progress - do nothing on nullptr
+    void print_progress(std::ostream *out, size_t nbdone);
   };
 
 }

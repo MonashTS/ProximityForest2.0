@@ -1,8 +1,12 @@
 target_sources(libtempo
         PUBLIC
-            ts/ts.hpp
-            reader.hpp
+        reader.hpp
+        ts/ts.hpp
+        dts.reader.hpp
         PRIVATE
-            ts/ts.cpp
-            reader.cpp
+        reader.cpp
+        ts/ts.cpp
+        dts.reader.cpp
         )
+
+add_subdirectory(csv)

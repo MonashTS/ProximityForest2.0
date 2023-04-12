@@ -24,3 +24,17 @@ pf_configs:
 - pf2
 - any combination of distances such as DA:DTWFull:DTW:WDTW:LCSS:MSM:ERP:TWE:ADTW in this format
 ``` 
+
+
+## Results
+1. [ProximityForest2_TESTFOLDS.csv](results/ProximityForest2_TESTFOLDS.csv) contains the accuracy for 30 resamples of 109 UCR datasets
+2. [PF_time_fold0.csv](results/PF_time_fold0.csv) contains the train and test time for PF 1.0 and PF 2.0
+3. [distance_based_fold0.csv](results/distance_based_fold0.csv) contains the accuracy for 109 UCR datasets on the default UCR splits
+4. Distance selection: 5-fold cross validation accuracy on 53 'development' datasets
+   1. [distance_selection_1dist.csv](results/distance_selection_1dist.csv)
+   2. [distance_selection_2dist.csv](results/distance_selection_2dist.csv)
+   3. [distance_selection_adtw.csv](results/distance_selection_adtw.csv)
+
+<p align="center">
+  <img src="results/figures/"MCM_ProximityForest 2.0.png"/>
+</p>

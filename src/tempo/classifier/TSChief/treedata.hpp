@@ -43,4 +43,4 @@ namespace tempo::classifier::TSChief {
 
   inline MDTS const& at_test(TreeData const& td){ return at<MDTS>(td, "test_mdts"); }
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

@@ -46,4 +46,4 @@ namespace tempo::classifier::TSChief {
     for (auto&& s : vec) { forest_merge_in(std::move(s)); }
   }
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

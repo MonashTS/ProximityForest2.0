@@ -30,4 +30,4 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     return std::make_unique<LCSS>(tn, epsilon, w);
   }
 
-} // End of namespace tempo::classifier::TSChief::snode::nn1splitter
+} // End of namespace tempo::classifier::PF2::snode::nn1splitter

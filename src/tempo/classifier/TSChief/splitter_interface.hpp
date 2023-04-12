@@ -74,4 +74,4 @@ namespace tempo::classifier::TSChief {
 
   };
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

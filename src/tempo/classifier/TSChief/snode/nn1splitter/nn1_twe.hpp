@@ -25,4 +25,4 @@ namespace tempo::classifier::TSChief::snode::nn1splitter {
     std::unique_ptr<i_Dist> generate(TreeState& state, TreeData const& /* d */, const ByClassMap& /* bcm */) override;
   };
 
-} // End of namespace tempo::classifier::TSChief::snode::nn1splitter
+} // End of namespace tempo::classifier::PF2::snode::nn1splitter

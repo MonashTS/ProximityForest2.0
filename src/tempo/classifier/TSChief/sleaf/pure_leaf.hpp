@@ -58,4 +58,4 @@ namespace tempo::classifier::TSChief::sleaf {
 
   };
 
-} // End of namespace tempo::classifier::TSChief::sleaf
+} // End of namespace tempo::classifier::PF2::sleaf

@@ -100,4 +100,4 @@ namespace tempo::classifier::TSChief {
     return std::make_shared<Forest>(std::move(result), train_header.nb_classes());
   }
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

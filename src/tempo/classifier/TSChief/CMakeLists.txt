@@ -4,6 +4,7 @@ target_sources(libtempo
         treedata.hpp
         treestate.hpp
         splitter_interface.hpp
+        pfsplitters.hpp
         # --- --- --- Tree/Forest
         tree.hpp
         forest.hpp
@@ -12,6 +13,7 @@ target_sources(libtempo
         treestate.cpp
         tree.cpp
         forest.cpp
+        pfsplitters.cpp
 )
 
 # Leaf splitters

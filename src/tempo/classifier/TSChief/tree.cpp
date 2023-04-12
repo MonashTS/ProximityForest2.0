@@ -106,4 +106,4 @@ namespace tempo::classifier::TSChief {
     }
   } // End of train method
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

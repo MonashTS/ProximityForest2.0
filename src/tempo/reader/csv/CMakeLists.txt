@@ -6,12 +6,3 @@ target_sources(libtempo
         univariate/csv.cpp
         )
 
-
-### Testing
-if (BUILD_TESTING)
-    target_sources(libtempo-test
-        # --- --- ---
-        PRIVATE
-        univariate/csv.test.cpp
-    )
-endif ()

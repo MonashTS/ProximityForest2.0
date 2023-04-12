@@ -79,4 +79,4 @@ namespace tempo::classifier::TSChief {
     std::shared_ptr<TreeNode> train(TreeState& state, const TreeData& data, ByClassMap const& bcm) const;
   };
 
-} // End of tempo::classifier::TSChief
+} // End of tempo::classifier::PF2

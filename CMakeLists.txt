@@ -154,20 +154,19 @@ endif()
 
 # OPENMP
 # This works without vcpkg
-
 #    message(STATUS "MLPACK_INCLUDE_DIRS: ${MLPACK_INCLUDE_DIRS}")
 #    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARIES}")
-else()
-    # Put 'cmake' in the module path to get access to the 'FindMLPACK.cmake' file.
-    # This file is provided by the mlpack project.
-    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-    find_package(MLPACK REQUIRED)
-    message(STATUS "MLPack include: ${MLPACK_INCLUDE_DIRS}")
-    message(STATUS "MLPack library: ${MLPACK_LIBRARY}")
-
-    # Armadillo: dependency of mlpack
-    find_package(Armadillo REQUIRED)
-endif()
+#else()
+#    # Put 'cmake' in the module path to get access to the 'FindMLPACK.cmake' file.
+#    # This file is provided by the mlpack project.
+#    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+#    find_package(MLPACK REQUIRED)
+#    message(STATUS "MLPack include: ${MLPACK_INCLUDE_DIRS}")
+#    message(STATUS "MLPack library: ${MLPACK_LIBRARY}")
+#
+#    # Armadillo: dependency of mlpack
+#    find_package(Armadillo REQUIRED)
+#endif()
 
 
 # OPENMP

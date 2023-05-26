@@ -17,6 +17,21 @@ If you use any part of this work, please cite:
 ```
 
 ## Code
+### Requirements
+- C++ 20
+- GCC 12
+- MLPack: ```sudo apt-get install libmlpack```
+
+### Building the program with cmake on linux systems
+
+```
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+```
+
+### Running the program
 ```
 <EXEC_PATH> <path_to_csv_dataset> -t <nb_trees> -c <nb_candidates> -p <nb_threads> --pfc <pf_configs> -o <output_path>"
 

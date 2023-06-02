@@ -52,6 +52,10 @@ namespace pf::splitters {
         return [d](tsc::TreeState & /*s*/) { return "derivative" + std::to_string(d); };
     }
 
+    tsc_nn1::TransformGetter make_get_freqtransform() {
+        return [](tsc::TreeState & /*s*/) { return "frequency"; };
+    }
+
     // --- --- --- Window getter
 
     tsc_nn1::WindowGetter make_get_window(size_t maxlength) {
@@ -232,6 +236,37 @@ namespace pf::splitters {
 
             // TWE
             gendist.push_back(make_shared<tsc_nn1::TWEGen>(getter_tr_def, getter_twe_nu, getter_twe_lambda));
+        } else if (distances.contains("pf2f")) {
+            // --- --- --- PF2.0-F
+            auto getter_cfe_set = make_get_vcfe(exponents);
+            auto getter_tr_set = make_get_transform(transforms);
+            auto getter_tr_freq = make_get_freqtransform();
+            auto getter_window = make_get_window(series_max_length);
+            auto frac_stddev = make_get_frac_stddev();
+
+            // ADTW
+            // Sample train data
+            constexpr size_t SAMPLE_SIZE = 4000;
+            auto samples = tsc_nn1::ADTWGen::do_sampling(exponents, transforms, train_data, SAMPLE_SIZE, tstate.prng);
+            // Create distance
+            gendist.push_back(make_shared<tsc_nn1::ADTWGen>(getter_tr_set, getter_cfe_set, samples));
+
+            // DTW
+            if (distances.contains("dtwproba")) {
+                // Proba way
+                auto getter_window_proba = make_proba_window(series_max_length);
+                gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window_proba));
+            } else {
+                // Classic way
+                gendist.push_back(make_shared<tsc_nn1::DTWGen>(getter_tr_set, getter_cfe_set, getter_window));
+            }
+
+            // LCSS
+            gendist.push_back(make_shared<tsc_nn1::LCSSGen>(getter_tr_set, frac_stddev, getter_window));
+
+            // ED on frequency domain
+            gendist.push_back(make_shared<tsc_nn1::DAGen>(getter_tr_freq, getter_cfe_set));
+
         } else if (distances.contains("pf2")) {
             // --- --- --- PF2.0
             auto getter_cfe_set = make_get_vcfe(exponents);
@@ -315,8 +350,7 @@ namespace pf::splitters {
         // Wrap each distance generator in GenSplitter1NN (which is a i_GenNode) and push in generators
         for (auto const &gd: gendist) {
             generators.push_back(
-                    make_shared<tsc_nn1::GenSplitterNN1>(gd,
-                                                         get_GenSplitterNN1_State) //, get_train_data, get_test_data)
+                    make_shared<tsc_nn1::GenSplitterNN1>(gd, get_GenSplitterNN1_State)
             );
         }
 

@@ -5,6 +5,7 @@
 #include "core/univariate.normalization.hpp"
 #include "core/univariate.derivative.hpp"
 #include "core/univariate.noise.hpp"
+#include "core/univariate.frequency.hpp"
 #include "univariate.hpp"
 
 // Specialised implementation for TSeries
@@ -73,6 +74,15 @@ namespace tempo::transform::univariate {
     F stdv = A.stddev()[0];
     arma::Row<F> v = tempo::transform::core::univariate::details::zscore(A.rowvec(), avgv, stdv);
     return TSeries::mk_from(A, std::move(v));
+  }
+
+  // --- --- --- Frequency
+  TSeries freqtransform(TSeries const& ts){
+      const size_t l = ts.length();
+      std::vector<F> d(l);
+      double* data = d.data();
+      tempo::transform::core::univariate::freqtransform<F, F const *, F *>(ts.data(), l, data);
+      return TSeries::mk_from_rowmajor(ts, std::move(d));
   }
 
 } // End of namespace namespace tempo::transform::univariate

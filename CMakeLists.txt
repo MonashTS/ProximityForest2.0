@@ -108,7 +108,7 @@ target_include_directories(rapidcsv INTERFACE third_party/rapidcsv_mod)
 target_sources(rapidcsv PUBLIC third_party/rapidcsv_mod/rapidcsv.h)
 
 # NLOHMANN JSON
-add_library(json INTERFACE)
+add_library(json INTERFACE bindings/python/src/pyPF/bindings.cpp bindings/python/src/pyPF/classifier/bindings.cpp bindings/python/src/pyPF/classifier/ProximityForest2/pybind_pf2.hpp)
 target_include_directories(json INTERFACE third_party/nlohmann/include)
 target_sources(json PUBLIC third_party/nlohmann/include/nlohmann/json.hpp)
 

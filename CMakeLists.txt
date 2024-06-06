@@ -34,12 +34,13 @@ message(STATUS "CMAKE_SYSTEM_NAME (CMAKE_SYSTEM): ${OS_NAME} (${CMAKE_SYSTEM})")
 option(BUILD_TESTING "Build tests." ON)
 
 # modify here if using vcpkg
-set(USE_VCPKG 0)
+set(USE_VCPKG 1)
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 # VCPKG setup
 if (USE_VCPKG)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/${OS_NAME}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(DCMAKE_TOOLCHAIN_FILE "C:/Users/changt/workspace/ProximityForest2.0/third_party/windows/vcpkg/scripts/buildsystems/vcpkg.cmake")
 
     if(NOT EXISTS ${CMAKE_TOOLCHAIN_FILE})
         message(FATAL_ERROR "Failed to load VCPKG from ${CMAKE_TOOLCHAIN_FILE}. Check if VCPKG is setup properly and if CMAKE_TOOLCHAIN_FILE path is correct.")
@@ -78,10 +79,22 @@ message(STATUS "================================================================
 
 # MLPACK
 if (USE_VCPKG)
-    find_package(mlpack CONFIG REQUIRED)
-    find_package(Armadillo CONFIG REQUIRED)
+    #    find_package(mlpack CONFIG REQUIRED)
+    #    find_package(Armadillo CONFIG REQUIRED)
+    #    message(STATUS "MLPACK_INCLUDE_DIRS: ${MLPACK_INCLUDE_DIRS}")
+    #    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARIES}")
+
+    find_path(MLPACK_INCLUDE_DIRS "mlpack/mlpack.hpp")
+    set(MLPACK_LIBRARY "mlpack/mlpack.hpp")
+    set(MLPACK_LIBRARIES "mlpack/mlpack.hpp")
+
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+    #    find_package(MLPACK REQUIRED)
+
+    #    find_package(Armadillo CONFIG REQUIRED)
     message(STATUS "MLPACK_INCLUDE_DIRS: ${MLPACK_INCLUDE_DIRS}")
-    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARIES}")
+    message(STATUS "MLPACK_LIBRARIES: ${MLPACK_LIBRARcIES}")
+    message(STATUS "MLPack library: ${MLPACK_LIBRARY}")
 else()
     # Put 'cmake' in the module path to get access to the 'FindMLPACK.cmake' file.
     # This file is provided by the mlpack project.
@@ -123,6 +136,7 @@ add_subdirectory(third_party/cxxopts)
 if(BUILD_TESTING)
     add_subdirectory(test/Catch2)
     add_executable(libtempo-test test/tests.cpp)
+    #    target_include_directories(liptempo-test PRIVATE ${MLPACK_INCLUDE_DIRS})
     target_include_directories(libtempo-test PRIVATE test)
     target_link_libraries(libtempo-test PRIVATE libtempo Catch2::Catch2WithMain)
 endif()

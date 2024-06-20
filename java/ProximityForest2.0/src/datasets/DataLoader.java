@@ -50,6 +50,14 @@ public class DataLoader {
         return fileInfo;
     }
 
+    public Sequences readMonster(final String datasetName, final String datasetPath) {
+        String xPath = datasetPath + datasetName + "/" + datasetName + "_X.csv";
+        String yPath = datasetPath + datasetName + "/" + datasetName + "_y.csv";
+        String metaPath = datasetPath + datasetName + "/metadata/" + datasetName + "_metadata.csv";
+
+        return readCSVFileToSequences(xPath, yPath, metaPath, ",");
+    }
+
     public Sequences readUCRTrain(final String datasetName, final String datasetPath) {
         String path = datasetPath + datasetName + "/" + datasetName + "_TRAIN.tsv";
         return readTSVFileToSequences(path, true);
@@ -137,6 +145,155 @@ public class DataLoader {
                     tmp = missingValuesProcessor.process(tmp);
 
                 dataset.add(new Sequence(tmp, label), count);
+                count++;
+            }
+            final long endTime = System.nanoTime();
+            final long elapsed = endTime - startTime;
+            final String timeDuration = Tools.doTime(1.0 * elapsed / 1e6);
+            if (Application.verbose > 1) System.out.println(" finished in " + timeDuration);
+
+            // reorder class
+            if (Application.iteration > 0) dataset.shuffle();
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return dataset;
+    }
+
+    public Sequences readCSVFileToSequences(final String xFile, final String yFile, final String metaFile, final String fileDelimiter) {
+        String line;
+        String[] lineArray;
+
+        int label;
+        int[] fileInfo;
+        final File fmeta = new File(metaFile);
+        final File fX = new File(xFile);
+        final File fy = new File(yFile);
+        boolean hasMissing = false;
+
+        BufferedReader br = null;
+        Sequences dataset = null;
+        ArrayList<Integer> classLabels = new ArrayList<>();
+        int nInstances = 0;
+        int nDim = 0;
+        int seqlen = 0;
+
+        // read in the metadata
+        try {
+            if (Application.verbose > 1) System.out.print("[DATASET-LOADER] reading [" + fmeta.getName() + "]: ");
+            final long startTime = System.nanoTime();
+            // initialise
+            br = new BufferedReader(new FileReader(xFile));
+
+            while ((line = br.readLine()) != null) {
+                lineArray = line.split(fileDelimiter);
+                if (lineArray[0].equals("n_instances")) nInstances = Integer.parseInt(lineArray[1]);
+                else if (lineArray[0].equals("n_dim")) nDim = Integer.parseInt(lineArray[1]);
+                else if (lineArray[0].equals("series_length")) seqlen = Integer.parseInt(lineArray[1]);
+            }
+            final long endTime = System.nanoTime();
+            final long elapsed = endTime - startTime;
+            final String timeDuration = Tools.doTime(1.0 * elapsed / 1e6);
+            if (Application.verbose > 1) System.out.println(" finished in " + timeDuration);
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // read in class labels
+        try {
+            if (Application.verbose > 1) System.out.print("[DATASET-LOADER] reading [" + fy.getName() + "]: ");
+            final long startTime = System.nanoTime();
+
+            // initialise
+            br = new BufferedReader(new FileReader(xFile));
+
+            while ((line = br.readLine()) != null) {
+                lineArray = line.split(fileDelimiter);
+                label = Integer.parseInt(lineArray[0]);
+                classLabels.add(label);
+            }
+            final long endTime = System.nanoTime();
+            final long elapsed = endTime - startTime;
+            final String timeDuration = Tools.doTime(1.0 * elapsed / 1e6);
+            if (Application.verbose > 1) System.out.println(" finished in " + timeDuration);
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        // read the X
+        try {
+            if (Application.verbose > 1) System.out.print("[DATASET-LOADER] reading [" + fX.getName() + "]: ");
+            final long startTime = System.nanoTime();
+
+            // initialise
+            br = new BufferedReader(new FileReader(xFile));
+            dataset = new Sequences(nInstances);
+
+            int count = 0;
+            while ((line = br.readLine()) != null) {
+                lineArray = line.split(fileDelimiter);
+
+                if (nDim == 1) {
+                    double[] tmp = new double[seqlen];
+                    for (int j = 0; j < seqlen; j++) {
+                        tmp[j] = Double.parseDouble(lineArray[j]);
+                        if (Tools.isMissing(tmp[j])) hasMissing = true;
+                    }
+                    if (Tools.isMissing(tmp[tmp.length - 1]))
+                        tmp = varyLengthProcessor.process(tmp, seqlen);
+
+                    if (hasMissing && !Tools.isMissing(tmp[tmp.length - 1]))
+                        tmp = missingValuesProcessor.process(tmp);
+
+                    dataset.add(new Sequence(tmp, classLabels.get(count)), count);
+                } else {
+                    double[][] tmp = new double[nDim][seqlen];
+                    int jj = 0;
+                    for (int k = 0; k < nDim; k++) {
+                        for (int j = 0; j < seqlen; j++) {
+                            tmp[k][j] = Double.parseDouble(lineArray[jj]);
+                            if (Tools.isMissing(tmp[k][j])) hasMissing = true;
+                            jj++;
+                        }
+                        if (Tools.isMissing(tmp[k][tmp.length - 1]))
+                            tmp[k] = varyLengthProcessor.process(tmp[k], seqlen);
+                        if (hasMissing && !Tools.isMissing(tmp[k][tmp.length - 1]))
+                            tmp[k] = missingValuesProcessor.process(tmp[k]);
+                    }
+
+                    dataset.add(new Sequence(tmp, classLabels.get(count)), count);
+                }
+
                 count++;
             }
             final long endTime = System.nanoTime();

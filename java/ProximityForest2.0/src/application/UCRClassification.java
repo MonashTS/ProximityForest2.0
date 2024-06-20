@@ -28,12 +28,13 @@ public class UCRClassification {
             "-ueaFold=0",                                           // 30 UEA resample folds
             "-fold8020=0",                                          // 5 Monash 80/20 splits
             "-eval=true",                                           // to evaluate or not
-            "-param=numTrees:100,pf2:5",
+            "-param=numTrees:100,n:0.1,pf2:5",
             "-seed=1234"
     };
 
     static String moduleName = "UCRClassification";
     static int numTrees = 100;
+    static double nSamples = 0;
     static int pfCandidates = 0;
     static int pf2Candidates = 0;
 
@@ -64,6 +65,9 @@ public class UCRClassification {
                                 switch (s[0]) {
                                     case "numTrees":
                                         numTrees = Integer.parseInt(s[1]);
+                                        break;
+                                    case "n":
+                                        nSamples = Double.parseDouble(s[1]);
                                         break;
                                     case "pf":
                                         pfCandidates = Integer.parseInt(s[1]);
@@ -177,7 +181,9 @@ public class UCRClassification {
         candidates.put(PF, pfCandidates);
         candidates.put(PF2, pf2Candidates);
 
-        final ProximityForest classifier = new ProximityForest(numTrees, candidates);
+        if (nSamples < 0) nSamples = 1.0;
+
+        final ProximityForest classifier = new ProximityForest(numTrees, candidates, nSamples);
         classifier.setThreads(Application.numThreads);
         System.out.println(classifier);
         System.out.println("[" + moduleName + "] Training data: (" + trainData.size() + "," + trainData.length() + "," + trainData.dim() + ")");
@@ -199,7 +205,7 @@ public class UCRClassification {
             totalTime += classificationResults.elapsedTimeNanoSeconds;
 
             saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads,
-                    (PFResults) trainingResults, classificationResults, "results.csv");
+                    (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");
         }
         System.out.println("[" + moduleName + "] Total time taken " + Tools.doTime(totalTime));
     }
@@ -210,6 +216,7 @@ public class UCRClassification {
         outFile.writeLine("problem," + problem);
         outFile.writeLine("classifier," + classifier);
         outFile.writeLine("nThreads," + nThreads);
+        outFile.writeLine("n_samples," + nSamples);
         outFile.writeLine("pf_candidates," + pfCandidates);
         outFile.writeLine("pf2_candidates," + pf2Candidates);
 

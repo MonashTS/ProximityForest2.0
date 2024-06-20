@@ -3,6 +3,8 @@ package utils;
 import datasets.Sequence;
 import datasets.Sequences;
 
+import java.util.Random;
+
 public class Tools {
     public static double EPSILON = 10e-12;
 
@@ -170,6 +172,16 @@ public class Tools {
         }
 
         return out;
+    }
+
+    public static void shuffleArray(final int[] array, final Random rand) {
+        int index, temp;
+        for (int i = array.length - 1; i > 0; i--) {
+            index = rand.nextInt(i + 1);
+            temp = array[index];
+            array[index] = array[i];
+            array[i] = temp;
+        }
     }
 
 }

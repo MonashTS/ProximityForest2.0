@@ -45,20 +45,13 @@ public class Tree extends TimeSeriesClassifier {
     public transient HashMap<String, Integer> distanceCount = new HashMap<>();
     public transient HashMap<SplitterType, Integer> splitterCount = new HashMap<>();
     public transient HashMap<SplitterType, Long> splitterTime = new HashMap<>();
-
+    public int nSamples;
 
     // dictionary - HYDRA
     public Hydra hydraTransformer;
     public double[][][] hydraFeatures;
-    public HashMap<Sequence, double[][]> cachedHydraFeatures;
     public HashMap<Transforms.TimeSeriesTransforms, List<int[]>> quantIntervals;
 
-    // interval - RISE
-    public int minRiseInterval = 16;
-    public int riseNumIntervals = 0; //if 0 its determined auto,
-    // interval - Quant
-    public int quantDepth = 6;
-    public int quantDiv = 4;
     public String name = "PFTree";
     protected String splitterConfig;
 
@@ -101,6 +94,7 @@ public class Tree extends TimeSeriesClassifier {
         this.testDataset = forest.testDataset;
         this.trainIndices = forest.trainIndices;
         this.yTrain = forest.yTrain;
+        this.nSamples = forest.nSamplesPerTree;
     }
 
     private void doHydraTransform(final Sequences xTrain) {

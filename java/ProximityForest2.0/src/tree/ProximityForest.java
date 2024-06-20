@@ -39,7 +39,13 @@ public class ProximityForest extends TimeSeriesClassifier {
         @Override
         public Integer call() throws Exception {
             if (Application.verbose > 1) System.out.println("[Tree " + treeId + "] started fit");
-            this.tree.fit(this.tree.trainIndices);
+
+            if (this.tree.nSamples > 0 && this.tree.nSamples < this.tree.trainIndices.length)
+                Tools.shuffleArray(this.tree.trainIndices, this.tree.rand);
+            final int[] indices = new int[this.tree.nSamples];
+            System.arraycopy(this.tree.trainIndices, 0, indices, 0, this.tree.nSamples);
+
+            this.tree.fit(indices);
 
             if (Application.verbose > 1) System.out.println("[Tree " + treeId + "] fit completed");
             else System.out.print(treeId + ",");
@@ -101,6 +107,8 @@ public class ProximityForest extends TimeSeriesClassifier {
     public String splitterConfig;
     public HashMap<NodeSplitter.SplitterType, Integer> splittersPerNode;
     public HashMap<NodeSplitter.SplitterType, Boolean> splittersEnabled;
+    public int nSamplesPerTree;
+    public double pSamples;
 
     // distance - PF
     public static int adtwNParams = 100;
@@ -132,6 +140,24 @@ public class ProximityForest extends TimeSeriesClassifier {
         }
         this.classifierIdentifier = name;
         this.rand = Application.rand;
+        this.pSamples = 0;
+    }
+
+    public ProximityForest(final int numTrees, final HashMap<NodeSplitter.SplitterType, Integer> splittersPerNode, final double nSamplesPerTree) {
+        this.numTrees = numTrees;
+        this.splitterConfig = "n=" + numTrees;
+        this.splittersPerNode = splittersPerNode;
+        this.splittersEnabled = new HashMap<>();
+        for (NodeSplitter.SplitterType type : splittersPerNode.keySet()) {
+            if (splittersPerNode.get(type) <= 0) this.splittersEnabled.put(type, false);
+            else {
+                this.splittersEnabled.put(type, true);
+                this.splitterConfig = String.format("%s:%s=%d", this.splitterConfig, type, this.splittersPerNode.get(type));
+            }
+        }
+        this.classifierIdentifier = name;
+        this.rand = Application.rand;
+        this.pSamples = nSamplesPerTree;
     }
 
     private void doHydraTransform(final Sequences xTrain) {
@@ -157,6 +183,10 @@ public class ProximityForest extends TimeSeriesClassifier {
     public PredictionResults fit(final Sequences xTrain) throws Exception {
         // always make sure that class labels in xTrain are from 0 to C
         this.setTrainingData(xTrain);
+        if (this.pSamples <= 0)
+            this.nSamplesPerTree = xTrain.size();
+        else
+            this.nSamplesPerTree = (int) (Math.min(1, this.pSamples) * xTrain.size());
 
         long startTime;
 
@@ -193,6 +223,11 @@ public class ProximityForest extends TimeSeriesClassifier {
         if (this.nThreads == 1) {
             startTime = System.nanoTime();
             for (int i = 0; i < this.numTrees; i++) {
+                if (this.nSamplesPerTree > 0 && this.nSamplesPerTree < this.trainIndices.length)
+                    Tools.shuffleArray(this.trainIndices, this.rand);
+                final int[] indices = new int[this.nSamplesPerTree];
+                System.arraycopy(this.trainIndices, 0, indices, 0, this.nSamplesPerTree);
+
                 this.trees[i] = new Tree(i, this);
                 this.trees[i].fit(this.trainIndices);
             }
@@ -381,6 +416,9 @@ public class ProximityForest extends TimeSeriesClassifier {
 
     @Override
     public String toString() {
-        return "[CLASSIFIER SUMMARY] Classifier: " + this.classifierIdentifier + "\n[CLASSIFIER SUMMARY] nThread: " + nThreads + "\n[CLASSIFIER SUMMARY] nTrees: " + numTrees + "\n[CLASSIFIER SUMMARY] splitterConfig: " + splitterConfig;
+        return "[CLASSIFIER SUMMARY] Classifier: " + this.classifierIdentifier +
+                "\n[CLASSIFIER SUMMARY] nThread: " + nThreads +
+                "\n[CLASSIFIER SUMMARY] nTrees: " + numTrees +
+                "\n[CLASSIFIER SUMMARY] splitterConfig: " + splitterConfig;
     }
 }

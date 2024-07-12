@@ -152,7 +152,7 @@ public class MonsterClassification {
         int trainIdx = 0;
         int testIdx = 0;
         for (int i = 0; i < data.size(); i++) {
-            if (i == testIndices.get(counter)) {
+            if (counter < testIndices.size() && i == testIndices.get(counter)) {
                 // in test
                 testData.add(data.get(i), testIdx);
                 testIdx++;

@@ -51,12 +51,38 @@ public class DataLoader {
         return fileInfo;
     }
 
-    public Sequences readMonster(final String datasetName, final String datasetPath) {
+    public Sequences[] readMonster(final String datasetName, final String datasetPath, final int fold) {
         String xPath = datasetPath + datasetName + "/" + datasetName + "_X.csv";
         String yPath = datasetPath + datasetName + "/" + datasetName + "_y.csv";
         String metaPath = datasetPath + datasetName + "/metadata/" + datasetName + "_metadata.txt";
 
-        return readCSVFileToSequences(xPath, yPath, metaPath, ",");
+        Sequences data = readCSVFileToSequences(xPath, yPath, metaPath, ",");
+        ArrayList<Integer> testIndices = readMonsterTestIndices(datasetName, datasetPath, fold);
+
+        Sequences trainData = new Sequences(data.size() - testIndices.size());
+        Sequences testData = new Sequences(testIndices.size());
+        {
+            int counter = 0;
+            int trainIdx = 0;
+            int testIdx = 0;
+            for (int i = 0; i < data.size(); i++) {
+                if (counter < testIndices.size() && i == testIndices.get(counter)) {
+                    // in test
+                    testData.add(data.get(i), testIdx);
+                    testIdx++;
+                    counter++;
+                } else {
+                    // in train
+                    trainData.add(data.get(i), trainIdx++);
+                    trainIdx++;
+                }
+            }
+        }
+        System.out.println("Train size: " + trainData.size());
+        System.out.println("Test size: " + testData.size());
+
+        // converting to X and y, and getting the statistics of each class
+        return normaliseLabels(trainData, testData);
     }
 
     public ArrayList<Integer> readMonsterTestIndices(final String datasetName, final String datasetPath, final int fold) {

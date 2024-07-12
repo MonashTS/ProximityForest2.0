@@ -137,94 +137,45 @@ public class MonsterClassification {
 
         // load data
         final DataLoader loader = new DataLoader();
-        Sequences data = loader.readMonster(problem, Application.datasetPath);
-        for (int i = 0; i < 10; i++) {
-            System.out.println(data.get(i));
-        }
-        ArrayList<Integer> testIndices = loader.readMonsterTestIndices(problem, Application.datasetPath, fold);
-        for (int i = 0; i < 10; i++) {
-            System.out.println(testIndices.get(i));
+        Sequences trainData;
+        Sequences testData;
+
+        {
+            Sequences[] data = loader.readMonster(problem, Application.datasetPath, fold);
+            trainData = data[0];
+            testData = data[1];
         }
 
-        Sequences trainData = new Sequences(data.size() - testIndices.size());
-        Sequences testData = new Sequences(testIndices.size());
-        int counter = 0;
-        int trainIdx = 0;
-        int testIdx = 0;
-        for (int i = 0; i < data.size(); i++) {
-            if (counter < testIndices.size() && i == testIndices.get(counter)) {
-                // in test
-                testData.add(data.get(i), testIdx);
-                testIdx++;
-                counter++;
-            } else {
-                // in train
-                trainData.add(data.get(i), trainIdx++);
-                trainIdx++;
-            }
+        // initialising the classifier
+        candidates.put(PF, pfCandidates);
+        candidates.put(PF2, pf2Candidates);
+
+        if (nSamples < 0) nSamples = 1.0;
+
+        final ProximityForest classifier = new ProximityForest(numTrees, candidates, nSamples);
+        classifier.setThreads(Application.numThreads);
+        System.out.println(classifier);
+        System.out.println("[" + moduleName + "] Training data: (" + trainData.size() + "," + trainData.length() + "," + trainData.dim() + ")");
+        System.out.println("[" + moduleName + "] Test data: (" + testData.size() + "," + testData.length() + "," + testData.dim() + ")");
+
+        // training the classifier
+        PredictionResults trainingResults;
+        if (Application.sampleSize == 1) trainingResults = classifier.fit(trainData);
+        else trainingResults = classifier.fit(trainData, Application.sampleSize);
+
+        System.out.println("[" + moduleName + "]" + trainingResults);
+        System.out.println(classifier);
+
+        // do the evaluation
+        double totalTime = trainingResults.elapsedTimeNanoSeconds;
+        if (Application.doEvaluation) {
+            PFResults classificationResults = classifier.evaluate(testData);
+            System.out.println("[" + moduleName + "]" + classificationResults);
+            totalTime += classificationResults.elapsedTimeNanoSeconds;
+
+            saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads, (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");
         }
-        System.out.println("Train size: " + trainData.size());
-        System.out.println("Test size: " + testData.size());
-//        if (Application.fold8020 == 0) {
-//            trainData = loader.readMonster(problem, Application.datasetPath);
-//            testData = loader.readUCRTest(problem, Application.datasetPath);
-//
-//            if (Application.ueaFold > 0) {
-//                final String indicesPath;
-//                if (Application.datasetPath.contains("UCRArchive_2018"))
-//                    indicesPath = Application.datasetPath.replace("UCRArchive_2018", "data/indices128");
-//                else
-//                    indicesPath = Application.datasetPath.replace("BakeoffNew30", "data/indicesNew30");
-//                System.out.println("Loading UEA resamples " + Application.ueaFold);
-//                Sequences[] newData = loader.ueaResamples(problem, indicesPath, trainData, testData, Application.ueaFold);
-//                trainData = newData[0];
-//                testData = newData[1];
-//            }
-//        } else {
-//            trainData = loader.readResampledUCRTrain(problem, Application.datasetPath, Application.fold8020);
-//            if (trainData == null) return;
-//            testData = loader.readResampledUCRTest(problem, Application.datasetPath, Application.fold8020);
-//            if (testData == null) return;
-//        }
-//
-//        // converting to X and y, and getting the statistics of each class
-//        {
-//            Sequences[] newData = DataLoader.normaliseLabels(trainData, testData);
-//            trainData = newData[0];
-//            testData = newData[1];
-//        }
-//
-//        // initialising the classifier
-//        candidates.put(PF, pfCandidates);
-//        candidates.put(PF2, pf2Candidates);
-//
-//        if (nSamples < 0) nSamples = 1.0;
-//
-//        final ProximityForest classifier = new ProximityForest(numTrees, candidates, nSamples);
-//        classifier.setThreads(Application.numThreads);
-//        System.out.println(classifier);
-//        System.out.println("[" + moduleName + "] Training data: (" + trainData.size() + "," + trainData.length() + "," + trainData.dim() + ")");
-//        System.out.println("[" + moduleName + "] Test data: (" + testData.size() + "," + testData.length() + "," + testData.dim() + ")");
-//
-//        // training the classifier
-//        PredictionResults trainingResults;
-//        if (Application.sampleSize == 1) trainingResults = classifier.fit(trainData);
-//        else trainingResults = classifier.fit(trainData, Application.sampleSize);
-//
-//        System.out.println("[" + moduleName + "]" + trainingResults);
-//        System.out.println(classifier);
-//
-//        // do the evaluation
-//        double totalTime = trainingResults.elapsedTimeNanoSeconds;
-//        if (Application.doEvaluation) {
-//            PFResults classificationResults = classifier.evaluate(testData);
-//            System.out.println("[" + moduleName + "]" + classificationResults);
-//            totalTime += classificationResults.elapsedTimeNanoSeconds;
-//
-//            saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads,
-//                    (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");
-//        }
-//        System.out.println("[" + moduleName + "] Total time taken " + Tools.doTime(totalTime));
+        System.out.println("[" + moduleName + "] Total time taken " + Tools.doTime(totalTime));
     }
 
     private static void saveResults(String outputPath, String problem, String classifier, int nThreads, PFResults trainResults, PFResults testResults, String filename) throws Exception {

@@ -195,7 +195,7 @@ public class DataLoader {
             if (Application.verbose > 1) System.out.print("[DATASET-LOADER] reading [" + fmeta.getName() + "]: ");
             final long startTime = System.nanoTime();
             // initialise
-            br = new BufferedReader(new FileReader(xFile));
+            br = new BufferedReader(new FileReader(metaFile));
 
             while ((line = br.readLine()) != null) {
                 lineArray = line.split(fileDelimiter);

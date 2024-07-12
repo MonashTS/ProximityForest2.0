@@ -20,7 +20,9 @@ import static utils.Tools.doTimeNs;
 
 public class MonsterClassification {
     final static HashMap<NodeSplitter.SplitterType, Integer> candidates = new HashMap<>();
-    private static final String[] testArgs = new String[]{"-data=C:/Users/cwtan/workspace/Dataset/UCRArchive_2018/", "-problem=ArrowHead",                                   // dataset name
+    private static final String[] testArgs = new String[]{
+            "-data=C:/Users/cwtan/workspace/Dataset/UCRArchive_2018/",
+            "-problem=ArrowHead",                                   // dataset name
             "-cpu=4",                                               // number of cpu cores/threads
             "-verbose=1",                                           // verbosity, 0, 1, 2
             "-iter=0",                                              // iteration runs
@@ -33,7 +35,6 @@ public class MonsterClassification {
     static double nSamples = 0;
     static int pfCandidates = 0;
     static int pf2Candidates = 0;
-    static int fold = 0;
 
     private static void extractArguments(final String[] args) throws Exception {
         System.out.print("[APP] Input arguments:");
@@ -86,7 +87,7 @@ public class MonsterClassification {
                     Application.iteration = Integer.parseInt(options[1]);
                     break;
                 case "-fold":
-                    fold = Integer.parseInt(options[1]);
+                    Application.fold8020 = Integer.parseInt(options[1]);
                     break;
                 case "-verbose":
                     Application.verbose = Integer.parseInt(options[1]);
@@ -132,6 +133,7 @@ public class MonsterClassification {
      */
     private static void singleRun(String problem) throws Exception {
         Application.setOutputPath();
+        System.out.println(Application.outputPath);
 
         if (!Application.retrain && Application.isDatasetDone(Application.outputPath)) return;
 
@@ -141,7 +143,7 @@ public class MonsterClassification {
         Sequences testData;
 
         {
-            Sequences[] data = loader.readMonster(problem, Application.datasetPath, fold);
+            Sequences[] data = loader.readMonster(problem, Application.datasetPath, Application.fold8020);
             trainData = data[0];
             testData = data[1];
         }

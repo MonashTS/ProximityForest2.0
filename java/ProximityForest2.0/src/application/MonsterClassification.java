@@ -108,7 +108,7 @@ public class MonsterClassification {
         System.out.println();
 
         Application.rand = new Random(Application.seed);
-        Application.classifierName = "ProximityForest";
+        Application.classifierName = "ProximityForest 2.0";
         Application.paramId = 0;
         Application.setOutputPath();
         Application.setDefaultDatasetPath();
@@ -152,7 +152,7 @@ public class MonsterClassification {
         candidates.put(PF, pfCandidates);
         candidates.put(PF2, pf2Candidates);
 
-        if (nSamples < 0) nSamples = 1.0;
+        if (nSamples <= 0) nSamples = 1.0;
 
         final ProximityForest classifier = new ProximityForest(numTrees, candidates, nSamples);
         classifier.setThreads(Application.numThreads);
@@ -175,7 +175,11 @@ public class MonsterClassification {
 //            System.out.println("[" + moduleName + "]" + classificationResults);
             totalTime += classificationResults.elapsedTimeNanoSeconds;
 
-            saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads, (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");
+            saveResults(
+                    Application.outputPath,
+                    problem, Application.classifierName, Application.numThreads,
+                    (PFResults) trainingResults, classificationResults,
+                    "results_" + nSamples + ".csv");
         }
         System.out.println("[" + moduleName + "] Total time taken " + Tools.doTime(totalTime));
     }

@@ -54,7 +54,7 @@ public class DataLoader {
     public Sequences readMonster(final String datasetName, final String datasetPath) {
         String xPath = datasetPath + datasetName + "/" + datasetName + "_X.csv";
         String yPath = datasetPath + datasetName + "/" + datasetName + "_y.csv";
-        String metaPath = datasetPath + datasetName + "/metadata/" + datasetName + "_metadata.csv";
+        String metaPath = datasetPath + datasetName + "/metadata/" + datasetName + "_metadata.txt";
 
         return readCSVFileToSequences(xPath, yPath, metaPath, ",");
     }

@@ -132,7 +132,6 @@ public class MonsterClassification {
      */
     private static void singleRun(String problem) throws Exception {
         Application.setOutputPath();
-//        System.out.print(Application.outputPath);
 
         if (!Application.retrain && Application.isDatasetDone(Application.outputPath)) return;
 
@@ -144,11 +143,28 @@ public class MonsterClassification {
         }
         ArrayList<Integer> testIndices = loader.readMonsterTestIndices(problem, Application.datasetPath, fold);
         for (int i = 0; i < 10; i++) {
-            System.out.println(testIndices);
+            System.out.println(testIndices.get(i));
         }
 
-//        Sequences trainData;
-//        Sequences testData;
+        Sequences trainData = new Sequences(data.size() - testIndices.size());
+        Sequences testData = new Sequences(testIndices.size());
+        int counter = 0;
+        int trainIdx = 0;
+        int testIdx = 0;
+        for (int i = 0; i < data.size(); i++) {
+            if (i == testIndices.get(counter)) {
+                // in test
+                testData.add(data.get(i), testIdx);
+                testIdx++;
+                counter++;
+            } else {
+                // in train
+                trainData.add(data.get(i), trainIdx++);
+                trainIdx++;
+            }
+        }
+        System.out.println("Train size: " + trainData.size());
+        System.out.println("Test size: " + testData.size());
 //        if (Application.fold8020 == 0) {
 //            trainData = loader.readMonster(problem, Application.datasetPath);
 //            testData = loader.readUCRTest(problem, Application.datasetPath);

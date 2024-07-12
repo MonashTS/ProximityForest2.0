@@ -10,6 +10,7 @@ import tree.splitters.NodeSplitter;
 import utils.OutFile;
 import utils.Tools;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -23,8 +24,7 @@ public class MonsterClassification {
             "-cpu=4",                                               // number of cpu cores/threads
             "-verbose=1",                                           // verbosity, 0, 1, 2
             "-iter=0",                                              // iteration runs
-            "-ueaFold=0",                                           // 30 UEA resample folds
-            "-fold8020=0",                                          // 5 Monash 80/20 splits
+            "-fold=0",                                              // 5 Monash 80/20 splits
             "-eval=true",                                           // to evaluate or not
             "-param=numTrees:100,n:0.1,pf2:5", "-seed=1234"};
 
@@ -33,6 +33,7 @@ public class MonsterClassification {
     static double nSamples = 0;
     static int pfCandidates = 0;
     static int pf2Candidates = 0;
+    static int fold = 0;
 
     private static void extractArguments(final String[] args) throws Exception {
         System.out.print("[APP] Input arguments:");
@@ -84,11 +85,8 @@ public class MonsterClassification {
                 case "-iter":
                     Application.iteration = Integer.parseInt(options[1]);
                     break;
-                case "-ueaFold":
-                    Application.ueaFold = Integer.parseInt(options[1]);
-                    break;
-                case "-fold8020":
-                    Application.fold8020 = Integer.parseInt(options[1]);
+                case "-fold":
+                    fold = Integer.parseInt(options[1]);
                     break;
                 case "-verbose":
                     Application.verbose = Integer.parseInt(options[1]);
@@ -144,7 +142,11 @@ public class MonsterClassification {
         for (int i = 0; i < 10; i++) {
             System.out.println(data.get(i));
         }
-//
+        ArrayList<Integer> testIndices = loader.readMonsterTestIndices(problem, Application.datasetPath, fold);
+        for (int i = 0; i < 10; i++) {
+            System.out.println(testIndices);
+        }
+
 //        Sequences trainData;
 //        Sequences testData;
 //        if (Application.fold8020 == 0) {

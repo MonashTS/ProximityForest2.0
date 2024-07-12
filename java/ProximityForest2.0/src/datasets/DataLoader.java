@@ -59,6 +59,49 @@ public class DataLoader {
         return readCSVFileToSequences(xPath, yPath, metaPath, ",");
     }
 
+    public ArrayList<Integer> readMonsterTestIndices(final String datasetName, final String datasetPath, final int fold) {
+        String indicesPath = datasetPath + datasetName + "/test_indices_fold_" + fold + ".txt";
+
+        String line;
+        final File file = new File(indicesPath);
+
+        BufferedReader br = null;
+        ArrayList<Integer> indices = new ArrayList<>();
+
+        try {
+            if (Application.verbose > 1) System.out.print("[DATASET-LOADER] reading [" + file.getName() + "]: ");
+            final long startTime = System.nanoTime();
+            // initialise
+            br = new BufferedReader(new FileReader(indicesPath));
+
+            while ((line = br.readLine()) != null) {
+                indices.add(Integer.parseInt(line));
+            }
+            final long endTime = System.nanoTime();
+            final long elapsed = endTime - startTime;
+            final String timeDuration = Tools.doTime(1.0 * elapsed / 1e6);
+            if (Application.verbose > 1) {
+                System.out.println(" finished in " + timeDuration);
+                System.out.println(indices.size() + " instances");
+            }
+
+        } catch (IOException e) {
+            System.err.println(e.getMessage());
+            e.printStackTrace();
+            System.exit(-1);
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return indices;
+    }
+
     public Sequences readUCRTrain(final String datasetName, final String datasetPath) {
         String path = datasetPath + datasetName + "/" + datasetName + "_TRAIN.tsv";
         return readTSVFileToSequences(path, true);

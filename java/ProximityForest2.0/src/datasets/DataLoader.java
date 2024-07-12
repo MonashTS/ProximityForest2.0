@@ -205,7 +205,11 @@ public class DataLoader {
             final long endTime = System.nanoTime();
             final long elapsed = endTime - startTime;
             final String timeDuration = Tools.doTime(1.0 * elapsed / 1e6);
-            if (Application.verbose > 1) System.out.println(" finished in " + timeDuration);
+            if (Application.verbose > 1) {
+                System.out.println(" finished in " + timeDuration);
+                System.out.println(nInstances + " instances, " + nDim + " dimensions, " + seqlen + " long");
+            }
+
         } catch (IOException e) {
             System.err.println(e.getMessage());
             e.printStackTrace();

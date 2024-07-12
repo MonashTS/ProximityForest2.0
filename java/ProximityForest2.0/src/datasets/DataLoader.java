@@ -226,7 +226,7 @@ public class DataLoader {
             final long startTime = System.nanoTime();
 
             // initialise
-            br = new BufferedReader(new FileReader(xFile));
+            br = new BufferedReader(new FileReader(yFile));
 
             while ((line = br.readLine()) != null) {
                 lineArray = line.split(fileDelimiter);

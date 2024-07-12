@@ -172,7 +172,7 @@ public class MonsterClassification {
         double totalTime = trainingResults.elapsedTimeNanoSeconds;
         if (Application.doEvaluation) {
             PFResults classificationResults = classifier.evaluate(testData);
-            System.out.println("[" + moduleName + "]" + classificationResults);
+//            System.out.println("[" + moduleName + "]" + classificationResults);
             totalTime += classificationResults.elapsedTimeNanoSeconds;
 
             saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads, (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");

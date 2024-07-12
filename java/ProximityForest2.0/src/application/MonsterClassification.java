@@ -141,7 +141,7 @@ public class MonsterClassification {
         // load data
         final DataLoader loader = new DataLoader();
         Sequences data = loader.readMonster(problem, Application.datasetPath);
-        for (int i = 0; i < data.size(); i++) {
+        for (int i = 0; i < 10; i++) {
             System.out.println(data.get(i));
         }
 //

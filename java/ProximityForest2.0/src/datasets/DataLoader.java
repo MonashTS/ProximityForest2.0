@@ -9,6 +9,7 @@ import utils.Tools;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class DataLoader {
@@ -198,6 +199,7 @@ public class DataLoader {
 
             while ((line = br.readLine()) != null) {
                 lineArray = line.split(fileDelimiter);
+                System.out.println(Arrays.toString(lineArray));
                 if (lineArray[0].equals("n_instances")) nInstances = Integer.parseInt(lineArray[1]);
                 else if (lineArray[0].equals("n_dim")) nDim = Integer.parseInt(lineArray[1]);
                 else if (lineArray[0].equals("series_length")) seqlen = Integer.parseInt(lineArray[1]);

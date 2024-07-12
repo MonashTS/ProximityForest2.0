@@ -1,7 +1,6 @@
 package application;
 
 import datasets.DataLoader;
-import datasets.Sequence;
 import datasets.Sequences;
 import results.PredictionResults;
 import tree.ProximityForest;
@@ -10,7 +9,6 @@ import tree.splitters.NodeSplitter;
 import utils.OutFile;
 import utils.Tools;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -172,7 +170,7 @@ public class MonsterClassification {
         double totalTime = trainingResults.elapsedTimeNanoSeconds;
         if (Application.doEvaluation) {
             PFResults classificationResults = classifier.evaluate(testData);
-//            System.out.println("[" + moduleName + "]" + classificationResults);
+            System.out.println("[" + moduleName + "]" + classificationResults);
             totalTime += classificationResults.elapsedTimeNanoSeconds;
 
             saveResults(

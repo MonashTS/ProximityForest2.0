@@ -90,11 +90,16 @@ public class TreeResults extends PredictionResults {
                 "\"" + trainTest + "acc\":" + accuracy + "," +
                 "\"" + trainTest + "nb_correct\":" + nCorrect + "," +
                 "\"param_id\":" + paramId + "," +
-                ss +
-                "\"" + trainTest + "predictions\":" + preds + "," +
-                "\"" + trainTest + "proba\":" + probas;
-        if (cvParamsStr != null) s = s + ",\"cv_params\":" + cvParamsStr;
-        if (cvAccStr != null) s = s + ",\"cv_accs\":" + cvAccStr;
+                ss;
+//        String s = "\"" + trainTest + "duration\":" + elapsedTimeNanoSeconds + "," +
+//                "\"" + trainTest + "acc\":" + accuracy + "," +
+//                "\"" + trainTest + "nb_correct\":" + nCorrect + "," +
+//                "\"param_id\":" + paramId + "," +
+//                ss +
+//                "\"" + trainTest + "predictions\":" + preds + "," +
+//                "\"" + trainTest + "proba\":" + probas;
+//        if (cvParamsStr != null) s = s + ",\"cv_params\":" + cvParamsStr;
+//        if (cvAccStr != null) s = s + ",\"cv_accs\":" + cvAccStr;
         return "{" + s + "}";
     }
 

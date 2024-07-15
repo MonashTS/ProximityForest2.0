@@ -151,6 +151,7 @@ public class MonsterClassification {
         candidates.put(PF2, pf2Candidates);
 
         if (nSamples <= 0) nSamples = 1.0;
+        if (trainData.size() < 10000) nSamples = 1.0;
 
         final ProximityForest classifier = new ProximityForest(numTrees, candidates, nSamples);
         classifier.setThreads(Application.numThreads);

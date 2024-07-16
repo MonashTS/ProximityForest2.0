@@ -360,9 +360,9 @@ public class DataLoader {
                             if (Tools.isMissing(tmp[k][j])) hasMissing = true;
                             jj++;
                         }
-                        if (Tools.isMissing(tmp[k][tmp.length - 1]))
+                        if (Tools.isMissing(tmp[k][tmp[k].length - 1]))
                             tmp[k] = varyLengthProcessor.process(tmp[k], seqlen);
-                        if (hasMissing && !Tools.isMissing(tmp[k][tmp.length - 1]))
+                        if (hasMissing && !Tools.isMissing(tmp[k][tmp[k].length - 1]))
                             tmp[k] = missingValuesProcessor.process(tmp[k]);
                     }
 

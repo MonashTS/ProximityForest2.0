@@ -19,8 +19,8 @@ import static utils.Tools.doTimeNs;
 public class MonsterClassification {
     final static HashMap<NodeSplitter.SplitterType, Integer> candidates = new HashMap<>();
     private static final String[] testArgs = new String[]{
-            "-data=C:/Users/cwtan/workspace/Dataset/UCRArchive_2018/",
-            "-problem=ArrowHead",                                   // dataset name
+            "-data=C:/Users/cwtan/workspace/Dataset/MonashTS/",
+            "-problem=PenDigits",                                   // dataset name
             "-cpu=4",                                               // number of cpu cores/threads
             "-verbose=1",                                           // verbosity, 0, 1, 2
             "-iter=0",                                              // iteration runs

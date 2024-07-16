@@ -1,6 +1,7 @@
 package nearestNeighbour;
 
 import datasets.Sequences;
+import distances.ADTW;
 import distances.CDTW;
 import transforms.DerivativeFilter;
 
@@ -95,6 +96,15 @@ public class CDTW1NN extends OneNearestNeighbour {
     public double distance(final double[] first, final double[] second, final double cutOffValue) {
         window = getWindowSize(Math.max(first.length, second.length), r);
         return CDTW.distance(first, second, window, cutOffValue);
+    }
+
+    @Override
+    public double distance(final double[][] first, final double[][] second, final double cutOffValue) {
+        double dist = 0;
+        for (int i = 0; i < first.length; i++){
+            dist += CDTW.distance(first[i], second[i], window, cutOffValue);
+        }
+        return dist;
     }
 
     @Override

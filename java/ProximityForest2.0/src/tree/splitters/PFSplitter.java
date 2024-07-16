@@ -68,7 +68,7 @@ public class PFSplitter extends NodeSplitter {
         int closestBranch;
 
         for (final int ix : nodeIndices) {
-            closestBranch = findNearestExemplar(this.node.tree.getTrainSeries(ix, this.transform).firstChannel(), measure, exemplars);
+            closestBranch = findNearestExemplar(this.node.tree.getTrainSeries(ix, this.transform).data, measure, exemplars);
 
             if (!result.splits.containsKey(closestBranch)) {
                 ArrayList<Integer> temp = new ArrayList<>(this.node.getClassDistribution().get(closestBranch));
@@ -88,10 +88,10 @@ public class PFSplitter extends NodeSplitter {
     @Override
     public int predict(final Sequence query) {
         if (measure.useDerivative > 0) {
-            final double[] q = DerivativeFilter.getFirstDerivative(query.firstChannel());
+            final double[][] q = DerivativeFilter.getFirstDerivative(query.data);
             return findNearestExemplar(q, measure, exemplars);
         }
-        return findNearestExemplar(query.firstChannel(), measure, exemplars);
+        return findNearestExemplar(query.data, measure, exemplars);
     }
 
     protected synchronized int findNearestExemplar(final double[] query, final OneNearestNeighbour oneNN, final HashMap<Integer, Integer> exemplars) {
@@ -102,6 +102,31 @@ public class PFSplitter extends NodeSplitter {
         for (int key : exemplars.keySet()) {
             final int i = exemplars.get(key);
             final double[] exemplar = this.node.tree.getTrainSeries(i, this.transform).firstChannel();
+
+            if (exemplar == query) return key;
+
+            dist = oneNN.distance(query, exemplar, bsf);
+            if (dist < bsf) {
+                bsf = dist;
+                closestNodes.clear();
+                closestNodes.add(key);
+            } else if (dist == bsf) {
+                closestNodes.add(key);
+            }
+        }
+
+        final int r = rand.nextInt(closestNodes.size());
+        return closestNodes.get(r);
+    }
+
+    protected synchronized int findNearestExemplar(final double[][] query, final OneNearestNeighbour oneNN, final HashMap<Integer, Integer> exemplars) {
+        closestNodes.clear();
+        double bsf = Double.POSITIVE_INFINITY;
+        double dist;
+
+        for (int key : exemplars.keySet()) {
+            final int i = exemplars.get(key);
+            final double[][] exemplar = this.node.tree.getTrainSeries(i, this.transform).data;
 
             if (exemplar == query) return key;
 

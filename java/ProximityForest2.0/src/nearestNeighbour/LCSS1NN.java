@@ -1,6 +1,7 @@
 package nearestNeighbour;
 
 import datasets.Sequences;
+import distances.ED;
 import distances.LCSS;
 import utils.Tools;
 
@@ -93,6 +94,15 @@ public class LCSS1NN extends OneNearestNeighbour {
     @Override
     public double distance(final double[] first, final double[] second, final double cutOffValue) {
         return LCSS.distance(first, second, epsilon, delta, cutOffValue);
+    }
+
+    @Override
+    public double distance(final double[][] first, final double[][] second, final double cutOffValue) {
+        double dist = 0;
+        for (int i = 0; i < first.length; i++){
+            dist += LCSS.distance(first[i], second[i], epsilon, delta, cutOffValue);
+        }
+        return dist;
     }
 
     @Override

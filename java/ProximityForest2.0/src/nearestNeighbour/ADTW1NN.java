@@ -7,9 +7,9 @@ public class ADTW1NN extends OneNearestNeighbour {
 
     public static final int nSamples = 4000;
     public static final int exponent = 5;
-    protected double weight;
+    protected double[] weight;
     protected double maxWeight;
-    protected double[] weights;
+    protected double[][] weights;
     protected boolean isWeightComputed = false;
     public String name = "ADTW1NN";
 
@@ -89,7 +89,16 @@ public class ADTW1NN extends OneNearestNeighbour {
 
     @Override
     public double distance(final double[] first, final double[] second, final double cutOffValue) {
-        return ADTW.distance(first, second, weight, cutOffValue);
+        return ADTW.distance(first, second, weight[0], cutOffValue);
+    }
+
+    @Override
+    public double distance(final double[][] first, final double[][] second, final double cutOffValue) {
+        double dist = 0;
+        for (int i = 0; i < first.length; i++){
+            dist += ADTW.distance(first[i], second[i], weight[i], cutOffValue);
+        }
+        return dist;
     }
 
     public double distance(final double[] first, final double[] second, final double weight, final double cutOffValue) {

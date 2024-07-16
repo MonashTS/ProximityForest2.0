@@ -284,6 +284,7 @@ public class Hydra {
                             for (int j = 0; j < outputLength; j++) {
                                 double sum = 0;
                                 for (int k = 0; k < series.length; k++) {
+                                    // go through each dimension
                                     final double[] filter = this.filters[dilationIndex][diffIndex][groupIndex][kernelIndex][k];
                                     for (int l = 0; l < filter.length; l++)
                                         sum += filter[l] * series[k][j + (l * d)];

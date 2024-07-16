@@ -10,7 +10,7 @@ public class DerivativeFilter {
         final Sequences output = new Sequences(data.size());
 
         for (int i = 0; i < data.size(); i++) {
-            final Sequence s = new Sequence(getFirstDerivative(data.get(i).data[0]), data.get(i).classLabel);
+            final Sequence s = new Sequence(getFirstDerivative(data.get(i).data), data.get(i).classLabel);
             s.type = d1;
             output.add(s, i);
         }
@@ -26,6 +26,21 @@ public class DerivativeFilter {
 
         derivative[0] = derivative[1];
         derivative[derivative.length - 1] = derivative[derivative.length - 2];
+
+        return derivative;
+    }
+
+    public static double[][] getFirstDerivative(final double[][] input) {
+        final double[][] derivative = new double[input.length][input[0].length];
+
+        for (int d = 0; d < input.length; d++) {
+            for (int i = 1; i < input[0].length - 1; i++) {
+                derivative[d][i] = ((input[d][i] - input[d][i - 1]) + ((input[d][i + 1] - input[d][i - 1]) / 2)) / 2;
+            }
+            derivative[0] = derivative[1];
+            derivative[derivative.length - 1] = derivative[derivative.length - 2];
+        }
+
 
         return derivative;
     }

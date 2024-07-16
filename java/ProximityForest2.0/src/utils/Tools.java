@@ -88,9 +88,11 @@ public class Tools {
         double sumx = 0;
         double sumx2 = 0;
         for (Sequence ins2array : input.data) {
-            for (double v : ins2array.firstChannel()) {//-1 to avoid classVal
-                sumx += v;
-                sumx2 += v * v;
+            for (int k = 0; k < input.dim(); k++) {
+                for (double v : ins2array.get(k)) {
+                    sumx += v;
+                    sumx2 += v * v;
+                }
             }
         }
         int n = input.size() * input.length();

@@ -112,6 +112,10 @@ public abstract class OneNearestNeighbour extends TimeSeriesClassifier {
                                     final double[] second,
                                     final double cutOffValue);
 
+    public abstract double distance(final double[][] first,
+                                    final double[][] second,
+                                    final double cutOffValue);
+
     /**
      * 1NN fit function
      *

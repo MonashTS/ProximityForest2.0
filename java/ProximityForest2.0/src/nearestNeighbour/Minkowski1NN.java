@@ -2,6 +2,7 @@ package nearestNeighbour;
 
 import application.Application;
 import datasets.Sequences;
+import distances.ED;
 import distances.Minkowski;
 import results.PredictionResults;
 
@@ -187,6 +188,15 @@ public class Minkowski1NN extends OneNearestNeighbour {
     @Override
     public double distance(final double[] first, final double[] second, final double cutOffValue) {
         return Minkowski.distance(first, second, cutOffValue, p);
+    }
+
+    @Override
+    public double distance(final double[][] first, final double[][] second, final double cutOffValue) {
+        double dist = 0;
+        for (int i = 0; i < first.length; i++) {
+            dist += Minkowski.distance(first[i], second[i], cutOffValue, p);
+        }
+        return dist;
     }
 
     @Override

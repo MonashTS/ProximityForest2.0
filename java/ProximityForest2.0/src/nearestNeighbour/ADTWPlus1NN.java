@@ -87,7 +87,7 @@ public class ADTWPlus1NN extends ADTW1NN {
 
     @Override
     public double distance(final double[] first, final double[] second, final double cutOffValue) {
-        return ADTW_ge.distance(first, second, weight, cutOffValue, gammaExponent);
+        return ADTW_ge.distance(first, second, weight[0], cutOffValue, gammaExponent);
     }
 
     public double distance(final double[] first, final double[] second, final double weight, final double cutOffValue) {

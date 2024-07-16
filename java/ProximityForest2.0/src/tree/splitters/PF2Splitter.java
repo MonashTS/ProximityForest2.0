@@ -73,9 +73,9 @@ public class PF2Splitter extends PFSplitter {
             final double[] q = query.transforms.get(hydra);
             return findNearestExemplar(q, measure, exemplars);
         } else if (measure.useDerivative > 0) {
-            final double[] q = DerivativeFilter.getFirstDerivative(query.firstChannel());
+            final double[][] q = DerivativeFilter.getFirstDerivative(query.data);
             return findNearestExemplar(q, measure, exemplars);
         }
-        return findNearestExemplar(query.firstChannel(), measure, exemplars);
+        return findNearestExemplar(query.data, measure, exemplars);
     }
 }

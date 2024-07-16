@@ -13,7 +13,7 @@ public class Sequences {
     public ArrayList<Sequence> data;
     public int[] indices;
     public double std = -1;
-    public HashMap<Double, double[]> adtwWeights;
+    public HashMap<Double, double[][]> adtwWeights;
     public int[] lcssDeltas;
     public double[] lcssEpsilons;
     public boolean epsilonsAndDeltasRefreshed;
@@ -184,66 +184,64 @@ public class Sequences {
         return this.std;
     }
 
-    public double[] initADTWWeights(double gammaExponent) {
-        return initADTWWeights(4000, 100, 5, gammaExponent);
-    }
-
-    public double[] initADTWWeights(int nSamples, int nParams, int exponent, double gammaExponent) {
+    public double[][] initADTWWeights(int nSamples, int nParams, int exponent, double gammaExponent) {
         if (adtwWeights == null)
             adtwWeights = new HashMap<>();
-
-        if (!adtwWeights.containsKey(gammaExponent)) {
-            int maxWeight = 0;
-            final int trainSize = this.size();
-            double[][] pairDist = new double[trainSize][trainSize];
-            Random random = new Random(trainSize + this.length());
-            for (int i = 0; i < nSamples; i++) {
-                int a = random.nextInt(trainSize);
-                int b = random.nextInt(trainSize);
-                while (a == b) b = random.nextInt(trainSize);
-                if (pairDist[a][b] == 0) {
-                    double dist = ED.distanceGe(this.get(a).firstChannel(), this.get(b).firstChannel(), gammaExponent);
-                    pairDist[a][b] = dist;
-                    pairDist[b][a] = dist;
+        final double[][] w = new double[nParams][this.dim()];
+        for (int dim = 0; dim < this.dim(); dim++) {
+            if (!adtwWeights.containsKey(gammaExponent)) {
+                int maxWeight = 0;
+                final int trainSize = this.size();
+                double[][] pairDist = new double[trainSize][trainSize];
+                Random random = new Random(trainSize + this.length());
+                for (int i = 0; i < nSamples; i++) {
+                    int a = random.nextInt(trainSize);
+                    int b = random.nextInt(trainSize);
+                    while (a == b) b = random.nextInt(trainSize);
+                    if (pairDist[a][b] == 0) {
+                        double dist = ED.distanceGe(this.get(a).get(dim), this.get(b).get(dim), gammaExponent);
+                        pairDist[a][b] = dist;
+                        pairDist[b][a] = dist;
+                    }
+                    maxWeight += pairDist[a][b];
                 }
-                maxWeight += pairDist[a][b];
-            }
-            maxWeight /= nSamples;
+                maxWeight /= nSamples;
 
-            final double[] w = new double[nParams];
-            for (int i = 1; i <= nParams; i++) w[i - 1] = maxWeight * Math.pow(i * 0.01, exponent);
+
+                for (int i = 1; i <= nParams; i++) w[i - 1][dim] = maxWeight * Math.pow(i * 0.01, exponent);
+            }
             adtwWeights.put(gammaExponent, w);
         }
-
 
         return adtwWeights.get(gammaExponent);
     }
 
-    public double[] initADTWWeights(int nSamples, int nParams, int exponent) {
+    public double[][] initADTWWeights(int nSamples, int nParams, int exponent) {
         if (adtwWeights == null)
             adtwWeights = new HashMap<>();
-
-        if (!adtwWeights.containsKey(2.0)) {
-            int maxWeight = 0;
-            final int trainSize = this.size();
-            double[][] pairDist = new double[trainSize][trainSize];
-            Random random = new Random(trainSize + this.length());
-            for (int i = 0; i < nSamples; i++) {
-                int a = random.nextInt(trainSize);
-                int b = random.nextInt(trainSize);
-                while (a == b) b = random.nextInt(trainSize);
-                if (pairDist[a][b] == 0) {
-                    double dist = ED.distance(this.get(a).firstChannel(), this.get(b).firstChannel());
-                    pairDist[a][b] = dist;
-                    pairDist[b][a] = dist;
+        final double[][] w = new double[nParams][this.dim()];
+        for (int dim = 0; dim < this.dim(); dim++) {
+            if (!adtwWeights.containsKey(2.0)) {
+                int maxWeight = 0;
+                final int trainSize = this.size();
+                double[][] pairDist = new double[trainSize][trainSize];
+                Random random = new Random(trainSize + this.length());
+                for (int i = 0; i < nSamples; i++) {
+                    int a = random.nextInt(trainSize);
+                    int b = random.nextInt(trainSize);
+                    while (a == b) b = random.nextInt(trainSize);
+                    if (pairDist[a][b] == 0) {
+                        double dist = ED.distance(this.get(a).get(dim), this.get(b).get(dim));
+                        pairDist[a][b] = dist;
+                        pairDist[b][a] = dist;
+                    }
+                    maxWeight += pairDist[a][b];
                 }
-                maxWeight += pairDist[a][b];
-            }
-            maxWeight /= nSamples;
+                maxWeight /= nSamples;
 
-            final double[] w = new double[nParams];
-            for (int i = 1; i <= nParams; i++) w[i - 1] = maxWeight * Math.pow(i * 0.01, exponent);
-            adtwWeights.put(2.0, w);
+                for (int i = 1; i <= nParams; i++) w[i - 1][dim] = maxWeight * Math.pow(i * 0.01, exponent);
+                adtwWeights.put(2.0, w);
+            }
         }
 
         return adtwWeights.get(2.0);

@@ -37,8 +37,8 @@ public class DerivativeFilter {
             for (int i = 1; i < input[0].length - 1; i++) {
                 derivative[d][i] = ((input[d][i] - input[d][i - 1]) + ((input[d][i + 1] - input[d][i - 1]) / 2)) / 2;
             }
-            derivative[0] = derivative[1];
-            derivative[derivative.length - 1] = derivative[derivative.length - 2];
+            derivative[d][0] = derivative[d][1];
+            derivative[d][derivative[d].length - 1] = derivative[d][derivative[d].length - 2];
         }
 
 

@@ -9,6 +9,8 @@ import tree.splitters.NodeSplitter;
 import utils.OutFile;
 import utils.Tools;
 
+import java.io.*;
+import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -18,9 +20,7 @@ import static utils.Tools.doTimeNs;
 
 public class MonsterClassification {
     final static HashMap<NodeSplitter.SplitterType, Integer> candidates = new HashMap<>();
-    private static final String[] testArgs = new String[]{
-            "-data=C:/Users/cwtan/workspace/Dataset/MonashTS/",
-            "-problem=Crop",                                   // dataset name
+    private static final String[] testArgs = new String[]{"-data=C:/Users/cwtan/workspace/Dataset/MonashTS/", "-problem=Crop",                                   // dataset name
             "-cpu=4",                                               // number of cpu cores/threads
             "-verbose=1",                                           // verbosity, 0, 1, 2
             "-iter=0",                                              // iteration runs
@@ -138,12 +138,17 @@ public class MonsterClassification {
         // load data
         final DataLoader loader = new DataLoader();
         Sequences trainData;
-        Sequences testData;
 
         {
             Sequences[] data = loader.readMonster(problem, Application.datasetPath, Application.fold8020);
             trainData = data[0];
-            testData = data[1];
+            // Save the sequences instance to a file
+            try (FileOutputStream fileOut = new FileOutputStream(problem + "_testData.ser"); ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+                out.writeObject(data[1]);
+                System.out.println("testData is saved in " + problem + "_testData.ser");
+            } catch (IOException i) {
+                i.printStackTrace();
+            }
         }
 
         // initialising the classifier
@@ -157,7 +162,7 @@ public class MonsterClassification {
         classifier.setThreads(Application.numThreads);
         System.out.println(classifier);
         System.out.println("[" + moduleName + "] Training data: (" + trainData.size() + "," + trainData.length() + "," + trainData.dim() + ")");
-        System.out.println("[" + moduleName + "] Test data: (" + testData.size() + "," + testData.length() + "," + testData.dim() + ")");
+
 
         // training the classifier
         PredictionResults trainingResults;
@@ -170,15 +175,36 @@ public class MonsterClassification {
         // do the evaluation
         double totalTime = trainingResults.elapsedTimeNanoSeconds;
         if (Application.doEvaluation) {
-            PFResults classificationResults = classifier.evaluate(testData);
-            System.out.println("[" + moduleName + "]" + classificationResults);
-            totalTime += classificationResults.elapsedTimeNanoSeconds;
+            // Load the sequences instance from the file
+            try (FileInputStream fileIn = new FileInputStream(problem + "_testData.ser"); ObjectInputStream in = new ObjectInputStream(fileIn)) {
+                final Sequences testData = (Sequences) in.readObject();
+                System.out.println("testData is loaded from " + problem + "_testData.ser");
 
-            saveResults(
-                    Application.outputPath,
-                    problem, Application.classifierName, Application.numThreads,
-                    (PFResults) trainingResults, classificationResults,
-                    "results_" + nSamples + ".csv");
+                System.out.println("[" + moduleName + "] Test data: (" + testData.size() + "," + testData.length() + "," + testData.dim() + ")");
+
+                PFResults classificationResults = classifier.evaluate(testData);
+                System.out.println("[" + moduleName + "]" + classificationResults);
+                totalTime += classificationResults.elapsedTimeNanoSeconds;
+                saveResults(Application.outputPath, problem, Application.classifierName, Application.numThreads, (PFResults) trainingResults, classificationResults, "results_" + nSamples + ".csv");
+            } catch (IOException i) {
+                i.printStackTrace();
+            } catch (ClassNotFoundException c) {
+                System.out.println("Sequences class not found");
+                c.printStackTrace();
+            }
+
+            Path filePath = Paths.get(problem + "_testData.ser");
+
+            try {
+                Files.delete(filePath);
+                System.out.println("File deleted successfully");
+            } catch (NoSuchFileException e) {
+                System.out.println("No such file/directory exists: " + e.getFile());
+            } catch (DirectoryNotEmptyException e) {
+                System.out.println("Directory is not empty: " + e.getFile());
+            } catch (IOException e) {
+                System.out.println("Invalid permissions: " + e.getMessage());
+            }
         }
         System.out.println("[" + moduleName + "] Total time taken " + Tools.doTime(totalTime));
     }

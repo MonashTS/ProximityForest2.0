@@ -4,12 +4,15 @@ import application.Application;
 import distances.ED;
 import utils.Tools;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Random;
 
-public class Sequences {
+public class Sequences implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public ArrayList<Sequence> data;
     public int[] indices;
     public double std = -1;

@@ -1,12 +1,15 @@
 package datasets;
 
 
+import java.io.Serializable;
 import java.util.HashMap;
 
 import static transforms.Transforms.TimeSeriesTransforms;
 import static transforms.Transforms.TimeSeriesTransforms.raw;
 
-public class Sequence {
+public class Sequence implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public double[][] data; // data in multivariate format, dim x length
     public int classLabel;
     public boolean isNorm;

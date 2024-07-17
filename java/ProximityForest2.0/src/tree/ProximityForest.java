@@ -197,19 +197,25 @@ public class ProximityForest extends TimeSeriesClassifier {
         this.trees = new Tree[this.numTrees];
 
         // distance-based
+        System.out.println("Initialising LCSS for raw data");
         xTrain.initLCSSParam();
         if (this.splittersEnabled.get(PF)) {
             this.trainDataset.put(d1, DerivativeFilter.getFirstDerivative(xTrain));
         } else if (this.splittersEnabled.get(PF2)) {
+            System.out.println("Initialising ADTW weights for raw data");
             for (double ge : enabledDistancesCostFunction)
                 xTrain.initADTWWeights(adtwNSamples, adtwNParams, adtwExponents, ge);
 
+            System.out.println("Get first derivatives");
             final Sequences x = DerivativeFilter.getFirstDerivative(xTrain);
+            System.out.println("Initialising LCSS for first derivative data");
             x.initLCSSParam();
+            System.out.println("Initialising ADTW weights for first derivative data");
             for (double ge : enabledDistancesCostFunction)
                 x.initADTWWeights(adtwNSamples, adtwNParams, adtwExponents, ge);
             this.trainDataset.put(d1, x);
 
+            System.out.println("Do Hydra transform");
             doHydraTransform(xTrain);
             final Sequences transforms = this.trainDataset.get(hydra);
             for (int i = 0; i < transforms.size(); i++) {

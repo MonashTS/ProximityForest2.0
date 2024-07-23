@@ -228,18 +228,19 @@ public class Sequences implements Serializable {
             if (!adtwWeights.containsKey(2.0)) {
                 int maxWeight = 0;
                 final int trainSize = this.size();
-                double[][] pairDist = new double[trainSize][trainSize];
+//                double[][] pairDist = new double[trainSize][trainSize];
                 Random random = new Random(trainSize + this.length());
                 for (int i = 0; i < nSamples; i++) {
                     int a = random.nextInt(trainSize);
                     int b = random.nextInt(trainSize);
                     while (a == b) b = random.nextInt(trainSize);
-                    if (pairDist[a][b] == 0) {
-                        double dist = ED.distance(this.get(a).get(dim), this.get(b).get(dim));
-                        pairDist[a][b] = dist;
-                        pairDist[b][a] = dist;
-                    }
-                    maxWeight += pairDist[a][b];
+//                    if (pairDist[a][b] == 0) {
+//                        double dist = ED.distance(this.get(a).get(dim), this.get(b).get(dim));
+//                        pairDist[a][b] = dist;
+//                        pairDist[b][a] = dist;
+//                    }
+//                    maxWeight += pairDist[a][b];
+                    maxWeight += ED.distanceGe(this.get(a).get(dim), this.get(b).get(dim), exponent);
                 }
                 maxWeight /= nSamples;
 

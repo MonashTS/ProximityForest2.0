@@ -242,11 +242,15 @@ public class Hydra {
     }
 
     public double[][] transform(final Sequences inputs) {
+        System.out.println("Start Hydra Transform");
         final int numExamples = inputs.size();
 
         final Sequences diffInputs = DifferentiationFilter.getDiff(inputs, 1);
 
         double[][] outputs = new double[numExamples][numDilations * divisor * numKernelsPerGroup * h * 2];
+        // Buffer reuse for padding
+        double[][] paddedSeriesBuffer = null;
+
         for (int i = 0; i < inputs.size(); i++) {
             int featureCounter = 0;
             for (int dilationIndex = 0; dilationIndex < this.numDilations; dilationIndex++) {
@@ -255,16 +259,26 @@ public class Hydra {
 
                 // for each representation, raw or diff
                 for (int diffIndex = 0; diffIndex < this.divisor; diffIndex++) {
-                    double[][] series;
-                    if (diffIndex == 0) series = inputs.get(i).get();
-                    else series = diffInputs.get(i).get();
+                    double[][] series = (diffIndex == 0) ? inputs.get(i).get() : diffInputs.get(i).get();
 
                     if (p > 0) {
                         final int inputLength = series[0].length;
-                        final double[][] newSeries = new double[series.length][inputLength + p + p];
-                        for (int j = 0; j < series.length; j++)
-                            System.arraycopy(series[j], 0, newSeries[j], p, inputLength);
-                        series = newSeries;
+                        if (paddedSeriesBuffer == null || paddedSeriesBuffer[0].length < inputLength + p + p) {
+                            paddedSeriesBuffer = new double[series.length][inputLength + p + p];
+                        }
+                        for (int j = 0; j < series.length; j++) {
+                            System.arraycopy(series[j], 0, paddedSeriesBuffer[j], p, inputLength);
+                            // Fill padding areas with 0s
+                            Arrays.fill(paddedSeriesBuffer[j], 0, p, 0);
+                            Arrays.fill(paddedSeriesBuffer[j], p + inputLength, paddedSeriesBuffer[j].length, 0);
+                        }
+                        series = paddedSeriesBuffer;
+
+                        // can delete if the above works
+//                        final double[][] newSeries = new double[series.length][inputLength + p + p];
+//                        for (int j = 0; j < series.length; j++)
+//                            System.arraycopy(series[j], 0, newSeries[j], p, inputLength);
+//                        series = newSeries;
                     }
 
                     final int inputLength = series[0].length;
@@ -285,9 +299,8 @@ public class Hydra {
                                 double sum = 0;
                                 for (int k = 0; k < series.length; k++) {
                                     // go through each dimension
-                                    final double[] filter = this.filters[dilationIndex][diffIndex][groupIndex][kernelIndex][k];
-                                    for (int l = 0; l < filter.length; l++)
-                                        sum += filter[l] * series[k][j + (l * d)];
+                                    for (int l = 0; l < kernelLength; l++)
+                                        sum += this.filters[dilationIndex][diffIndex][groupIndex][kernelIndex][k][l] * series[k][j + (l * d)];
                                 }
                                 if (sum > maxs[j]) {
                                     maxs[j] = sum;
@@ -315,12 +328,17 @@ public class Hydra {
             }
         }
 
+
+        System.out.println("End Hydra Transform");
+        System.out.println("Start Scaler");
+
         if (scaler == null) {
             scaler = new SparseScaler();
             outputs = scaler.fitTransform(outputs);
         } else {
             outputs = scaler.transform(outputs);
         }
+        System.out.println("End Scaler");
         return outputs;
     }
 

@@ -17,7 +17,7 @@ public class DataLoader {
     private final MissingValuesProcessor missingValuesProcessor = new LinearInterpolator();
     private final VaryLengthProcessor varyLengthProcessor = new SuffixNoisePadder();
 
-    private int[] getCSVFileInformation(final String fileName, boolean hasHeader, final String fileDelimiter) throws IOException {
+    private int[] getCSVFileInformation(final String fileName, final String fileDelimiter) throws IOException {
         final FileReader input = new FileReader(fileName);
         final LineNumberReader lineNumberReader = new LineNumberReader(input);
         String line;
@@ -39,11 +39,7 @@ public class DataLoader {
 
         //this output array contains file information
         //number of rows;
-        if (hasHeader)
-            fileInfo[0] = lineNumberReader.getLineNumber() == 0 ? lineNumberReader.getLineNumber() : lineNumberReader.getLineNumber() - 1;
-        else
-            fileInfo[0] = lineNumberReader.getLineNumber();
-
+        fileInfo[0] = lineNumberReader.getLineNumber();
 
         assert lineArray != null;
         fileInfo[1] = lineArray.length;  //number of columns;
@@ -178,7 +174,7 @@ public class DataLoader {
             final long startTime = System.nanoTime();
 
             // useful for reading large files;
-            fileInfo = getCSVFileInformation(fileName, false, fileDelimiter); // 0=> no. of rows 1=> no. columns
+            fileInfo = getCSVFileInformation(fileName, fileDelimiter); // 0=> no. of rows 1=> no. columns
             final int expectedSize = fileInfo[0];
             final int seriesLength = fileInfo[1] - 1;  //-1 to exclude target the column
 
@@ -443,7 +439,7 @@ public class DataLoader {
             final long startTime = System.nanoTime();
 
             // useful for reading large files;
-            fileInfo = getCSVFileInformation(fileName, false, fileDelimiter); // 0=> no. of rows 1=> no. columns
+            fileInfo = getCSVFileInformation(fileName, fileDelimiter); // 0=> no. of rows 1=> no. columns
             final int indicesLength = fileInfo[1];  //-1 to exclude target the column
 
             // initialise
